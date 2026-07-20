@@ -1,0 +1,18 @@
+[book]
+title = "Conductor"
+description = "Multi-protocol input mapping: MIDI + game controllers → actions. Open-source engine documentation."
+authors = ["Conductor Contributors"]
+language = "en"
+src = "src"
+
+[build]
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/monstrous-media/conductor"
+edit-url-template = "https://github.com/monstrous-media/conductor/edit/main/docs-site/{path}"
+site-url = "/"
+cname = "getconductor.dev"
+
+[output.html.search]
+enable = true
