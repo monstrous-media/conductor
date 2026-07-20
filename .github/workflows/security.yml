@@ -1,0 +1,59 @@
+# Security / supply-chain checks (ADR-046 D4).
+# GitHub-hosted runners only. No secrets required — gitleaks runs via its
+# OSS container (the gitleaks-action needs an org license key; the CLI
+# does not, and the public repo carries no secrets by policy).
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1" # weekly, Monday 06:17 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — public history starts at the squash commit
+      - name: Run gitleaks over tree + history
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source /repo --no-banner --redact -v
+
+  cargo-deny:
+    name: cargo-deny (licenses, bans, advisories, sources)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip on scaffold
+        id: check
+        run: |
+          [ -f Cargo.toml ] && echo "has_code=true" >> "$GITHUB_OUTPUT" || echo "has_code=false" >> "$GITHUB_OUTPUT"
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        if: steps.check.outputs.has_code == 'true'
+        with:
+          command: check licenses bans advisories sources
+
+  cargo-audit:
+    name: cargo-audit (RustSec advisories)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip on scaffold
+        id: check
+        run: |
+          [ -f Cargo.lock ] && echo "has_code=true" >> "$GITHUB_OUTPUT" || echo "has_code=false" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.check.outputs.has_code == 'true'
+      - name: Install and run cargo-audit
+        if: steps.check.outputs.has_code == 'true'
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
