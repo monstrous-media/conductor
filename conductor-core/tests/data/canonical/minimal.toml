@@ -1,0 +1,16 @@
+# A minimal config used by the canonical-serialise tests.
+# Comments and key order in this file are intentionally non-canonical;
+# the tests verify they get normalised on the canonical output side.
+
+[[modes]]
+name = "Default"
+color = "blue"
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 36 }
+action = { type = "Keystroke", keys = "space", modifiers = ["cmd"] }
+
+[advanced_settings]
+chord_timeout_ms = 50
+double_tap_timeout_ms = 300
+hold_threshold_ms = 2000

@@ -26,27 +26,38 @@
 
 -
 -
+-
 
 ## Testing Performed
 
 <!-- Describe how you tested your changes -->
 
-- [ ] Ran full test suite: `cargo test --workspace`
+- [ ] Tested with real MIDI device
+- [ ] Ran full test suite: `cargo test --all`
 - [ ] Ran clippy: `cargo clippy -- -D warnings`
 - [ ] Ran formatter: `cargo fmt --check`
-- [ ] Tested with real hardware (MIDI device / game controller), if device-related
-- [ ] Tested LED feedback, if LED-related
+- [ ] Tested on multiple MIDI devices (if device-related)
+- [ ] Tested LED feedback (if LED-related)
 - [ ] Manual testing performed (describe below)
 
 ### Manual Testing Details
 
+<!-- Describe manual testing steps and results -->
+
 ```
 Steps:
 1.
+2.
+3.
 
 Results:
 -
 ```
+
+## Screenshots / Videos
+
+<!-- If applicable, add screenshots or videos to demonstrate the changes -->
+<!-- For LED feedback changes, a video is especially helpful -->
 
 ## Configuration Examples
 
@@ -54,6 +65,7 @@ Results:
 
 ```toml
 # Example config showing new feature
+
 ```
 
 ## Breaking Changes
@@ -64,21 +76,58 @@ Results:
 - [ ] API changes (document in CHANGELOG)
 - [ ] Behavior changes (explain new behavior)
 
+### Migration Guide
+
+<!-- How should users update their configs/code? -->
+
+```toml
+# Old config:
+
+
+# New config:
+
+```
+
+## Performance Impact
+
+<!-- Describe any performance implications -->
+
+- [ ] No performance impact
+- [ ] Performance improvement (describe below)
+- [ ] Performance regression (justify below)
+
 ## Checklist
 
-- [ ] **All commits are signed off (DCO, `git commit -s`)**
+<!-- Mark completed items with an 'x' -->
+
 - [ ] Code follows the project's style guidelines (rustfmt + clippy clean)
 - [ ] Self-review completed
-- [ ] Documentation updated (rustdoc, README, config docs, CHANGELOG as applicable)
-- [ ] Tests added/updated and passing locally
+- [ ] Comments added for complex logic
+- [ ] Documentation updated (if applicable)
+  - [ ] Updated rustdoc comments
+  - [ ] Updated README (if needed)
+  - [ ] Updated configuration documentation
+  - [ ] Updated CHANGELOG.md
+- [ ] Tests added/updated
+  - [ ] Unit tests for new functions
+  - [ ] Integration tests (if applicable)
+  - [ ] All tests pass locally
 - [ ] No new compiler warnings
 - [ ] Commit messages follow conventional format
 - [ ] Branch is up-to-date with main
+- [ ] ADR currency: if this PR adds/supersedes an ADR or changes a deprecated element, updated the ADR's frontmatter (`status`/`supersedes`/`superseded_by`) and/or `docs/adrs/deprecations.toml`, then ran `just adr-index` (enforced by the `ADR currency` CI gate)
 
 ## Related Issues
 
+<!-- Link related issues and PRs -->
+
 - Closes #
 - Related to #
+- Depends on #
+
+## Additional Notes
+
+<!-- Any other information that reviewers should know -->
 
 ---
 

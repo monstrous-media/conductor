@@ -1,0 +1,77 @@
+# FCB1010 — one-pedal-many-functions reference config.
+#
+# The Behringer FCB1010 is a MIDI foot controller that sends:
+#   1. A Program Change when a preset pedal is stomped.
+#   2. Continuous CC messages from an expression pedal (CC 7 by
+#      default, on channel 0).
+#
+# Without state-aware routing, every preset would need to map the
+# expression pedal to the same action — you'd never be able to
+# re-use the pedal for different parameters per preset.
+#
+# With ADR-025 PcContextSwitch, a single CC 7 mapping routes to a
+# different action depending on the most-recent Program Change
+# observed on the FCB1010's (device, channel). This is the
+# canonical motivating use case for Phase 2.
+#
+# This fixture is loaded by
+# `conductor-daemon/tests/adr025_phase2_acceptance_test.rs` and
+# also ships as an example users can copy and adapt.
+
+[[endpoints]]
+alias = "fcb1010"
+direction = "Input"
+type = "Matcher"
+description = "Behringer FCB1010 foot controller"
+enabled = true
+channels = [0]
+
+  [[endpoints.matchers]]
+  type = "NameContains"
+  value = "FCB1010"
+
+[[modes]]
+name = "Live"
+color = "blue"
+
+# Single mapping: CC 7 from the FCB1010 → routed by the active
+# Program Change. Each branch does something different with the
+# same expression pedal.
+[[modes.mappings]]
+description = "Expression pedal routed by current preset"
+
+  [modes.mappings.trigger]
+  type = "CC"
+  cc = 7
+  channel = 0
+  device = "fcb1010"
+
+  [modes.mappings.action]
+  type = "PcContextSwitch"
+  channel = 0
+  device = "fcb1010"
+
+    # Preset 0: pedal controls master volume.
+    [modes.mappings.action.mappings.0]
+    type = "Shell"
+    command = "echo master-volume"
+
+    # Preset 1: pedal controls delay time.
+    [modes.mappings.action.mappings.1]
+    type = "Shell"
+    command = "echo delay-time"
+
+    # Preset 2: pedal controls modulation depth.
+    [modes.mappings.action.mappings.2]
+    type = "Shell"
+    command = "echo modulation-depth"
+
+    # Fallback when no recognised preset has been stomped since
+    # daemon start (or one that isn't in the branch table). ADR-025
+    # D7 says "absence ≠ match" — without a default, the action
+    # silently no-ops. The explicit Shell is easier to assert in
+    # tests and gives the user a "you haven't picked a preset yet"
+    # signal.
+    [modes.mappings.action.default]
+    type = "Shell"
+    command = "echo no-active-preset"

@@ -1,0 +1,176 @@
+[workspace]
+members = [
+    "conductor-core",
+    "conductor-daemon",
+    "conductor-capture",
+]
+exclude = [
+    "plugins/conductor-spotify-plugin",
+    "plugins/conductor-obs-plugin",
+    "plugins/wasm-template",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# Minimum supported Rust version (#1436). Edition 2024 needs ≥1.85, but the
+# resolved dependency graph floor is 1.88 (e.g. `time` 0.3.x requires 1.88);
+# verified with `cargo +1.88.0 check`. The repo pins an exact toolchain in
+# rust-toolchain.toml (#1435) for reproducibility — this is the floor, not the
+# pin. Bump intentionally through a reviewed change.
+rust-version = "1.88"
+authors = ["Conductor Contributors"]
+license = "MIT"
+repository = "https://github.com/monstrous-media/conductor"
+
+# AI-slop lint pack — see docs/epic-loop/rust-coverage.md Path A.
+# Per-crate opt-in via `[lints] workspace = true` in each member's Cargo.toml.
+# Bin targets that legitimately use println!/eprintln! (CLI tools) opt out
+# locally with `#![allow(clippy::print_stdout, clippy::print_stderr)]`.
+#
+# DENY-tier only in this PR. Structural warn-tier lints
+# (cognitive_complexity, too_many_lines, too_many_arguments) require a
+# baseline cleanup pass first — see "Migration / Rollout" in
+# docs/epic-loop/rust-coverage.md. Adding them under `-D warnings`
+# would fail CI on the existing 14 too_many_lines + 2 cognitive_complexity
+# warnings, which is the piecemeal-cleanup work tracked separately.
+[workspace.lints.rust]
+# `objc 0.2.7`'s `msg_send!` / `class!` macros expand to code that
+# references the legacy `cfg(cargo-clippy)` cfg name, which Rust's
+# check-cfg machinery (stable on 1.80+) flags as `unexpected_cfgs`
+# in every callsite. The objc crate is unmaintained at this version
+# and the macros expand to code attributed to the *destination*
+# crate, so per-file `#![allow(unexpected_cfgs)]` doesn't fully
+# silence them (the lint fires on the macro-expanded callsite, not
+# the file declaring the allow). CI's Lint job already passes
+# `-A unexpected_cfgs` to clippy; this workspace-level allow brings
+# `cargo build --workspace` from a developer shell into the same
+# state so the build output isn't flooded with 20+ warnings of pure
+# noise. When we migrate to `objc2-foundation` (tracked in the
+# `// TODO Phase 5` comments in conductor-gui/src-tauri/src/app_detection.rs
+# and conductor-daemon/src/daemon/app_detector.rs) we can drop this.
+unexpected_cfgs = "allow"
+
+[workspace.lints.clippy]
+# Stub indicators — AI-pattern smoke signals. Calibration showed zero
+# real violations across the workspace, so denying these is essentially
+# free.
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
+# Debug-print indicators — should be tracing::* calls in lib code.
+# Genuine lib violations (12 total — fixed in this PR) lived in
+# conductor-core (actions, config/loader, config/validation,
+# plugin/discovery, plugin_registry — 8 sites), conductor-daemon
+# (state, service, conditions — 3 sites), and conductor-gui Tauri
+# (commands.rs — 1 site). Bin targets keep raw println!/eprintln!
+# via per-file #![allow(...)] attributes.
+print_stdout = "deny"
+print_stderr = "deny"
+
+# Root package
+[package]
+name = "conductor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Conductor - Multi-protocol input mapping system for MIDI controllers, game controllers, and custom hardware"
+
+[lints]
+workspace = true
+
+[lib]
+name = "conductor"
+path = "src/lib.rs"
+
+[dependencies]
+# Re-export conductor_core
+conductor-core = { version = "0.1.0", path = "conductor-core" }
+
+[dev-dependencies]
+# For integration tests that use ActionExecutor and PluginManager
+conductor-daemon = { path = "conductor-daemon" }
+proptest.workspace = true
+rstest.workspace = true
+chrono.workspace = true
+enigo.workspace = true
+toml.workspace = true
+serde_json.workspace = true
+serde_yaml = "0.9"  # tests/tauri_cache_cleanup_test.rs — typed YAML inspection (#1645 Bundle C, Council R1)
+dirs.workspace = true
+tempfile = "3.27"  # tests/plugin_integration_test.rs — hermetic temp plugins dir (#1507)
+
+[workspace.dependencies]
+# Core dependencies (used by conductor-core)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = { version = "1.1", features = ["preserve_order"] }  # preserve_order: PcContextSwitch branches must keep TOML authoring order (ADR-025 P2.D)
+midir = "0.11"
+hidapi = { version = "2.6", features = ["macos-shared-device"] }
+quick-xml = { version = "0.41", features = ["serialize"] }
+crossbeam-channel = "0.5"
+thiserror = "2.0"
+rand = "0.8"
+regex = "1.12"  # Security validation
+dirs = "6.0"  # Path handling
+libloading = "0.8"  # Plugin loading - native .dylib/.so/.dll (v2.3)
+gilrs = "0.11.2"  # Gamepad/HID input (v3.0; 0.11 toward macOS BT-HID #2229)
+dashmap = "6"  # Concurrent HashMap with sharded locking (used by PhysicalControlStateStore, per-device EventProcessors)
+indexmap = { version = "2", features = ["serde"] }  # Insertion-order map for PcContextSwitch branches (ADR-025 P2.D)
+sha2 = "0.10"  # Checksum verification (v2.3)
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }  # Plugin signing (v2.7)
+hex = "0.4"  # Hex encoding for signatures (v2.7)
+
+# WASM plugin runtime (v2.5 - sandboxed plugin execution)
+# Upgraded 26.0 → 45.0 (#1439): clears 18 ignored RustSec advisories,
+# incl. RUSTSEC-2026-0149 (CVSS 7.5 path_open sandbox bypass).
+wasmtime = "45.0"
+wasmtime-wasi = "45.0"
+
+# Platform-specific MIDI output (optional, for virtual port creation)
+coremidi = "0.9"  # macOS virtual MIDI ports (0.9 not available on crates.io)
+alsa = "0.11"  # Linux ALSA virtual ports
+
+# MIDI message parsing
+midi-msg = "0.9"  # Modern MIDI message parser (actively maintained)
+
+# Shared dependencies (used by multiple crates)
+chrono = { version = "0.4", features = ["serde"] }  # Timestamps for signing, logs, etc.
+
+# CLI/display dependencies (NOT in conductor-core, only conductor-daemon)
+enigo = "0.6"
+colored = "3.1"
+ctrlc = "3.5"
+clap = { version = "4.6", features = ["derive", "cargo"] }
+
+# Knowledge layer — ONNX embedding (ADR-023)
+ort = { version = "2.0.0-rc.12", features = ["ndarray"] }
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+ndarray = "0.17"
+
+# Testing
+proptest = "1.11"
+rstest = "0.26"
+
+# Dev/test build memory: the default `debug = 2` (full debuginfo) makes the
+# macOS linker hold several GB in ONE process when linking a wasmtime+tauri test
+# binary — macOS jetsam then SIGKILLs the foreground editor (VS Code, exit 137,
+# no dmesg OOM). `jobs = 2` (~/.cargo/config.toml) caps link PARALLELISM but not
+# the per-link memory; cutting debuginfo to line-tables-only cuts the spike at
+# the source (panics keep file:line for TDD) and shrinks the (huge) target/.
+# Tracking: conductor#1715.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

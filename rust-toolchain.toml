@@ -1,0 +1,9 @@
+[toolchain]
+# Pinned to an explicit release for reproducible builds (#1435). Following the
+# moving `stable` channel let local builds, CI, and releases silently switch
+# compiler versions — and thus lint/format/codegen behaviour — with no repo
+# change. 1.95.0 is the stable in use as of the pin; bump it intentionally
+# through a reviewed change. The Lint job rejects floating channels here.
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]
+profile = "default"

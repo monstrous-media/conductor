@@ -1,0 +1,134 @@
+name: Publish to crates.io
+
+# Publishes the open-core crates. conductor-studio's release workflow does
+# `cargo install conductor-daemon --version X --features llm-executor`, so this
+# MUST run (and succeed) before Studio is tagged for the same version.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# CRATE NAMESPACE (as of 2026-07)
+#
+#   conductor-core    FREE
+#   conductor-daemon  FREE
+#   conductor-capture FREE
+#   conductor         TAKEN — abandoned 2016 crate, 15 versions, ALL YANKED,
+#                     max_version 0.0.0, ~16 recent downloads. Under discussion
+#                     for transfer. Strong case under the crates.io name policy.
+#
+# The repo already has a root crate literally named `conductor` (src/lib.rs,
+# re-exporting conductor-core), so if the transfer lands it slots straight in as
+# the umbrella crate — add it to CRATES below, publish last (it depends on core).
+# Nothing here needs restructuring to accommodate that; do NOT rename
+# conductor-core/-daemon to reserve space for it.
+#
+# Note the binary is already named `conductor` regardless of crate name —
+# `cargo install conductor-daemon` installs a binary called `conductor`. So the
+# end-user CLI story does not depend on winning the namespace.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# PREREQUISITES (publish fails without these):
+#   1. Every published crate needs description + license + repository. These are
+#      inherited from [workspace.package]; make sure `repository` points at
+#      monstrous-media/conductor, not amiable-dev.
+#   2. Intra-workspace path deps need a version alongside the path, e.g.
+#        conductor-core = { path = "../conductor-core", version = "0.1.0" }
+#      A bare `{ path = ... }` is not publishable.
+#   3. CARGO_REGISTRY_TOKEN secret (crates.io API token, Publish scope).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Verify only — do not actually publish'
+        type: boolean
+        default: true
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    name: Publish crates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev \
+            libudev-dev \
+            pkg-config
+
+      # #2148 — pinned channel, not floating stable. See release.yml.
+      - name: Install pinned Rust toolchain
+        uses: ./.github/actions/rust-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: publish
+          prefix-key: v1-rust
+          cache-bin: false
+
+      # A tag must match the manifest version, or crates.io and the git history
+      # disagree permanently (published versions cannot be replaced).
+      - name: Verify tag matches workspace version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/v}"
+          MANIFEST=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          echo "tag=$TAG manifest=$MANIFEST"
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "::error::tag v$TAG does not match workspace version $MANIFEST"
+            exit 1
+          fi
+
+      # Dry-run everything BEFORE publishing anything. crates.io publishes are
+      # irreversible (yank hides, never deletes), so a half-published set is the
+      # worst outcome — catch packaging errors while they are still free.
+      - name: Dry-run package all crates
+        run: |
+          set -euo pipefail
+          for c in conductor-core conductor-capture conductor-daemon; do
+            echo "::group::dry-run $c"
+            cargo publish --dry-run --package "$c" --locked
+            echo "::endgroup::"
+          done
+
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v') && github.event.inputs.dry_run != 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Dependency order: core first (daemon and capture depend on it).
+          # Add `conductor` (umbrella) to the end of this list if/when the
+          # namespace transfer completes.
+          for c in conductor-core conductor-capture conductor-daemon; do
+            echo "::group::publish $c"
+            # Idempotent: a re-run after a partial failure must not hard-fail on
+            # the crates already up.
+            if cargo publish --package "$c" --locked; then
+              echo "published $c"
+            else
+              VER=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+              if curl -sf -H "User-Agent: monstrous-conductor-ci" \
+                   "https://crates.io/api/v1/crates/$c/$VER" >/dev/null; then
+                echo "::warning::$c@$VER already on crates.io — continuing"
+              else
+                echo "::error::publish failed for $c and it is not on crates.io"
+                exit 1
+              fi
+            fi
+            echo "::endgroup::"
+          done
