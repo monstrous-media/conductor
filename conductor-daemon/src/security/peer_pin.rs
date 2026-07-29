@@ -35,7 +35,7 @@
 //! - **(3/N)** (this module's current state): peer trust
 //!   classification via [`classify_peer`] —
 //!   `SecCodeCopyGuestWithAttributes` on macOS for Apple Team ID
-//!   extraction (cross-checked against [`CONDUCTOR_TEAM_ID`]), exe
+//!   extraction (cross-checked against [`CONDUCTOR_TEAM_IDS`]), exe
 //!   basename + uid match on Linux. Maps a [`PinnedPeer`] to the
 //!   gate's existing [`crate::security::TrustLevel`] enum
 //!   (`GuiTrusted` / `CliTrusted` / `Untrusted`) — the wiring
@@ -100,8 +100,8 @@
 //! [`libc::poll`]: libc::poll
 //! [`libc::syscall`]: libc::syscall
 //! [`TrustLevel`]: crate::security::TrustLevel
-//! [PR #1062]: https://github.com/monstrous-media/conductor/pull/1062
-//! [PR #1071]: https://github.com/monstrous-media/conductor/pull/1071
+//! [PR #1062]: https://github.com/amiable-dev/conductor/pull/1062
+//! [PR #1071]: https://github.com/amiable-dev/conductor/pull/1071
 
 use std::io;
 #[cfg(target_os = "linux")]
@@ -158,10 +158,29 @@ type AuditToken = [u32; 8];
 /// `GuiTrusted` / `CliTrusted` to a same-name binary signed
 /// under any other Team ID, and so the value travels with the
 /// binary rather than living in a config file the user could
-/// edit. (3/N) is the only place this constant matters; future
-/// rotations would land alongside a daemon binary update.
+/// edit.
+///
+/// # Why a list rather than a single value
+///
+/// Apple does not convert an Individual developer account into an
+/// Organization one — you enrol separately and receive a **new Team
+/// ID**. Conductor currently ships under an Individual account, and
+/// an Organization move (blocked on company formation + a D&B
+/// D-U-N-S registration) is expected later.
+///
+/// If this were a scalar, that migration would be a hard break: a
+/// daemon signed by the old team would reject a GUI signed by the
+/// new one and vice versa, with no build able to trust both. As a
+/// list, the migration ships as a transition release that accepts
+/// the old and new team, after which the old entry is dropped.
+///
+/// Keep this list SHORT and drop stale entries once the transition
+/// completes — every entry is a binary that can claim trust.
 #[cfg(target_os = "macos")]
-const CONDUCTOR_TEAM_ID: &str = "38H355VKB5";
+const CONDUCTOR_TEAM_IDS: &[&str] = &[
+    // Individual account (Christopher Joseph). Current signing team.
+    "38H355VKB5",
+];
 
 /// Identity of a peer process pinned at connection accept time.
 ///
@@ -788,7 +807,7 @@ struct RealSecCodeLookup;
 
 /// Verify that the peer process identified by `audit_token` carries
 /// a valid Apple code signature whose Team Identifier matches
-/// [`CONDUCTOR_TEAM_ID`].
+/// one of [`CONDUCTOR_TEAM_IDS`].
 ///
 /// The Apple-recommended way to associate a `SecCodeRef` with a
 /// specific running process is `SecCodeCopyGuestWithAttributes`
@@ -830,7 +849,7 @@ fn verify_conductor_team_id_with<L: SigningInfoLookup>(
     match lookup.lookup(audit_token, SEC_CS_SIGNING_INFORMATION) {
         Some(SigningInfo {
             team_id: Some(team_id),
-        }) => team_id == CONDUCTOR_TEAM_ID,
+        }) => CONDUCTOR_TEAM_IDS.contains(&team_id.as_str()),
         _ => false,
     }
 }
@@ -1256,7 +1275,7 @@ mod tests {
         // Same-uid + conductor-gui basename. Linux: GuiTrusted
         // (basename + uid suffice). macOS: Untrusted because the
         // synthetic audit token (all zeros) cannot satisfy the
-        // CONDUCTOR_TEAM_ID signature check — fail closed.
+        // CONDUCTOR_TEAM_IDS signature check — fail closed.
         let peer = synthetic_peer(
             unsafe { libc::geteuid() },
             PathBuf::from("/Applications/Conductor.app/Contents/MacOS/conductor-gui"),
@@ -1310,7 +1329,7 @@ mod tests {
     /// regression class directly — passing `0` would silently omit
     /// `teamid` from the returned dict in production), and (b)
     /// returns a `SigningInfo` whose `team_id` matches
-    /// `CONDUCTOR_TEAM_ID`. Pre-#1125 no test in the Phase 1A suite
+    /// `CONDUCTOR_TEAM_IDS`. Pre-#1125 no test in the Phase 1A suite
     /// exercised this path — the v5.6.0-alpha → v5.6.1-alpha
     /// install-test pause was the only signal that ever fired.
     #[cfg(target_os = "macos")]
@@ -1332,7 +1351,7 @@ mod tests {
                     SEC_CS_SIGNING_INFORMATION, flags,
                 );
                 Some(SigningInfo {
-                    team_id: Some(CONDUCTOR_TEAM_ID.to_string()),
+                    team_id: Some(CONDUCTOR_TEAM_IDS[0].to_string()),
                 })
             }
         }
@@ -1341,7 +1360,7 @@ mod tests {
         assert!(
             verify_conductor_team_id_with(&token, &MockLookup),
             "verify_conductor_team_id_with MUST return true when the \
-             lookup returns SigningInfo with team_id == CONDUCTOR_TEAM_ID"
+             lookup returns SigningInfo in CONDUCTOR_TEAM_IDS"
         );
     }
 
@@ -1362,6 +1381,43 @@ mod tests {
         }
         let token: AuditToken = [0; 8];
         assert!(!verify_conductor_team_id_with(&token, &MockLookup));
+    }
+
+    /// The allowlist is the entire surface of the IPC trust anchor, and a
+    /// botched edit to it fails silently in the dangerous direction: a
+    /// malformed entry simply never matches, so every peer degrades to
+    /// `Untrusted` and the GUI stops talking to the daemon — at runtime, on
+    /// a user's Mac, with no CI signal. An empty list does the same.
+    ///
+    /// Apple Team IDs are exactly 10 uppercase alphanumerics, so assert the
+    /// shape here rather than discovering it post-release.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn conductor_team_ids_are_wellformed() {
+        assert!(
+            !CONDUCTOR_TEAM_IDS.is_empty(),
+            "empty allowlist fails every peer closed — no binary could ever be trusted"
+        );
+        for id in CONDUCTOR_TEAM_IDS {
+            assert_eq!(
+                id.len(),
+                10,
+                "Apple Team IDs are exactly 10 characters; got {id:?}"
+            );
+            assert!(
+                id.chars()
+                    .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()),
+                "Apple Team IDs are uppercase alphanumeric; got {id:?}"
+            );
+        }
+        let mut seen = CONDUCTOR_TEAM_IDS.to_vec();
+        seen.sort_unstable();
+        seen.dedup();
+        assert_eq!(
+            seen.len(),
+            CONDUCTOR_TEAM_IDS.len(),
+            "duplicate Team ID entries — likely a botched transition edit"
+        );
     }
 
     /// #1125 negative coverage. The lookup succeeds but the signing

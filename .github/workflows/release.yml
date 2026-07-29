@@ -223,15 +223,32 @@ jobs:
       - name: Verify Team ID matches peer_pin trust anchor
         if: runner.os == 'macOS' && steps.apple-secrets.outputs.has_identity == 'true'
         run: |
-          EXPECTED=$(grep -oE '"[0-9A-Z]{10}"' conductor-daemon/src/security/peer_pin.rs \
-            | head -1 | tr -d '"')
+          set -euo pipefail
+          # Extract ONLY the CONDUCTOR_TEAM_IDS array body. A bare grep for
+          # /"[0-9A-Z]{10}"/ over the whole file also matches the "FAKETEAMID"
+          # fixture in the negative test, which would let a wrongly-signed
+          # binary pass this gate.
+          ALLOWED=$(awk '
+            /const CONDUCTOR_TEAM_IDS/ { inblock = 1; next }
+            inblock && /\];/           { exit }
+            inblock                    { print }
+          ' conductor-daemon/src/security/peer_pin.rs \
+            | grep -oE '"[0-9A-Z]{10}"' | tr -d '"')
+
+          if [ -z "$ALLOWED" ]; then
+            echo "::error::could not parse CONDUCTOR_TEAM_IDS from peer_pin.rs"
+            exit 1
+          fi
+
           ACTUAL=$(codesign -dv --verbose=4 \
             target/${{ matrix.target }}/release/conductor 2>&1 \
             | grep -i '^TeamIdentifier=' | cut -d= -f2)
-          echo "peer_pin.rs expects: $EXPECTED"
+
+          echo "peer_pin.rs allows: $(echo "$ALLOWED" | tr '\n' ' ')"
           echo "binary is signed by: $ACTUAL"
-          if [ "$EXPECTED" != "$ACTUAL" ]; then
-            echo "::error::Team ID mismatch — this daemon would classify as Untrusted at the IPC gate"
+
+          if ! echo "$ALLOWED" | grep -qx "$ACTUAL"; then
+            echo "::error::Team ID '$ACTUAL' is not in CONDUCTOR_TEAM_IDS — this daemon would classify as Untrusted at the IPC gate"
             exit 1
           fi
 
