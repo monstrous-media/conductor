@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Workflow path-filter policy test (#1622).

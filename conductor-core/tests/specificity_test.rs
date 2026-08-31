@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! ADR-037 Slice 4 — rule-compiler simplification (10-stage → 4-stage).

@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! ADR-040 D4 §4.2 — transient manual-override mode lock (core state machine).

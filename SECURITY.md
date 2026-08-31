@@ -26,7 +26,7 @@ Please do not open a public GitHub issue or discussion about the vulnerability. 
 
 ### 2. Report Privately
 
-Send details of the vulnerability to: **security@amiable.dev**
+Send details of the vulnerability to: **security@monstrous.media**
 
 Include in your report:
 - Description of the vulnerability

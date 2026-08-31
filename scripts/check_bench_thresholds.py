@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2025 Amiable
+# Copyright 2025-2026 Monstrous Media
 # SPDX-License-Identifier: MIT
 """Gate the unified routing passthrough benchmark (ADR-036 D7 / Slice 9).
 

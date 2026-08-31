@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Integration tests for ADR-009 Phase 3b: Lock-free engine hot path

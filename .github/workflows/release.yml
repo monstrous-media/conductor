@@ -2,9 +2,8 @@ name: Release
 
 # Public (MIT) daemon release pipeline for monstrous-media/conductor.
 #
-# Split from the amiable-dev monorepo's combined release.yml: the GUI/.dmg half
-# now lives in monstrous-media/conductor-studio. This workflow ships ONLY the
-# open-source daemon CLI (conductor + conductorctl) as per-arch tarballs.
+# Ships ONLY the open-source daemon CLI (conductor + conductorctl) as per-arch
+# tarballs. The GUI/.dmg half lives in monstrous-media/conductor-studio.
 #
 # Signing note: the daemon and the Studio GUI MUST be signed by the same Apple
 # team (38H355VKB5). conductor-daemon/src/security/peer_pin.rs uses the Team ID

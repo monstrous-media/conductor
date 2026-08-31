@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! ADR-027 D1 (2/N) lifecycle tests for [`PinnedPeer::still_pinned`].

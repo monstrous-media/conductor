@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Shared MIDI placeholder substitution (ADR-038 R2 P5).

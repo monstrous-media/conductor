@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! ADR-040 §4.4 / §D6 Phase 1 — `Conditional` + top-level `ModeIs` deprecation.

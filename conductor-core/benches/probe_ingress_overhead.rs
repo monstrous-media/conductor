@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Probe ingress filter benchmark (ADR-026 Phase 1.C).

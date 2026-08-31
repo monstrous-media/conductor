@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! ADR-042 Phase A — async UDP listener runtime (Slice A.6b-2).

@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Local storage for captured patterns
@@ -9,7 +9,6 @@
 #![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
-use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -61,14 +60,19 @@ impl CaptureStorage {
 
     /// Get the base directory for captures
     fn get_base_dir() -> Result<PathBuf, std::io::Error> {
-        let proj_dirs = ProjectDirs::from("dev", "amiable", "conductor").ok_or_else(|| {
+        // Captures live under the same `conductor/` directory as the rest of
+        // Conductor's data (see conductor-core's config loader, plugin registry
+        // and signing modules) rather than a crate-private bundle id, which
+        // would split capture files into a separate directory users never see
+        // referenced anywhere else.
+        let config_dir = dirs::config_dir().ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                "Could not determine project directory",
+                "Could not determine config directory",
             )
         })?;
 
-        Ok(proj_dirs.data_local_dir().join("captures"))
+        Ok(config_dir.join("conductor").join("captures"))
     }
 
     /// Save a capture to local storage.

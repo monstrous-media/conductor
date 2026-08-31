@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Test helper for ADR-027 D1 (2/N) `still_pinned()` lifecycle.

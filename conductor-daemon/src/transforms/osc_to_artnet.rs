@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! OSC → Art-Net structured transform (ADR-039-A Slice 1b, #2324).

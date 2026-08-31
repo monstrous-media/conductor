@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Unit tests for Slice B.7 keychain init-race + rotation cadence. In a `#[path]`

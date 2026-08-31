@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Capability vocabulary for ADR-027 D3 — sub-pieces (1/N) and (2/N).

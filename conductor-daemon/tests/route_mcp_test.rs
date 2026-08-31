@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Integration tests for ADR-031 P3 § 5.6 named tests + #1143 AC #5

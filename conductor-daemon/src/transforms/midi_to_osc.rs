@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! MIDI → OSC transform (ADR-031 § 7.1 / #1145 P5 slice 1).

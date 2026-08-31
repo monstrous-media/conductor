@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Output port enumeration and auto-pairing for multi-device architecture (ADR-021 Phase 1B)

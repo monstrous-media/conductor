@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable Team
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 #![allow(

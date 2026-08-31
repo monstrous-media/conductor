@@ -3,7 +3,7 @@
 #![no_std]
 
 // Pre-computed metadata JSON embedded in the binary
-static METADATA: &[u8] = br#"{"name":"minimal_wasm_plugin","version":"0.1.0","description":"Minimal test plugin","author":"Amiable","license":"MIT","type":"action","capabilities":[]}"#;
+static METADATA: &[u8] = br#"{"name":"minimal_wasm_plugin","version":"0.1.0","description":"Minimal test plugin","author":"Monstrous Media","license":"MIT","type":"action","capabilities":[]}"#;
 
 /// Initialize the plugin - returns pointer and length packed in u64
 #[no_mangle]

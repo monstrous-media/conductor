@@ -28,7 +28,7 @@ name: Publish to crates.io
 # PREREQUISITES (publish fails without these):
 #   1. Every published crate needs description + license + repository. These are
 #      inherited from [workspace.package]; make sure `repository` points at
-#      monstrous-media/conductor, not amiable-dev.
+#      monstrous-media/conductor.
 #   2. Intra-workspace path deps need a version alongside the path, e.g.
 #        conductor-core = { path = "../conductor-core", version = "0.1.0" }
 #      A bare `{ path = ... }` is not publishable.

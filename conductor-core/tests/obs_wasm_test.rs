@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable Team
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 #![allow(
@@ -72,7 +72,7 @@ async fn test_obs_metadata() {
         metadata.description,
         "OBS Studio control via WebSocket protocol"
     );
-    assert_eq!(metadata.author, "Amiable Team");
+    assert_eq!(metadata.author, "Monstrous Team");
     assert_eq!(metadata.license, "MIT");
 
     // Verify capabilities (Network capability required for OBS WebSocket)

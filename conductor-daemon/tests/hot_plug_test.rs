@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Integration tests for hot-plug detection (v4.22.0 - ADR-009 Phase 4a)

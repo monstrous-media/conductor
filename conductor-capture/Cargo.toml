@@ -2,7 +2,7 @@
 name = "conductor-capture"
 version = "0.1.0"
 edition = "2021"
-authors = ["Amiable <hello@amiable.dev>"]
+authors = ["Monstrous Media <package-monster@monstrous.media>"]
 description = "Input pattern capture tool for Conductor - record MIDI and gamepad input with privacy controls"
 license = "MIT"
 repository = "https://github.com/monstrous-media/conductor"
@@ -24,7 +24,7 @@ chrono = { workspace = true, features = ["serde"] }
 # Capture-specific dependencies
 tokio = { version = "1.50", features = ["full"] }
 uuid = { version = "1.23", features = ["v4", "serde"] }
-directories = "6.0"  # Platform-specific app directories
+dirs = { workspace = true }  # Platform-specific app directories
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # #2147: atomic temp-write + rename for capture saves (also used in tests).

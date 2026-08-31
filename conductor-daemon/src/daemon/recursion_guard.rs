@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! MIDI recursion guard (ADR-015 D8) + cascade suppression (issue #555)

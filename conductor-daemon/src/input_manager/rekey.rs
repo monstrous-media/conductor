@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Two-phase rekey apply for [`super::InputManager`] (#955, council bug_003 / bug_005).

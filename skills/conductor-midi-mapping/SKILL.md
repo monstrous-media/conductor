@@ -9,7 +9,7 @@ description: >
 license: Apache-2.0
 compatibility: Requires Conductor daemon running with MCP server enabled
 metadata:
-  author: amiable
+  author: Monstrous Media
   version: "4.11.0"
   category: midi
 allowed-tools: Bash(conductor:*) Read Write

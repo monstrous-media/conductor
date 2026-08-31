@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Peer credential pinning (ADR-027 D1, spec §4.1).
@@ -24,11 +24,11 @@
 //!
 //! D1 ships in three sub-pieces:
 //!
-//! - **(1/N)** ([PR #1062]): the credential-snapshot scaffold —
+//! - **(1/N)** (landed pre-migration): the credential-snapshot scaffold —
 //!   `SO_PEERCRED` (Linux) and `getpeereid` + `LOCAL_PEERPID`
 //!   (macOS) for uid/pid, `/proc/<pid>/exe` or `proc_pidpath` for
 //!   the binary path. `still_pinned()` was a stub returning `true`.
-//! - **(2/N)** ([PR #1071]): the kernel-handle liveness check —
+//! - **(2/N)** (landed pre-migration): the kernel-handle liveness check —
 //!   `pidfd_open` (Linux) + `LOCAL_PEERTOKEN` audit-token
 //!   comparison (macOS). [`PinnedPeer::still_pinned`] is race-free
 //!   with respect to the peer's exit.
@@ -100,8 +100,6 @@
 //! [`libc::poll`]: libc::poll
 //! [`libc::syscall`]: libc::syscall
 //! [`TrustLevel`]: crate::security::TrustLevel
-//! [PR #1062]: https://github.com/amiable-dev/conductor/pull/1062
-//! [PR #1071]: https://github.com/amiable-dev/conductor/pull/1071
 
 use std::io;
 #[cfg(target_os = "linux")]

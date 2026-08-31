@@ -7,7 +7,7 @@ description: >
 license: Apache-2.0
 compatibility: Requires Conductor daemon running
 metadata:
-  author: amiable
+  author: Monstrous Media
   version: "4.28.0"
   category: troubleshooting
 allowed-tools: Bash(conductor:*) Read Write

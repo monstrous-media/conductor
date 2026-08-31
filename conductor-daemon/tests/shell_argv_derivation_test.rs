@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Pure-function tests for [`derive_shell_argv`] (ADR-027 D3 §3.1,

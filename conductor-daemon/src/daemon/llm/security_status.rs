@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! `conductor_security_status` MCP tool payload (ADR-042 Phase B-early, #1899

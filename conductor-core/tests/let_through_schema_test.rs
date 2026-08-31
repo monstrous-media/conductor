@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Tests for ADR-038 Slice 1 — `let_through` flag and `Tap` action schema.

@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Probe-on-connect orchestration helpers (ADR-026 Phases 3.C.2 + 3.C.3).

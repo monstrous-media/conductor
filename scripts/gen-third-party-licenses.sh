@@ -84,7 +84,7 @@ count=$(printf '%s\n' "$rows" | grep -c . || true)
 # ---- NOTICE -----------------------------------------------------------------
 {
   echo "Conductor"
-  echo "Copyright 2025 Amiable"
+  echo "Copyright 2025-2026 Monstrous Media"
   echo
   echo "This product includes software developed by the Rust community. It"
   echo "distributes ${count} third-party Rust crates; see THIRD_PARTY_LICENSES.md"

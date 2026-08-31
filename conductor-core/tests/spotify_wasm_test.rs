@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 #![allow(
@@ -80,7 +80,7 @@ async fn test_spotify_plugin_metadata() {
 
     assert_eq!(metadata.name, "spotify_control");
     assert_eq!(metadata.version, "0.2.0");
-    assert_eq!(metadata.author, "Amiable Team");
+    assert_eq!(metadata.author, "Monstrous Team");
     assert_eq!(metadata.license, "MIT");
     assert!(metadata.description.contains("Spotify"));
 

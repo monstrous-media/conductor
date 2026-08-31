@@ -19,7 +19,7 @@ support.
 
 This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable
-behavior to conduct@amiable.dev.
+behavior to conduct@monstrous.media.
 
 ## Developer Certificate of Origin (DCO)
 
@@ -203,7 +203,7 @@ cargo test -- --nocapture           # with output
   questions, ideas, show & tell, device profiles
 - **[GitHub Issues](https://github.com/monstrous-media/conductor/issues)** — bugs,
   approved feature requests, documentation issues
-- **Email** — security: security@amiable.dev · conduct: conduct@amiable.dev
+- **Email** — security: security@monstrous.media · conduct: conduct@monstrous.media
 
 ## First-Time Contributors
 

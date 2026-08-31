@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Integration tests for [`capabilities_for_action`] (ADR-027 D3 spec §3.1).

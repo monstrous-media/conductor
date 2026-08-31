@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Plugin signing and verification (v2.7)
@@ -133,8 +133,8 @@ pub struct TrustedKey {
 /// sign_plugin(
 ///     Path::new("plugin.wasm"),
 ///     &private_key,
-///     "Amiable Team",
-///     "dev@amiable.com",
+///     "Monstrous Team",
+///     "dev@monstrous.media",
 /// )?;
 /// # Ok(())
 /// # }

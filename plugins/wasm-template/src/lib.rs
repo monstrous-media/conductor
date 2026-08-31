@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Conductor WASM Plugin Template
@@ -104,7 +104,7 @@ pub struct TriggerContext {
 // ============================================================================
 
 /// Pre-computed metadata JSON (static to avoid allocation issues)
-static METADATA_JSON: &[u8] = br#"{"name":"example_wasm_plugin","version":"0.1.0","description":"Example WASM plugin for Conductor","author":"Amiable","license":"MIT","type":"action","capabilities":[]}"#;
+static METADATA_JSON: &[u8] = br#"{"name":"example_wasm_plugin","version":"0.1.0","description":"Example WASM plugin for Conductor","author":"Monstrous Media","license":"MIT","type":"action","capabilities":[]}"#;
 
 /// Initialize the plugin and return metadata
 ///

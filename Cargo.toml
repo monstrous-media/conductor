@@ -24,7 +24,7 @@ authors = ["Conductor Contributors"]
 license = "MIT"
 repository = "https://github.com/monstrous-media/conductor"
 
-# AI-slop lint pack — see docs/epic-loop/rust-coverage.md Path A.
+# AI-slop lint pack: lints that catch machine-generated code smells.
 # Per-crate opt-in via `[lints] workspace = true` in each member's Cargo.toml.
 # Bin targets that legitimately use println!/eprintln! (CLI tools) opt out
 # locally with `#![allow(clippy::print_stdout, clippy::print_stderr)]`.
@@ -32,7 +32,7 @@ repository = "https://github.com/monstrous-media/conductor"
 # DENY-tier only in this PR. Structural warn-tier lints
 # (cognitive_complexity, too_many_lines, too_many_arguments) require a
 # baseline cleanup pass first — see "Migration / Rollout" in
-# docs/epic-loop/rust-coverage.md. Adding them under `-D warnings`
+# the lint pack rationale. Adding them under `-D warnings`
 # would fail CI on the existing 14 too_many_lines + 2 cognitive_complexity
 # warnings, which is the piecemeal-cleanup work tracked separately.
 [workspace.lints.rust]

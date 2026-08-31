@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Lock-free rule engine benchmarks (v4.24.0 - ADR-009 Phase 6)

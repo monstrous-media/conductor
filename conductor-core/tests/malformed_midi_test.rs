@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! #2131 (clawpatch #2103): `MidiEvent::from_midi_msg` must reject a MIDI

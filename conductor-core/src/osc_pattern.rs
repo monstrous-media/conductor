@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! OSC 1.0 address pattern matching (ADR-039-A Slice 2, #2325).

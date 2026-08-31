@@ -1,4 +1,4 @@
-// Copyright 2026 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Unit tests for the Slice B.4 approval-admin logic. In a `#[path]` sibling so

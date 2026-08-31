@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Endpoint Registry — runtime state of the signal routing graph (ADR-031 § 3.4,

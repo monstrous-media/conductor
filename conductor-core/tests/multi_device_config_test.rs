@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 //! Tests for multi-device config parsing (ADR-009 Phase 1, ADR-035 endpoints).

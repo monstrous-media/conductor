@@ -1,4 +1,4 @@
-// Copyright 2025 Amiable
+// Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
 use crate::events::InputEvent; // Protocol-agnostic event processing (v3.0)
