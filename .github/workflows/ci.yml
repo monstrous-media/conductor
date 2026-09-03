@@ -1,14 +1,13 @@
-# Public CI — authored fresh for GitHub-hosted runners (ADR-046 D4).
-# NEVER add self-hosted runners to this workflow or this repo.
+# Public CI — authored for GitHub-hosted runners (ADR-046 D4).
+# NEVER add self-hosted runners to this workflow or this repo
+# (enforced by tests/ci_runner_policy.rs).
 #
-# Scaffold-aware: until the engine code lands (ADR-046 Workstream B), the
-# `gate` job detects the absence of Cargo.toml and all Rust jobs skip,
-# keeping the workflow green. When code lands, everything activates.
+# The feature-composition matrix implements ADR-045 D3: every official
+# composition of conductor-daemon (mcp / llm-executor / mcp-write) must
+# stay green, built package-scoped on both shipped OS families.
 #
-# The feature-composition matrix implements ADR-045 D3: all official
-# compositions must stay green. It assumes the ADR-045 cargo features
-# (mcp / llm-executor / mcp-write) exist on conductor-daemon — that work
-# (release-readiness A1) must merge before the migration PR.
+# All cargo invocations run --locked: CI must build exactly the graph
+# that Cargo.lock pins (and that cargo-deny/cargo-audit audited).
 name: CI
 
 on:
@@ -24,26 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gate:
-    name: gate
-    runs-on: ubuntu-latest
-    outputs:
-      has_code: ${{ steps.check.outputs.has_code }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: check
-        run: |
-          if [ -f Cargo.toml ]; then
-            echo "has_code=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_code=false" >> "$GITHUB_OUTPUT"
-            echo "Scaffold repo — no Cargo workspace yet; Rust jobs will skip."
-          fi
-
   fmt:
     name: rustfmt
-    needs: gate
-    if: needs.gate.outputs.has_code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,12 +37,10 @@ jobs:
 
   clippy:
     name: clippy
-    needs: gate
-    if: needs.gate.outputs.has_code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Linux build deps (ALSA, udev for gilrs/evdev)
+      - name: Linux build deps
         run: |
           sudo apt-get update
           # alsa/udev: MIDI + gilrs. xdo: enigo keystroke output.
@@ -74,12 +53,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       # --all-features so core's plugin/plugin-wasm/plugin-signing code is
       # linted too — the compositions matrix below only varies daemon features.
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
   test:
     name: test (${{ matrix.os }})
-    needs: gate
-    if: needs.gate.outputs.has_code == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -100,33 +77,41 @@ jobs:
       # Default-features build first (what a plain `cargo build` gives users),
       # then the full-features test suite — core's plugin runtimes and the
       # daemon's write/executor tiers are only compiled with their features on.
-      - run: cargo build --workspace
-      - run: cargo test --workspace --all-features
+      - run: cargo build --workspace --locked
+      - run: cargo test --workspace --all-features --locked
 
   # ADR-045 D3 — official daemon compositions, built PACKAGE-SCOPED
   # (never --workspace: feature unification must not leak paid features
   # into the OSS artifact). Negative artifact assertions live in the
-  # release workflow; this matrix keeps every composition compiling.
+  # release workflow; this matrix keeps every composition compiling on
+  # both shipped OS families (Linux-only paths — landlock, nix — are
+  # invisible to a macOS-only matrix).
   compositions:
-    name: daemon (${{ matrix.name }})
-    needs: gate
-    if: needs.gate.outputs.has_code == 'true'
+    name: daemon (${{ matrix.composition }}, ${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
+        os: [macos-latest, ubuntu-latest]
+        composition: [minimal, oss-default, studio-bundle, source-build]
         include:
-          - name: minimal
+          - composition: minimal
             flags: "--no-default-features"
-          - name: oss-default          # default = mcp (read-only)
+          - composition: oss-default   # default = mcp (read-only)
             flags: ""
-          - name: studio-bundle        # mcp + llm-executor (IPC-only write)
+          - composition: studio-bundle # mcp + llm-executor (IPC-only write)
             flags: "--features llm-executor"
-          - name: source-build         # mcp-write — never in official artifacts
+          - composition: source-build  # mcp-write — never in official artifacts
             flags: "--features mcp-write"
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Linux build deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libudev-dev pkg-config libxdo-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build -p conductor-daemon ${{ matrix.flags }}
-      - run: cargo test  -p conductor-daemon ${{ matrix.flags }}
+      - run: cargo build -p conductor-daemon ${{ matrix.flags }} --locked
+      - run: cargo test  -p conductor-daemon ${{ matrix.flags }} --locked

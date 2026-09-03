@@ -189,7 +189,6 @@ landlock = "0.4"
 
 [dev-dependencies]
 rstest.workspace = true
-tempfile = "3.27"
 indexmap.workspace = true  # ADR-025 acceptance tests: construct PcContextSwitch mappings
 proptest.workspace = true  # ADR-030 P2 raw_forward integration property tests
 
