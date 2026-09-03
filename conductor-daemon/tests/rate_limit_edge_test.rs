@@ -96,13 +96,30 @@ fn per_sender_reject_does_not_charge_total() {
 #[test]
 fn artnet_default_burst_differs_from_osc() {
     // Art-Net Phase A defaults (spec §5 A.4): total 100 / per-sender 50.
+    //
+    // A per-sender quota of 50/s replenishes one token every 20 ms, so on a
+    // loaded CI runner the 50-check loop itself can span a replenishment and
+    // the 51st check legitimately succeeds. Assert the burst BOUNDARY with a
+    // small slack instead of an exact 50/51 cliff: at least the configured
+    // burst must be admitted, and rejection must arrive within a few
+    // replenished tokens of it.
     let edge = RateLimitEdge::for_artnet(100, 50);
     let s = ip("127.0.0.1");
-    for i in 0..50 {
+    let mut admitted = 0u32;
+    loop {
+        match edge.check(s) {
+            Ok(()) => admitted += 1,
+            Err(RateLimitError::PerSender(_)) => break,
+            Err(other) => panic!("expected PerSender rejection, got {other:?}"),
+        }
         assert!(
-            edge.check(s).is_ok(),
-            "artnet packet {i} within per-sender 50"
+            admitted <= 55,
+            "burst ran far past the configured per-sender 50 ({admitted} admitted) — \
+             limiter not enforcing the Art-Net quota"
         );
     }
-    assert!(matches!(edge.check(s), Err(RateLimitError::PerSender(_))));
+    assert!(
+        admitted >= 50,
+        "burst below the configured per-sender 50 ({admitted} admitted)"
+    );
 }
