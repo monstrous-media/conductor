@@ -117,3 +117,27 @@ fn self_hosted_runners_are_gated_off_pull_requests() {
         violations.join(", ")
     );
 }
+
+#[test]
+fn ci_workflow_concurrency_is_per_ref_dedup() {
+    // ci.yml must declare a top-level `concurrency:` block whose group is
+    // per-REF (contains `github.ref`) so a new push to the same ref dedups
+    // the stale run — NOT a repo-wide group, which mass-cancels cross-PR
+    // jobs.
+    let yaml = ci_workflow();
+    let lines: Vec<&str> = yaml.lines().collect();
+    let conc_idx = lines
+        .iter()
+        .position(|l| *l == "concurrency:")
+        .expect("ci.yml must declare a top-level `concurrency:` block");
+    let group_line = lines[conc_idx..]
+        .iter()
+        .take_while(|l| l.trim().is_empty() || indent(l) > 0 || **l == "concurrency:")
+        .find(|l| l.trim_start().starts_with("group:"))
+        .expect("concurrency block must declare a `group:` key");
+    assert!(
+        group_line.contains("github.ref"),
+        "ci.yml concurrency.group must be per-REF (contain `github.ref`); \
+         found: {group_line:?}"
+    );
+}

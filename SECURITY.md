@@ -6,13 +6,11 @@ We release security updates for the following versions of Conductor:
 
 | Version  | Supported          |
 | -------- | ------------------ |
-| 5.7.x    | :white_check_mark: |
-| 5.6.x    | :white_check_mark: |
-| < 5.6.0  | :x:                |
+| 0.1.x    | :white_check_mark: |
 
 The supported line tracks the current published release stream. This table is
 verified against the workspace version by an automated test
-, which fails the build if a new
+(`tests/security_supported_versions_test.rs`), which fails the build if a new
 release train ships without updating the row above — so it can't silently fall
 out of date again.
 
