@@ -2,1814 +2,639 @@
 
 ## Overview
 
-Conductor provides a daemon service, control utility, and several diagnostic tools, all accessible via the command line. This reference covers all available commands, their options, and usage examples.
-
-**v1.0.0+** introduces daemon architecture with background service and hot-reload capabilities.
-
-## Daemon Service: conductor
-
-The primary Conductor daemon service (v1.0.0+). Runs as a background process with config hot-reload.
-
-### Basic Syntax
-
-```bash
-# Start daemon (via cargo)
-cargo run --release --bin conductor [PORT] [OPTIONS]
-
-# Start daemon (release binary)
-./target/release/conductor [PORT] [OPTIONS]
-
-# Or use systemd/launchd (see Installation)
-systemctl --user start conductor  # Linux
-launchctl load ~/Library/LaunchAgents/media.monstrous.conductor.plist  # macOS
-```
-
-### Daemon Features (v1.0.0+)
-
-- **Background Service**: Runs continuously in the background
-- **Config Hot-Reload**: Reload configuration without restart (0-8ms latency)
-- **State Persistence**: Saves state on shutdown, restores on startup
-- **IPC Control**: Control via `conductorctl` utility
-- **Auto-Recovery**: Graceful error handling and device reconnection
-
-### Arguments
-
-#### PORT (Required in some cases)
-
-The MIDI input port number to connect to.
-
-**Finding available ports**:
-```bash
-# List all MIDI ports
-cargo run -p conductor-daemon --bin conductor --release
-
-# Or
-./target/release/conductor
-```
-
-Output:
-```
-Available MIDI input ports:
-0: USB MIDI Device
-1: IAC Driver Bus 1
-2: Maschine Mikro MK3 - Input
-3: Digital Keyboard
-```
-
-**Usage**:
-```bash
-# Connect to port 2 (Maschine Mikro MK3)
-cargo run -p conductor-daemon --bin conductor --release 2
-
-# Connect to port 0
-cargo run -p conductor-daemon --bin conductor --release 0
-```
-
-**Note**: If `auto_connect = true` in `config.toml`, the port argument is optional and Conductor will connect to the first available port.
-
-### Options
-
-#### --led, --lighting <SCHEME>
-
-Select LED lighting scheme (for devices with LED support).
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin conductor --release 2 --led <SCHEME>
-# or
-cargo run -p conductor-daemon --bin conductor --release 2 --lighting <SCHEME>
-```
-
-**Available schemes**:
-- `reactive` (default) - Velocity-based colors, fade out after release
-- `rainbow` - Static rainbow gradient
-- `breathing` - Breathing effect (all pads)
-- `pulse` - Pulsing effect
-- `wave` - Wave pattern with brightness gradient
-- `sparkle` - Random twinkling LEDs
-- `vumeter` - VU meter style gradient (green → yellow → red)
-- `spiral` - Spiral/diagonal pattern
-- `static` - Static single color
-- `off` - LEDs disabled
-
-**Examples**:
-```bash
-# Reactive mode (velocity-sensitive)
-cargo run -p conductor-daemon --bin conductor --release 2 --led reactive
-
-# Rainbow gradient
-cargo run -p conductor-daemon --bin conductor --release 2 --led rainbow
-
-# Breathing effect
-cargo run -p conductor-daemon --bin conductor --release 2 --lighting breathing
-
-# Turn off LEDs
-cargo run -p conductor-daemon --bin conductor --release 2 --led off
-```
-
-**LED Behavior by Scheme**:
-
-**reactive**:
-- Soft press (velocity < 50): Green Dim
-- Medium press (50 ≤ velocity < 100): Yellow Normal
-- Hard press (velocity ≥ 100): Red Bright
-- Fades out 1 second after release
-
-**rainbow**:
-- Static rainbow gradient across all pads
-- No animation (constant colors)
-
-**sparkle**:
-- Random white LEDs
-- 20% probability per pad per frame
-- Updates every 100ms
-
-**vumeter**:
-- Green (bottom rows)
-- Yellow/Orange (middle)
-- Red (top)
-
-**wave**:
-- Blue with varying brightness
-- Creates wave effect
-
-#### --profile, -p <PATH>
-
-Load a Native Instruments Controller Editor profile (.ncmm3 file).
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin conductor --release 2 --profile <PATH>
-# or
-cargo run -p conductor-daemon --bin conductor --release 2 -p <PATH>
-```
-
-**Examples**:
-```bash
-# Relative path
-cargo run -p conductor-daemon --bin conductor --release 2 --profile my-profile.ncmm3
-
-# Absolute path
-cargo run -p conductor-daemon --bin conductor --release 2 --profile ~/Downloads/base-template-ni-mikro-mk3.ncmm3
-
-# macOS default location
-cargo run -p conductor-daemon --bin conductor --release 2 --profile "$HOME/Documents/Native Instruments/Controller Editor/Profiles/my-profile.ncmm3"
-```
-
-**What profiles do**:
-- Map physical pad positions to MIDI note numbers
-- Support 8 pad pages (A-H) per profile
-- Enable correct LED feedback for custom layouts
-- Allow seamless integration with NI Controller Editor
-
-**Creating profiles**:
-1. Open Native Instruments Controller Editor
-2. Select "Maschine Mikro MK3"
-3. Edit pad pages (A-H)
-4. Assign MIDI notes to each pad
-5. Save as `.ncmm3` file
-6. Use with `--profile` flag
-
-See [Device Profiles Documentation](../DEVICE_PROFILES.md) for complete guide.
-
-#### --pad-page <PAGE>
-
-Force a specific pad page when using a profile (instead of auto-detection).
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin conductor --release 2 --profile <PATH> --pad-page <PAGE>
-```
-
-**Valid pages**: A, B, C, D, E, F, G, H (case-insensitive)
-
-**Examples**:
-```bash
-# Force page A
-cargo run -p conductor-daemon --bin conductor --release 2 --profile my-profile.ncmm3 --pad-page A
-
-# Force page H
-cargo run -p conductor-daemon --bin conductor --release 2 --profile my-profile.ncmm3 --pad-page h
-```
-
-**When to use**:
-- Auto-detection not working correctly
-- Want to lock to a specific page
-- Testing specific page mappings
-- Profile has identical notes across multiple pages
-
-**Default behavior** (without `--pad-page`):
-- Auto-detect active page from incoming MIDI notes
-- Switch pages automatically when notes from different page detected
-
-#### --config, -c <PATH>
-
-Specify custom configuration file location.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin conductor --release 2 --config <PATH>
-# or
-cargo run -p conductor-daemon --bin conductor --release 2 -c <PATH>
-```
-
-**Examples**:
-```bash
-# Use alternative config
-cargo run -p conductor-daemon --bin conductor --release 2 --config config-dev.toml
-
-# Full path
-cargo run -p conductor-daemon --bin conductor --release 2 --config /etc/conductor/config.toml
-```
-
-**Default**: `./config.toml` (current directory)
-
-#### --help, -h
-
-Display help message with all available options.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin conductor --release -- --help
-# or
-./target/release/conductor --help
-```
-
-Note the `--` separator when using `cargo run`.
-
-#### --version, -v
-
-Display Conductor version.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin conductor --release -- --version
-# or
-./target/release/conductor --version
-```
-
-### Environment Variables
-
-#### DEBUG=1
-
-Enable verbose debug logging.
-
-**Syntax**:
-```bash
-DEBUG=1 cargo run -p conductor-daemon --bin conductor --release 2
-```
-
-**Output includes**:
-- MIDI event details (note on/off, velocity, channel)
-- HID connection status
-- LED updates (buffer contents)
-- Event processing (velocity detection, long press, chords)
-- Mapping matches and action execution
-- Mode changes
-- Error details
-
-**Example debug output**:
-```
-[DEBUG] Connected to MIDI port 2: Maschine Mikro MK3 - Input
-[DEBUG] HID device opened successfully
-[DEBUG] LED controller initialized
-[DEBUG] Loaded config with 3 modes, 24 mappings
-[DEBUG] Starting in mode 0: Default
-
-[MIDI] NoteOn ch:0 note:12 vel:87
-[DEBUG] Processed: Note(12) with velocity Medium
-[DEBUG] Matched mapping: "Copy text" (mode: Default)
-[DEBUG] Executing action: Keystroke(keys: "c", modifiers: ["cmd"])
-[DEBUG] LED update: pad 0 -> color 7 (Green) brightness 2
-[MIDI] NoteOff ch:0 note:12 vel:0
-[DEBUG] LED fade: pad 0 cleared after 1000ms
-```
-
-**When to use**:
-- Troubleshooting mapping issues
-- Debugging note number mismatches
-- Verifying LED control
-- Understanding event processing
-- Investigating performance issues
-
-#### RUST_LOG
-
-Control Rust logging levels (for development).
-
-**Syntax**:
-```bash
-RUST_LOG=debug cargo run -p conductor-daemon --bin conductor --release 2
-RUST_LOG=trace cargo run -p conductor-daemon --bin conductor --release 2
-RUST_LOG=info cargo run -p conductor-daemon --bin conductor --release 2
-```
-
-**Levels**:
-- `error` - Only errors
-- `warn` - Warnings and errors
-- `info` - General information (default)
-- `debug` - Debug information
-- `trace` - Very verbose
-
-**Filter by module**:
-```bash
-# Only log MIDI events
-RUST_LOG=conductor::midi=debug cargo run -p conductor-daemon --bin conductor --release 2
-
-# Multiple modules
-RUST_LOG=conductor::event_processor=debug,conductor::mappings=trace cargo run -p conductor-daemon --bin conductor --release 2
-```
-
-### Complete Usage Examples
-
-#### Example 1: Basic Usage
-
-```bash
-# List ports
-cargo run -p conductor-daemon --bin conductor --release
-
-# Connect to port 2 with default settings
-cargo run -p conductor-daemon --bin conductor --release 2
-```
-
-#### Example 2: With LED Lighting
-
-```bash
-# Reactive mode (default)
-cargo run -p conductor-daemon --bin conductor --release 2 --led reactive
-
-# Rainbow gradient
-cargo run -p conductor-daemon --bin conductor --release 2 --led rainbow
-
-# Sparkle effect
-cargo run -p conductor-daemon --bin conductor --release 2 --led sparkle
-```
-
-#### Example 3: With Profile
-
-```bash
-# Auto-detect page
-cargo run -p conductor-daemon --bin conductor --release 2 --profile my-profile.ncmm3
-
-# Force specific page
-cargo run -p conductor-daemon --bin conductor --release 2 --profile my-profile.ncmm3 --pad-page H
-
-# With LED scheme
-cargo run -p conductor-daemon --bin conductor --release 2 --profile my-profile.ncmm3 --led reactive
-```
-
-#### Example 4: Debug Mode
-
-```bash
-# Enable debug output
-DEBUG=1 cargo run -p conductor-daemon --bin conductor --release 2
-
-# With all options
-DEBUG=1 cargo run -p conductor-daemon --bin conductor --release 2 --profile my-profile.ncmm3 --led reactive
-```
-
-#### Example 5: Custom Config
-
-```bash
-# Use development config
-cargo run -p conductor-daemon --bin conductor --release 2 --config config-dev.toml
-
-# Use config from different directory
-cargo run -p conductor-daemon --bin conductor --release 2 --config ~/conductor-configs/work.toml
-```
-
-#### Example 6: Production Binary
-
-```bash
-# Build release
-cargo build --release
-
-# Run with all options
-./target/release/conductor 2 \
-    --profile ~/Documents/NI/my-profile.ncmm3 \
-    --led reactive \
-    --config ~/conductor-configs/production.toml
-```
-
-## Daemon Control: conductorctl
-
-**New in v1.0.0** - Control and monitor the Conductor daemon service.
-
-### Basic Syntax
-
-```bash
-# Via cargo
-cargo run --release --bin conductorctl <COMMAND> [OPTIONS]
-
-# Release binary
-./target/release/conductorctl <COMMAND> [OPTIONS]
-```
-
-### Commands
-
-#### status
-
-Display daemon status, device info, and performance metrics.
-
-**Syntax**:
-```bash
-conductorctl status [--json]
-```
-
-**Output** (human-readable; matches `conductor-daemon/src/bin/conductorctl.rs::handle_status`):
-```
-Conductor Daemon Status
-──────────────────────────────────────────────────
-State:           Running
-Current Mode:    Default
-Config:          /Users/you/Library/Application Support/conductor/config.toml
-Uptime:          2h 34m 17s
-Events:          12,453
-Config Reloads:  7
-
-Reload Performance
-──────────────────────────────────────────────────
-Last Reload:     2 ms
-Average:         3 ms (grade: A)
-Fastest:         1 ms
-Slowest:         8 ms
-```
-
-**JSON Output** (`--json`):
-```bash
-conductorctl status --json
-```
-
-The daemon serialises the full `IpcResponse` envelope (see
-`conductor-daemon/src/daemon/types.rs::IpcResponse`). `status` is
-lowercased via `#[serde(rename_all = "lowercase")]` (`"success"` /
-`"error"`), and both `data` and `error` are
-`#[serde(skip_serializing_if = "Option::is_none")]` — so on success
-`error` is omitted entirely (not emitted as `null`):
-
-```json
-{
-  "id": "<request-id>",
-  "status": "success",
-  "data": {
-    "state": "Running",
-    "current_mode": "Default",
-    "config_path": "/Users/you/Library/Application Support/conductor/config.toml",
-    "uptime_secs": 9257,
-    "events_processed": 12453,
-    "config_reloads": 7,
-    "reload_stats": {
-      "last_reload_ms": 2,
-      "avg_reload_ms": 3,
-      "fastest_reload_ms": 1,
-      "slowest_reload_ms": 8
-    }
-  }
-}
-```
-
-Error responses use the same envelope shape with `data` omitted and
-`error` populated:
-
-```json
-{
-  "id": "<request-id>",
-  "status": "error",
-  "error": {
-    "code": 500,
-    "message": "<human-readable description>"
-  }
-}
-```
-
-#### reload
-
-Trigger configuration hot-reload without restarting the daemon.
-
-**Syntax**:
-```bash
-conductorctl reload [--json]
-```
-
-**Features**:
-- **Zero Downtime**: No interruption to MIDI processing
-- **Fast**: 0-8ms reload latency (typically <3ms)
-- **Atomic**: All-or-nothing config swap
-- **Validated**: Config checked before reload
-
-**Output**:
-```
-✓ Configuration reloaded successfully
-
-Reload completed in 2ms
-Modes: 3 (Default, Development, Media)
-Global mappings: 12
-Mode mappings: 24
-```
-
-**When to use**:
-- After editing `config.toml`
-- Testing new mappings
-- Switching between config profiles
-- Live development workflow
-
-**Example workflow**:
-```bash
-# 1. Edit config
-vim ~/.config/conductor/config.toml
-
-# 2. Reload daemon
-conductorctl reload
-
-# 3. Test changes immediately (no restart needed!)
-```
-
-#### validate
-
-Validate configuration file syntax without reloading.
-
-**Syntax**:
-```bash
-conductorctl validate [--json]
-```
-
-**Output** (valid config):
-```
-✓ Configuration is valid
-
-Modes: 3
-Global mappings: 12
-Total mappings: 36
-```
-
-**Output** (invalid config):
-```
-✗ Configuration validation failed
-
-Error: Invalid trigger type 'NoteTap' at line 42
-Expected one of: Note, VelocityRange, LongPress, DoubleTap,
-                 NoteChord, EncoderTurn, Aftertouch, PitchBend, CC
-
-Suggestion: Did you mean 'DoubleTap'?
-```
-
-**When to use**:
-- Before committing config changes
-- CI/CD validation
-- Debugging config syntax errors
-- Pre-flight checks
-
-#### validate-schema
-
-Validate configuration against MIDI/HID/OSC protocol standards with coverage reporting.
-
-**Syntax**:
-```bash
-conductorctl validate-schema [--config <PATH>] [--json]
-```
-
-**Output** (human-readable):
-```
-Config Schema Validation Report
-═══════════════════════════════
-Errors: 0
-Warnings: 2
-  ⚠ CC 128 exceeds MIDI standard range (0-127) in mode "Default" mapping 3
-  ⚠ Note 200 exceeds MIDI standard range (0-127) in mode "DJ" mapping 1
-
-Protocol Coverage:
-  MIDI: 12 notes, 3 CCs used
-  HID:  0 buttons used
-  OSC:  0 addresses used
-```
-
-**When to use**:
-- Check config against protocol standards (not just syntax)
-- Verify MIDI note/CC ranges are valid
-- Audit protocol feature coverage
-
-> **v4.26.66**: Added for protocol-aware validation beyond syntax checking.
-
-#### ping
-
-Health check with latency measurement.
-
-**Syntax**:
-```bash
-conductorctl ping [--json]
-```
-
-**Output**:
-```
-✓ Daemon is responsive
-Latency: 0.4ms
-```
-
-**When to use**:
-- Verify daemon is running
-- Check IPC communication
-- Monitor system responsiveness
-- Health checks in scripts
-
-#### shutdown
-
-Gracefully shut down the **running daemon process** via IPC.
-
-**Syntax**:
-```bash
-conductorctl shutdown [--json]
-```
-
-**Output**:
-```
-✓ Daemon stopped successfully
-
-Uptime: 2h 34m 17s
-State saved successfully
-```
-
-**What it does**:
-- Sends IPC `Stop` command to running daemon
-- Daemon saves state and exits gracefully
-- Closes MIDI/HID connections cleanly
-- Persists device state to disk
-
-**When to use**:
-- **Daemon is running** and you want to stop it
-- Quick shutdown during development
-- When you know daemon is responsive
-
-**Requirements**:
-- Daemon must be running
-- IPC socket must be accessible
-- No LaunchAgent/systemd interaction
-
-#### stop
-
-Stop the **LaunchAgent/systemd service** (tries graceful shutdown first).
-
-**Syntax**:
-```bash
-conductorctl stop [--json] [--force]
-```
-
-**Output**:
-```
-Stopping Conductor service...
-  Attempting graceful shutdown via IPC...
-✓ Service stopped successfully
-```
-
-**What it does**:
-1. **First**: Attempts graceful IPC shutdown (same as `shutdown` command)
-2. **Waits**: 500ms for daemon to exit
-3. **Then**: Unloads LaunchAgent (macOS) or stops systemd service (Linux)
-
-**When to use**:
-- **Service is installed** via `conductorctl install`
-- Need to stop the background service
-- Daemon may or may not be responsive
-- Want to ensure service is fully stopped
-
-**Requirements**:
-- Service must be installed (via `conductorctl install`)
-- macOS: LaunchAgent plist exists
-- Linux: systemd unit exists
-
-**Options**:
-- `--force`: Skip graceful shutdown, immediately unload service
-
-### Choosing Between shutdown and stop
-
-| Scenario | Use Command | Why |
-|----------|-------------|-----|
-| Daemon running in foreground | `shutdown` | Faster, direct IPC |
-| Daemon started manually (not service) | `shutdown` | No service to unload |
-| Service installed and running | `stop` | Ensures service unloaded |
-| Daemon not responding | `stop --force` | Bypasses IPC, forces unload |
-| Development workflow | `shutdown` | Quick restarts |
-| Production/installed service | `stop` | Proper service management |
-
-**Decision tree**:
-```
-Is daemon installed as a service?
-├─ No → Use `shutdown`
-└─ Yes
-   ├─ Is daemon responsive?
-   │  ├─ Yes → Use `stop` (graceful)
-   │  └─ No → Use `stop --force`
-   └─ Running in foreground for testing? → Use `shutdown`
-```
-
-### Profile Management Commands
-
-Manage Conductor profile configurations from the command line.
-
-#### profile status
-
-Show the currently active profile.
-
-**Syntax**:
-```bash
-conductorctl profile status [--json]
-```
-
-**Output**:
-```
-Active Profile
-──────────────────────────────────────────────────
-Name:   default
-Config: /Users/you/Library/Application Support/conductor/profiles/default.toml
-```
-
-#### profile list
-
-List available profile files in the profiles directory.
-
-**Syntax**:
-```bash
-conductorctl profile list [DIR] [--json]
-```
-
-**Arguments**:
-- `DIR` (optional): Directory to scan. Default: `~/.config/conductor/profiles/`
-
-**Output**:
-```
-Available Profiles
-──────────────────────────────────────────────────
-  default.toml
-  music-production.toml
-  development.toml
-```
-
-#### profile switch
-
-Switch the daemon to a different profile by name or file path.
-
-**Syntax**:
-```bash
-conductorctl profile switch <NAME_OR_PATH> [--json]
-```
-
-**Arguments**:
-- `NAME_OR_PATH`: Profile name (resolved from `~/.config/conductor/profiles/<name>.toml`) or a direct file path to a `.toml` config
-
-**Examples**:
-```bash
-# Switch by name (looks up in profiles directory)
-conductorctl profile switch music-production
-
-# Switch by path
-conductorctl profile switch ~/my-configs/custom.toml
-```
-
-**Output**:
-```
-✓ Switched to profile: music-production
-```
-
-#### profile create
-
-Create a new profile configuration file.
-
-**Syntax**:
-```bash
-conductorctl profile create <NAME> [--app <BUNDLE_ID>...] [--json]
-```
-
-**Arguments**:
-- `NAME`: Profile name (used as filename: `<name>.toml`)
-
-**Options**:
-- `--app <BUNDLE_ID>`: One or more application bundle IDs to associate with this profile (for per-app auto-switching)
-
-**Examples**:
-```bash
-# Create a basic profile
-conductorctl profile create streaming
-
-# Create with app associations
-conductorctl profile create music --app com.ableton.live --app com.bitwig.studio
-```
-
-**Output** (matches `handle_profile_create` — path inlined on the success line; the `Modes:` line only appears when one or more `--app` flags were passed):
-```
-✓ Created profile 'streaming': /Users/you/Library/Application Support/conductor/profiles/streaming.toml
-  Modes: com.ableton.live, com.bitwig.studio
-```
-
-**What it does**:
-- Creates a new `.toml` profile in `~/.config/conductor/profiles/`
-- Generates a starter configuration with sensible defaults
-- Optionally sets up app association entries for per-app switching
-
-#### profile delete
-
-Delete a profile configuration file.
-
-**Syntax**:
-```bash
-conductorctl profile delete <NAME> [--force] [--json]
-```
-
-**Arguments**:
-- `NAME`: Profile name to delete
-
-**Options**:
-- `--force`: Skip confirmation prompt
-
-**Examples**:
-```bash
-# Delete with confirmation
-conductorctl profile delete old-profile
-
-# Force delete (no confirmation)
-conductorctl profile delete old-profile --force
-```
-
-**Output**:
-```
-Delete profile 'old-profile'? [y/N] y
-✓ Deleted profile: old-profile
-```
-
-**Safety**:
-- Refuses to delete the currently active profile
-- Sanitises the name to prevent path traversal
-- Requires confirmation unless `--force` is specified
-
-#### profile validate
-
-Validate a profile configuration file without loading it.
-
-**Syntax**:
-```bash
-conductorctl profile validate <PATH> [--json]
-```
-
-**Arguments**:
-- `PATH`: Path to the profile `.toml` file
-
-**Examples**:
-```bash
-conductorctl profile validate ~/.config/conductor/profiles/music.toml
-```
-
-**Output** (valid):
-```
-✓ Profile is valid
-
-Modes: 2
-Mappings: 16
-```
-
-**Output** (invalid):
-```
-✗ Profile validation failed
-
-Error: Unknown action type at line 24
-```
-
-### Device Management Commands
-
-#### list-devices
-
-List all available MIDI input devices.
-
-**Syntax**:
-```bash
-conductorctl list-devices [--json]
-```
-
-**Output**:
-```
-Available MIDI Devices
-──────────────────────────────────────────────────
-  [0] USB MIDI Device
-  [1] IAC Driver Bus 1 (connected)
-  [2] Maschine Mikro MK3 - Input
-```
-
-**When to use**:
-- Find available MIDI ports
-- Check which device is currently connected
-- Troubleshoot device connectivity
-
-#### set-device
-
-Switch the daemon to a different MIDI device without restart.
-
-**Syntax**:
-```bash
-conductorctl set-device <PORT> [--json]
-```
-
-**Example**:
-```bash
-# Switch to port 2
-conductorctl set-device 2
-```
-
-**Output**:
-```
-✓ Switched to device at port 2
-```
-
-**When to use**:
-- Switch between MIDI devices on the fly
-- Test different controllers
-- Recover from device disconnection
-
-#### get-device
-
-Show information about the currently connected MIDI device.
-
-**Syntax**:
-```bash
-conductorctl get-device [--json]
-```
-
-**Output**:
-```
-Current MIDI Device
-──────────────────────────────────────────────────
-Status:     Connected
-Name:       Maschine Mikro MK3 - Input
-Port:       2
-Last Event: 3s ago
-```
-
-**When to use**:
-- Verify which device is active
-- Check connection status
-- Debug event reception issues
-
-### Config Migration (v4.24.0)
-
-#### migrate-config
-
-Migrate legacy `[device]` configuration to the new `[[devices]]` multi-device format (ADR-009).
-
-```bash
-# Dry-run (shows migrated TOML without writing)
-conductorctl migrate-config
-
-# Specify config file
-conductorctl migrate-config --config ~/my-config.toml
-
-# Apply migration (writes file, creates .bak backup)
-conductorctl migrate-config --write
-
-# Apply without backup
-conductorctl migrate-config --write --no-backup
-
-# JSON output
-conductorctl migrate-config --json
-```
-
-**Options**:
-
-| Option | Description |
-|--------|-------------|
-| `--config <PATH>` | Path to config file (default: `~/.conductor/config.toml`) |
-| `--write` | Write changes to file (default: dry-run) |
-| `--no-backup` | Skip creating `.bak` backup when writing |
-| `--json` | JSON output format |
-
-**Behavior**:
-- Default mode is **dry-run**: prints the migrated TOML to stdout
-- `--write` overwrites the config file and creates a `.bak` backup
-- If config already uses `[[devices]]` format, reports "already migrated"
-- If no `[device]` section exists, reports "nothing to migrate"
-- Migration creates a `[[devices]]` entry with `alias` derived from the device name and a `NameContains` matcher
-
-### Service Management Commands
-
-**Note**: Service management commands are currently macOS-only (using LaunchAgent).
-
-#### Understanding LaunchAgent Behavior
-
-The Conductor LaunchAgent plist has `RunAtLoad=true`, which affects command behavior:
-
-**Key insight**: `launchctl load` = load plist + start daemon immediately
-
-| Command | launchctl operation | Starts daemon? | Auto-start on login? |
-|---------|-------------------|----------------|---------------------|
-| `install` | `load` | ✓ Yes | ✗ No |
-| `start` | `load` | ✓ Yes | ✗ No |
-| `enable` | `load -w` | ✓ Yes | ✓ Yes |
-| `stop` | `unload` | ✗ Stops | ✗ No |
-| `disable` | `unload -w` | ✗ Stops | ✗ No |
-
-**Common patterns**:
-- **Quick setup**: `install` → daemon runs but won't auto-start on reboot
-- **Production setup**: `install` then `enable` → daemon runs now AND on every login
-- **One-step production**: `enable` (if already installed) → starts + enables auto-start
-- **Temporary disable**: `stop` → stops now but will auto-start on next login (if enabled)
-- **Complete disable**: `disable` → stops now AND prevents auto-start
-
-#### install
-
-Install Conductor as a LaunchAgent service that starts automatically on login.
-
-**Syntax**:
-```bash
-conductorctl install [--install-binary] [--force] [--json]
-```
-
-**Options**:
-- `--install-binary`: Copy daemon binary to `/usr/local/bin/conductor`
-- `--force`: Reinstall even if already installed
-
-**What it does**:
-1. Generates LaunchAgent plist from template
-2. Copies plist to `~/Library/LaunchAgents/media.monstrous.conductor.plist`
-3. Optionally installs binary to `/usr/local/bin` (requires sudo)
-4. Loads service with `launchctl`
-
-**Output**:
-```
-Installing Conductor service...
-  ✓ Generated plist
-  ✓ Installed to ~/Library/LaunchAgents/media.monstrous.conductor.plist
-  ✓ Loaded service
-
-✓ Conductor service installed successfully
-
-Next steps:
-  • Start: conductorctl start
-  • Enable auto-start: conductorctl enable
-  • Check status: conductorctl service-status
-```
-
-**When to use**:
-- First-time setup for background service
-- Setting up production deployment
-- Enable auto-start on login
-
-**Example**:
-```bash
-# Basic install (daemon must already be built)
-conductorctl install
-
-# Install and copy binary to system location
-sudo conductorctl install --install-binary
-
-# Force reinstall
-conductorctl install --force
-```
-
-#### uninstall
-
-Remove Conductor service from LaunchAgent.
-
-**Syntax**:
-```bash
-conductorctl uninstall [--remove-binary] [--remove-logs] [--json]
-```
-
-**Options**:
-- `--remove-binary`: Also delete `/usr/local/bin/conductor`
-- `--remove-logs`: Delete log files
-
-**What it does**:
-1. Stops service if running
-2. Removes LaunchAgent plist
-3. Optionally removes binary and logs
-
-**Output**:
-```
-Uninstalling Conductor service...
-  ✓ Stopped service
-  ✓ Removed plist: ~/Library/LaunchAgents/media.monstrous.conductor.plist
-
-✓ Conductor service uninstalled successfully
-```
-
-**When to use**:
-- Removing Conductor completely
-- Clean uninstall before upgrade
-- Troubleshooting installation issues
-
-#### start
-
-Start the LaunchAgent service.
-
-**Syntax**:
-```bash
-conductorctl start [--wait <SECONDS>] [--json]
-```
-
-**Options**:
-- `--wait <SECONDS>`: Wait up to N seconds for daemon to be ready (default: 5)
-
-**What it does**:
-1. Loads service with `launchctl load`
-2. Waits for daemon to respond to IPC
-3. Verifies daemon is running
-
-**Output**:
-```
-Starting Conductor service...
-Waiting for daemon to be ready... ✓
-✓ Service started successfully
-```
-
-**When to use**:
-- Start service after install
-- Start service after stop
-- Verify service starts correctly
-
-**Example**:
-```bash
-# Start and wait up to 10 seconds
-conductorctl start --wait 10
-```
-
-#### restart
-
-Restart the LaunchAgent service (stop + start).
-
-**Syntax**:
-```bash
-conductorctl restart [--wait <SECONDS>] [--json]
-```
-
-**What it does**:
-1. Gracefully stops service
-2. Waits 500ms
-3. Starts service
-4. Waits for daemon to be ready
-
-**Output**:
-```
-Restarting Conductor service...
-Stopping Conductor service...
-✓ Service stopped successfully
-Starting Conductor service...
-✓ Service started successfully
-```
-
-**When to use**:
-- Apply config changes that need full restart
-- Recover from errors
-- Test service lifecycle
-
-#### enable
-
-Enable auto-start on login AND start the daemon immediately.
-
-**Syntax**:
-```bash
-conductorctl enable [--json]
-```
-
-**What it does**:
-1. **Loads service** with `launchctl load -w` flag
-2. **Starts daemon immediately** (because plist has `RunAtLoad=true`)
-3. **Enables auto-start** on next login (persists across reboots)
-
-**Output**:
-```
-✓ Service enabled (will start on login)
-```
-
-**Note**: This is equivalent to `start` + making it persistent across reboots.
-
-**When to use**:
-- **One-step setup**: Enable and start in single command
-- Production deployment (start now + auto-start on reboot)
-- After `disable` to re-enable everything
-
-**Alternative**: If you only want to enable auto-start WITHOUT starting now, use `start` to load the service first, then the `-w` flag will be set.
-
-#### disable
-
-Disable auto-start on login AND stop the daemon immediately.
-
-**Syntax**:
-```bash
-conductorctl disable [--json]
-```
-
-**What it does**:
-1. **Unloads service** with `launchctl unload -w` flag
-2. **Stops daemon immediately**
-3. **Disables auto-start** on next login
-
-**Output**:
-```
-✓ Service disabled (will not start on login)
-```
-
-**Note**: This is equivalent to `stop` + preventing auto-start on reboot.
-
-**When to use**:
-- **Complete shutdown**: Stop now + prevent auto-start
-- Temporarily disable background service
-- Development workflow
-- Before uninstall
-
-#### service-status
-
-Show detailed service installation and runtime status.
-
-**Syntax**:
-```bash
-conductorctl service-status [--json]
-```
-
-**Output**:
-```
-Conductor Service Status
-──────────────────────────────────────────────────
-Status:          Installed and Loaded
-Service Label:   media.monstrous.conductor
-Plist:           ~/Library/LaunchAgents/media.monstrous.conductor.plist ✓
-Binary:          /usr/local/bin/conductor ✓
-
-Service is loaded (enabled)
-```
-
-**When to use**:
-- Verify service is installed correctly
-- Check if auto-start is enabled
-- Troubleshoot service issues
-- Audit service configuration
-
-### Global Options
-
-#### --json
-
-Output in JSON format (for scripting/automation).
-
-**Available for**: All commands
-
-**Example**:
-```bash
-# Parse with jq
-conductorctl status --json | jq '.data.device.connected'
-# Output: true
-
-# Check if reload succeeded
-if conductorctl reload --json | jq -e '.success'; then
-    echo "Reload successful"
-fi
-```
-
-### Usage Examples
-
-#### Example 1: First-Time Service Setup (Production)
-
-```bash
-# Build daemon
-cargo build --release --bin conductor
-
-# Install as LaunchAgent service (starts immediately)
-conductorctl install
-
-# Verify running
-conductorctl status
-
-# Enable auto-start on login (also starts if not running)
-# Since install already started it, this just enables persistence
-conductorctl enable
-
-# Check service details
-conductorctl service-status
-```
-
-**Alternative (simpler)**:
-```bash
-# Build daemon
-cargo build --release --bin conductor
-
-# One-step: Install service
-conductorctl install
-
-# One-step: Enable auto-start (if you want persistence across reboots)
-conductorctl enable
-```
-
-**Simplest production setup**:
-```bash
-cargo build --release --bin conductor
-conductorctl install --install-binary  # Copies to /usr/local/bin
-conductorctl enable                     # Starts + enables auto-start
-```
-
-#### Example 2: Development Workflow
-
-```bash
-# Start daemon in foreground for testing
-cargo run --release --bin conductor 2 --foreground
-
-# In another terminal...
-
-# Check status
-conductorctl status
-
-# Edit config
-vim config.toml
-
-# Hot-reload changes (zero downtime!)
-conductorctl reload
-
-# Test changes immediately
-
-# Switch to different MIDI device
-conductorctl list-devices
-conductorctl set-device 1
-
-# Stop when done
-conductorctl shutdown
-```
-
-#### Example 3: Service Management Workflow
-
-```bash
-# Check if service is installed
-conductorctl service-status
-
-# Start service if not running
-conductorctl start
-
-# Check which MIDI device is active
-conductorctl get-device
-
-# Switch to different device without restart
-conductorctl set-device 2
-
-# Restart service (apply changes that need full restart)
-conductorctl restart
-
-# Disable auto-start temporarily
-conductorctl disable
-
-# Stop service
-conductorctl stop
-```
-
-#### Example 4: Production Monitoring
-
-```bash
-#!/bin/bash
-# monitor.sh - Health check script
-
-# Check daemon health
-if ! conductorctl ping --json | jq -e '.success'; then
-    echo "Daemon not responding, restarting..."
-    conductorctl restart
-fi
-
-# Get performance metrics
-RELOAD_MS=$(conductorctl status --json | jq '.data.reload_stats.avg_reload_ms')
-if [ "$RELOAD_MS" -gt 50 ]; then
-    echo "Warning: Average reload time ${RELOAD_MS}ms (expected <50ms)"
-fi
-
-# Check MIDI device connectivity
-CONNECTED=$(conductorctl get-device --json | jq '.data.device.connected')
-if [ "$CONNECTED" != "true" ]; then
-    echo "MIDI device disconnected!"
-    # Try to reconnect
-    conductorctl list-devices
-fi
-```
-
-#### Example 5: Configuration Management
-
-```bash
-# Validate before deploy
-if ! conductorctl validate --json | jq -e '.success'; then
-    echo "Config validation failed"
-    exit 1
-fi
-
-# Backup current config
-cp ~/.config/conductor/config.toml ~/.config/conductor/config.toml.backup
-
-# Deploy new config
-cp config-v2.toml ~/.config/conductor/config.toml
-
-# Apply changes (hot reload)
-conductorctl reload
-
-# Verify successful reload
-conductorctl status
-
-# If issues, rollback
-# cp ~/.config/conductor/config.toml.backup ~/.config/conductor/config.toml
-# conductorctl reload
-```
-
-#### Example 6: Automated Testing
-
-```bash
-#!/bin/bash
-# test-config.sh
-
-# Validate syntax
-if ! conductorctl validate --json | jq -e '.data.valid'; then
-    echo "Config validation failed"
-    exit 1
-fi
-
-# Reload daemon
-if ! conductorctl reload --json | jq -e '.success'; then
-    echo "Reload failed"
-    exit 1
-fi
-
-# Check reload performance
-LATENCY=$(conductorctl status --json | jq '.data.reload_stats.last_reload_ms')
-if [ "$LATENCY" -gt 10 ]; then
-    echo "Warning: Reload took ${LATENCY}ms (expected <10ms)"
-fi
-
-# Verify device connection
-CONNECTED=$(conductorctl get-device --json | jq '.data.device.connected')
-if [ "$CONNECTED" != "true" ]; then
-    echo "Error: MIDI device not connected"
-    exit 1
-fi
-
-echo "✓ All checks passed"
-```
-
-#### Example 7: Complete Uninstall
-
-```bash
-# Stop service
-conductorctl stop
-
-# Disable auto-start
-conductorctl disable
-
-# Uninstall service (with cleanup)
-conductorctl uninstall --remove-binary --remove-logs
-
-# Verify removal
-conductorctl service-status
-```
-
-## Diagnostic Tools
-
-Conductor includes several diagnostic utilities for debugging and configuration.
-
-### midi_diagnostic
-
-Visualize all incoming MIDI events in real-time.
-
-**Purpose**: Debug MIDI connectivity, view raw MIDI data, verify device is sending events.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin midi_diagnostic [PORT]
-```
-
-**Example**:
-```bash
-# Connect to port 2
-cargo run -p conductor-daemon --bin midi_diagnostic 2
-```
-
-**Output**:
-```
-Connected to MIDI port 2: Maschine Mikro MK3 - Input
-Listening for MIDI events... (Ctrl+C to exit)
-
-[NoteOn]  ch:0 note:12 vel:87
-[NoteOff] ch:0 note:12 vel:0
-[NoteOn]  ch:0 note:13 vel:45
-[NoteOff] ch:0 note:13 vel:0
-[CC]      ch:0 cc:1 value:64
-[PitchBend] ch:0 value:8192
-```
-
-**Event types shown**:
-- `NoteOn` - Pad/key pressed
-- `NoteOff` - Pad/key released
-- `CC` - Control Change (knobs, sliders)
-- `PitchBend` - Touch strip, pitch wheel
-- `Aftertouch` - Pressure sensitivity
-- `ProgramChange` - Program/patch change
-
-**When to use**:
-- Verify MIDI device is connected
-- Find note numbers for pads/keys
-- Debug why mappings aren't triggering
-- Check velocity ranges
-- Verify CC numbers for encoders/knobs
-
-**Press Ctrl+C to exit.**
-
-### led_diagnostic
-
-Test LED functionality and HID connection.
-
-**Purpose**: Verify HID access, test LED control, debug LED issues.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin led_diagnostic
-```
-
-**What it does**:
-1. Attempts to open HID device
-2. Displays connection status
-3. Tests individual LED control
-4. Cycles through all pads with different colors
-
-**Output**:
-```
-LED Diagnostic Tool
-==================
-
-Searching for Maschine Mikro MK3...
-✓ Device found: Maschine Mikro MK3 (17cc:1600)
-✓ HID device opened successfully
-
-Testing LED control...
-- Lighting pad 0 (Red Bright)
-- Lighting pad 1 (Green Bright)
-- Lighting pad 2 (Blue Bright)
-...
-- Clearing all pads
-
-✓ LED diagnostic complete
-```
-
-**Error output** (if HID not accessible):
-```
-✗ Failed to open HID device
-  Possible causes:
-  - Device not connected
-  - Input Monitoring permission not granted
-  - Native Instruments drivers not installed
-
-  Solutions:
-  1. Check USB connection
-  2. Grant Input Monitoring permission (System Settings → Privacy & Security)
-  3. Install NI drivers via Native Access
-```
-
-**When to use**:
-- LEDs not working in main application
-- Verify HID access before running conductor
-- Test after granting permissions
-- Debug LED coordinate mapping issues
-
-### led_tester
-
-Interactive LED testing tool.
-
-**Purpose**: Manual control of individual LEDs for testing and debugging.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin led_tester
-```
-
-**Interactive mode**:
-```
-LED Tester - Interactive Mode
-==============================
-
-Commands:
-  on <pad> <color> <brightness>  - Turn on LED
-  off <pad>                      - Turn off LED
-  all <color> <brightness>       - Set all LEDs
-  clear                          - Clear all LEDs
-  rainbow                        - Show rainbow pattern
-  test                           - Cycle through all pads
-  quit                           - Exit
-
-> on 0 red 3
-✓ Pad 0: Red Bright
-
-> all blue 2
-✓ All pads: Blue Normal
-
-> rainbow
-✓ Rainbow pattern displayed
-
-> quit
-```
-
-**Colors**: red, orange, yellow, green, blue, purple, magenta, white
-
-**Brightness**: 0 (off), 1 (dim), 2 (normal), 3 (bright)
-
-**When to use**:
-- Test specific pad LEDs
-- Verify coordinate mapping
-- Experiment with colors and brightness
-- Debug LED patterns
-
-### pad_mapper
-
-Find MIDI note numbers for physical pads.
-
-**Purpose**: Discover note numbers to use in `config.toml`.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin pad_mapper [PORT]
-```
-
-**Example**:
-```bash
-cargo run -p conductor-daemon --bin pad_mapper 2
-```
-
-**Usage**:
-1. Run the tool
-2. Press each pad on your controller
-3. Write down the note number displayed
-4. Use those numbers in your config
-
-**Output**:
-```
-Pad Mapper - Press pads to see note numbers
-============================================
-Connected to port 2: Maschine Mikro MK3 - Input
-
-Press pads... (Ctrl+C to exit)
-
-Pad pressed: Note 12 (velocity: 87)
-Pad pressed: Note 13 (velocity: 64)
-Pad pressed: Note 14 (velocity: 103)
-Pad pressed: Note 15 (velocity: 52)
-```
-
-**Tips**:
-- Press pads in order (bottom-left to top-right)
-- Draw a grid on paper and write down note numbers
-- Use this data to update `config.toml`
-
-**When to use**:
-- Setting up a new device
-- Creating initial config
-- Mapping custom devices
-- Verifying profile note numbers
-
-### test_midi
-
-Test MIDI port connectivity and enumerate devices.
-
-**Purpose**: Quick MIDI connectivity test, list all available ports.
-
-**Syntax**:
-```bash
-cargo run -p conductor-daemon --bin test_midi
-```
-
-**Output**:
-```
-MIDI Port Test
-==============
-
-Available input ports:
-0: USB MIDI Device
-1: IAC Driver Bus 1
-2: Maschine Mikro MK3 - Input
-3: Digital Keyboard
-
-Available output ports:
-0: USB MIDI Device
-1: IAC Driver Bus 1
-2: Maschine Mikro MK3 - Output
-
-Testing port 2 (input)...
-✓ Successfully opened port: Maschine Mikro MK3 - Input
-
-Press a pad to test... (5 second timeout)
-✓ Received MIDI event: NoteOn ch:0 note:12 vel:87
-
-Connection test: PASSED
-```
-
-**When to use**:
-- Verify MIDI device detected
-- Check port numbers before running conductor
-- Debug connectivity issues
-- Confirm MIDI cable is working
-
-## Command Quick Reference
-
-| Command | Purpose | Example |
-|---------|---------|---------|
-| **Daemon Service (v1.0.0+)** |||
-| `conductor [PORT]` | Start daemon service | `cargo run --release --bin conductor 2` |
-| `--led <SCHEME>` | Set LED scheme | `conductor 2 --led rainbow` |
-| `--profile <PATH>` | Load profile | `conductor 2 --profile my.ncmm3` |
-| `--pad-page <PAGE>` | Force pad page | `conductor 2 --pad-page H` |
-| `--config <PATH>` | Custom config | `conductor 2 --config dev.toml` |
-| **Daemon Control (v1.0.0+)** |||
-| `conductorctl status` | Show daemon status | `conductorctl status` |
-| `conductorctl reload` | Hot-reload config | `conductorctl reload` |
-| `conductorctl validate` | Validate config | `conductorctl validate` |
-| `conductorctl ping` | Health check | `conductorctl ping` |
-| `conductorctl shutdown` | Stop daemon (IPC) | `conductorctl shutdown` |
-| `conductorctl stop` | Stop service (LaunchAgent) | `conductorctl stop --force` |
-| **Profile Management** |||
-| `conductorctl profile status` | Show active profile | `conductorctl profile status` |
-| `conductorctl profile list` | List available profiles | `conductorctl profile list` |
-| `conductorctl profile switch` | Switch profile | `conductorctl profile switch music` |
-| `conductorctl profile create` | Create new profile | `conductorctl profile create streaming --app com.obs` |
-| `conductorctl profile delete` | Delete a profile | `conductorctl profile delete old --force` |
-| `conductorctl profile validate` | Validate profile file | `conductorctl profile validate path.toml` |
-| **Device Management** |||
-| `conductorctl list-devices` | List MIDI devices | `conductorctl list-devices` |
-| `conductorctl set-device` | Switch MIDI device | `conductorctl set-device 2` |
-| `conductorctl get-device` | Show current device | `conductorctl get-device` |
-| **Config Migration (v4.24.0)** |||
-| `conductorctl migrate-config` | Migrate `[device]` to `[[devices]]` | `conductorctl migrate-config --write` |
-| `conductorctl validate-schema` | Validate against protocol standards | `conductorctl validate-schema --json` |
-| **Service Management (macOS)** |||
-| `conductorctl install` | Install LaunchAgent | `conductorctl install --install-binary` |
-| `conductorctl uninstall` | Remove service | `conductorctl uninstall --remove-logs` |
-| `conductorctl start` | Start service | `conductorctl start --wait 10` |
-| `conductorctl restart` | Restart service | `conductorctl restart` |
-| `conductorctl enable` | Enable auto-start | `conductorctl enable` |
-| `conductorctl disable` | Disable auto-start | `conductorctl disable` |
-| `conductorctl service-status` | Service status | `conductorctl service-status` |
-| **Global Options** |||
-| `--json` | JSON output | `conductorctl status --json` |
-| **Diagnostic Tools** |||
-| `DEBUG=1` | Enable debug log | `DEBUG=1 conductor 2` |
-| `midi_diagnostic` | View MIDI events | `cargo run -p conductor-daemon --bin midi_diagnostic 2` |
-| `led_diagnostic` | Test LEDs | `cargo run -p conductor-daemon --bin led_diagnostic` |
-| `led_tester` | Interactive LED test | `cargo run -p conductor-daemon --bin led_tester` |
-| `pad_mapper` | Find note numbers | `cargo run -p conductor-daemon --bin pad_mapper 2` |
-| `test_midi` | Test MIDI ports | `cargo run -p conductor-daemon --bin test_midi` |
-
-## Common Workflows
-
-### First-Time Setup
-
-```bash
-# 1. List available ports
-cargo run -p conductor-daemon --bin conductor --release
-
-# 2. Test connectivity
-cargo run -p conductor-daemon --bin test_midi
-
-# 3. Map pads to note numbers
-cargo run -p conductor-daemon --bin pad_mapper 2
-
-# 4. Run with basic settings
-cargo run -p conductor-daemon --bin conductor --release 2
-
-# 5. Test LEDs
-cargo run -p conductor-daemon --bin conductor --release 2 --led rainbow
-```
-
-### Troubleshooting
-
-```bash
-# 1. Check MIDI events are received
-cargo run -p conductor-daemon --bin midi_diagnostic 2
-
-# 2. Enable debug logging
-DEBUG=1 cargo run -p conductor-daemon --bin conductor --release 2
-
-# 3. Test LED control
-cargo run -p conductor-daemon --bin led_diagnostic
-
-# 4. Verify port numbers
-cargo run -p conductor-daemon --bin test_midi
-```
-
-### Production Use
-
-```bash
-# Build optimized binary
-cargo build --release
-
-# Run with all options
-./target/release/conductor 2 \
-    --profile ~/profiles/work.ncmm3 \
-    --led reactive \
-    --config ~/configs/production.toml
-
-# Or use shell script
-#!/bin/bash
-DEBUG=0 ./target/release/conductor 2 \
-    --profile "$HOME/Documents/NI/my-profile.ncmm3" \
-    --led reactive \
-    > /tmp/conductor.log 2>&1 &
-```
-
-## See Also
-
-- [macOS Installation](https://getconductor.dev/installation/macos.html) - Platform-specific setup
-- [Building Guide](https://getconductor.dev/installation/building.html) - Build from source
-- [Diagnostics Guide](https://getconductor.dev/troubleshooting/diagnostics.html) - Detailed troubleshooting
-- [Configuration Overview](https://getconductor.dev/configuration/overview.html) - Config file structure
+The `conductor` workspace builds several binaries. This reference covers all of
+them, grounded in their actual `clap` argument definitions (or, for the
+hardware-probe tools that predate `clap`, their actual `main()` behavior).
+
+| Binary | Crate | Purpose |
+|--------|-------|---------|
+| `conductor` | `conductor-daemon` | The background daemon — loads config, connects to devices, processes events |
+| `conductorctl` | `conductor-daemon` | Control and inspect a running daemon over its Unix-domain-socket IPC, plus install it as a service |
+| `conductor-sign` | `conductor-daemon` | Generate/rotate Ed25519 keys and sign/verify WASM plugins |
+| `conductor-skills` | `conductor-daemon` | Validate, list, and install Agent Skills (see [Agent Skills](../development/agent-skills.md)) |
+| `conductor-state` | `conductor-daemon` | Dump the daemon's live physical-control-state store |
+| `midi_diagnostic` | `conductor-daemon` | Print incoming MIDI events in real time |
+| `led_diagnostic` | `conductor-daemon` | Interactively correlate pad presses with LED addresses (Maschine Mikro MK3 only) |
+| `led_tester` | `conductor-daemon` | Probe HID report offsets to find a pad's LED address (Maschine Mikro MK3 only) |
+| `pad_mapper` | `conductor-daemon` | Capture MIDI-note ↔ HID-pad-index pairs (Maschine Mikro MK3 only) |
+| `test_midi` | `conductor-daemon` | List MIDI input/output ports and exit |
+| `midi_simulator` | `conductor-daemon` | Interactive REPL that fabricates MIDI events without hardware |
+| `conductor-capture` | `conductor-capture` | Input-pattern recording tool (early development — most subcommands are stubs) |
+
+`conductor_menubar` (a system-tray helper spawned by the desktop app) also
+lives in `conductor-daemon`'s `[[bin]]` list, but it takes no CLI arguments —
+it's not covered here. The **closed-source GUI application is not part of
+this repository.**
+
+All examples below assume an installed binary on `PATH` (e.g. `conductorctl
+status`). From a source checkout, run any binary with `cargo run -p
+conductor-daemon --bin <name> --` (note the `--` separator before the
+binary's own flags), or `cargo run -p conductor-capture --` for
+`conductor-capture`.
 
 ---
 
-**Last Updated**: March 2, 2026
-**Binary Version**: 4.37.0
+## `conductor` — the daemon
+
+```bash
+conductor [OPTIONS]
+```
+
+The daemon binary. It has no subcommands — just flags — and always runs in
+the foreground; use systemd/launchd directly, or `conductorctl install` (see
+below) for macOS LaunchAgent management.
+
+### Flags
+
+| Flag | Description |
+|------|-------------|
+| `-c, --config <FILE>` | Path to the config file. If given, this path is **adopted**: the daemon overwrites its live config with it and boots from that. Without `--config`, the daemon resolves a default path (see below) and also restores the last-active profile identity. |
+| `-v, --verbose` | Debug-level logging for all Conductor modules. |
+| `-T, --trace` | Trace-level logging (very verbose). Outranks `--verbose` and `DEBUG=1`. |
+| `-f, --foreground` | Accepted for compatibility; the daemon already runs in the foreground by default. |
+| `--ignore-user-mappings` | Ignore `~/.conductor/gamecontrollerdb.txt` (the user gamepad-mapping override file) for this run — use this to recover when a bad override file prevents a controller from being recognized. |
+| `-h, --help` / `-V, --version` | Standard clap help/version. |
+
+There is no port argument, no `--led`, no `--profile`, and no `--pad-page`
+flag on this binary — LED schemes, device selection, and per-app profiles are
+all driven by the config file and by `conductorctl` (see below), not by
+daemon CLI flags.
+
+### Default config path
+
+Without `--config`, the daemon looks in an OS-specific directory:
+
+| OS | Default path |
+|----|---------------|
+| macOS | `~/Library/Application Support/conductor/config.toml` |
+| Linux | `$XDG_CONFIG_HOME/conductor/config.toml`, falling back to `~/.config/conductor/config.toml` |
+| Windows | `%APPDATA%\conductor\config.toml` |
+
+If no config exists at that path, the daemon prints a minimal example
+`config.toml` and exits non-zero rather than starting with nothing.
+
+### Environment variables
+
+| Variable | Effect |
+|----------|--------|
+| `DEBUG=1` | Enables debug-level logging (same effect as `--verbose`, unless overridden by `--trace` or `RUST_LOG`). |
+| `RUST_LOG` | Standard `tracing-subscriber` env filter; takes precedence over `DEBUG` and the CLI flags, e.g. `RUST_LOG=conductor_daemon=trace`. |
+| `CONDUCTOR_LOG_CONSOLE` | Force console log output on/off (console logging is otherwise auto-detected from whether stdout is a terminal, to avoid double-logging when a GUI spawns the daemon). |
+
+Logs also always go to a rotating file under the platform log directory,
+independent of whether console logging is active.
+
+### Examples
+
+```bash
+# Run with the default config path, debug logging
+conductor --verbose
+
+# Run against an explicit config (adopted as the live config)
+conductor --config ~/conductor-configs/dev.toml
+
+# Trace-level logging for deep debugging
+conductor --trace
+
+# From a source checkout
+cargo run -p conductor-daemon --bin conductor -- --verbose
+```
+
+---
+
+## `conductorctl` — daemon control and service management
+
+```bash
+conductorctl [GLOBAL OPTIONS] <COMMAND> [ARGS]
+```
+
+Most subcommands talk to a **running** daemon over its IPC socket and fail
+with "Failed to connect to daemon. Is the daemon running?" if it isn't up.
+A few (`install`, `uninstall`, `start`, `stop`, `restart`, `enable`,
+`disable`, `service-status`, the local `profile` subcommands, `migrate-config`,
+`validate-schema`, `permissions`, `mcp`, `llm budgets show`, and — on Unix —
+`listener` / `security`) work without a running daemon.
+
+### Global options
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable debug logging in `conductorctl` itself. |
+| `-j, --json` | Emit machine-readable JSON instead of formatted text, for every subcommand. |
+
+### Daemon lifecycle (via IPC)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `status` | — | Daemon state, current mode, config path, uptime, event count, and hot-reload performance stats. |
+| `reload` | — | Trigger a hot config reload (no restart, zero-downtime). |
+| `validate` | `[-c, --config <PATH>]` | Ask the daemon to validate a config file (defaults to the daemon's own config if omitted). |
+| `ping` | — | Round-trip health check; prints latency. |
+| `shutdown` | — | Gracefully stop the **running daemon process** via IPC (state is saved first). Only stops the process — if it's also installed as a service, the service will restart it on the next login unless you also run `disable`. |
+
+```bash
+conductorctl status
+conductorctl status --json | jq '.data.reload_stats.avg_reload_ms'
+conductorctl reload
+conductorctl ping
+```
+
+### Device management (via IPC)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `list-devices` | — | List available MIDI and HID/gamepad input devices. |
+| `bindings` | `[-a, --alias <ID>]` `[--unbound-only]` | Show which `[[bindings]]`/`[[endpoints]]` aliases the daemon has resolved to real ports, versus opportunistic (unconfigured) ports it's listening to. `--alias` filters by exact `device_id` — for opportunistic ports that's `raw:<port name>`. |
+| `set-device` | `<PORT>` | Switch the daemon to a different MIDI input port index, without restart. |
+| `get-device` | — | Show the currently connected MIDI device, connection status, and time since the last event. |
+
+```bash
+conductorctl list-devices
+conductorctl bindings --unbound-only
+conductorctl bindings --alias "raw:IAC Driver Bus 1"
+conductorctl set-device 2
+conductorctl get-device
+```
+
+### Mode control (ADR-040)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `mode set` | `<NAME>` `[--no-lock]` | Switch the active mode. **Locks it against per-app auto-switching by default** — pass `--no-lock` to switch without locking, leaving auto-switch active. |
+| `mode unlock` | — | Release a manual mode lock, resuming per-app auto-switching. |
+| `mode status` | — | Show the active mode, whether it's locked, and the lock's origin. |
+
+```bash
+conductorctl mode set DJ            # switches to DJ and locks it
+conductorctl mode set DJ --no-lock  # switches to DJ, auto-switch stays live
+conductorctl mode unlock
+conductorctl mode status
+```
+
+### LED control
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `led status` | — | Show whether LEDs are enabled, current brightness, active scheme, and idle timeout. |
+| `led scheme` | `<NAME>` | Set the lighting scheme (`off`, `static`, `breathing`, `pulse`, `rainbow`, `wave`, `sparkle`, `reactive`, `vumeter`, `spiral`). |
+| `led brightness` | `<LEVEL>` | Set brightness, `0`–`127`. |
+| `led off` | — | Shortcut for `led scheme off`. |
+
+```bash
+conductorctl led scheme rainbow
+conductorctl led brightness 64
+conductorctl led off
+```
+
+### Plugin management
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `plugin list` | — | List available and currently-loaded plugins. |
+| `plugin info` | `<NAME>` | Show a plugin's version, description, and author. |
+| `plugin enable` | `<NAME>` | Enable a plugin. |
+| `plugin disable` | `<NAME>` | Disable a plugin. |
+
+### Live event monitoring
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `events` | see below | Tail or snapshot input events flowing through the daemon. |
+| `playback-events` | `<FILE>` `[--speed <N>]` `[--format text\|json]` `[--no-delay]` | Replay a previously-exported JSON/CSV event file, with timing preserved (or `--no-delay` to dump instantly). |
+
+`events` flags:
+
+| Flag | Description |
+|------|-------------|
+| `-f, --follow` | Continuously tail live events instead of a bounded snapshot. |
+| `--type <TYPE>` | Filter by event type (`note_on`, `note_off`, `cc`, `encoder`, `gamepad_button`, etc). |
+| `--channel <1-16>` | Filter by MIDI channel (1-based on the CLI; stored 0-based internally). |
+| `--note-min <0-127>` / `--note-max <0-127>` | Restrict to a note range. |
+| `--device <ID>` | Filter by device ID. |
+| `--since <DUR>` | Only events newer than this (e.g. `30s`, `5m`, `1h`). |
+| `--debounce <MS>` | Minimum milliseconds between displayed events. |
+| `-F, --filter <NAME>` | Use a named filter from `[event_console.filters]` in the config; CLI flags override it field-by-field. |
+| `--format text\|json` | Output format (default `text`). |
+| `--limit <N>` | Max events to show in non-follow mode (default `50`); does not cap `--output` exports. |
+| `-o, --output <FILE>` | Export a snapshot to JSON or CSV (by extension). Conflicts with `--follow`. |
+| `--duration <DUR>` | How long to capture before exporting. Conflicts with `--follow`. |
+| `--profiling` | Include per-event processing-time/memory data, when available. |
+
+```bash
+conductorctl events --follow
+conductorctl events --type note_on --channel 10 --limit 20
+conductorctl events --since 5m --output events.json --duration 30s
+conductorctl playback-events events.json --speed 2.0
+```
+
+### Security audit log (ADR-027 §D13a)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `audit tail` | `[-f, --follow]` `[--last <N>]` | Show recent audit-log entries (tool executions, plan decisions, denials); `--follow` streams new ones live. Default `--last 50`. |
+| `audit denied` | `[-f, --follow]` `[--last <N>]` | Same as `tail`, filtered to denial events only. |
+| `audit resume` | — | Recover the daemon from the fail-closed `AuditDegraded` state after a corrupt/unreadable audit outbox — rotates the corrupt file aside and starts a fresh chain. |
+
+```bash
+conductorctl audit tail --last 20
+conductorctl audit denied --follow
+```
+
+### MCP client registry (ADR-027 §D18)
+
+Per-client tier ceilings for MCP clients (Claude Desktop, Cursor, etc.)
+connecting over the daemon's Unix socket. Storage is a local JSON file; these
+are plain file operations, no running daemon required.
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `mcp register` | `--name <NAME>` `--exe-path <PATH>` `--tier <TIER>` | Register (or update) a client. `--exe-path` must match the client's `initial_exe` exactly. `--tier` accepts `ReadOnly`, `Stateful`, `ConfigChange`, `HardwareIO` (or their `snake_case` wire forms — `read_only`, etc.); `Internal` is not accepted from the CLI. |
+| `mcp list` | — | List all registered clients. |
+| `mcp revoke` | `--exe-path <PATH>` | Revoke a registration by exe path. Idempotent — revoking an unregistered path is a no-op. |
+
+```bash
+conductorctl mcp register --name "Claude Desktop" --exe-path /Applications/Claude.app/Contents/MacOS/Claude --tier Stateful
+conductorctl mcp list
+conductorctl mcp revoke --exe-path /Applications/Claude.app/Contents/MacOS/Claude
+```
+
+### LLM agent budget (ADR-027 §D6)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `llm budgets show` | `[-c, --config <PATH>]` `[--json]` | Show the effective `[security.llm]` budget (iterations, tool calls, tokens, wall-clock, capability quotas). File-only and offline — never touches a running daemon. |
+
+### Network listener approvals (Unix only, ADR-042)
+
+Non-loopback OSC/Art-Net listeners only bind once explicitly approved. These
+edit the HMAC-signed approval registry at `~/.conductor/network_approvals.json`
+directly; the daemon honours a change on its next (re)bind.
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `listener list` | `[-c, --config <PATH>]` | List configured network listeners and approval status. |
+| `listener status` | `[-c, --config <PATH>]` | Same as `list`, with per-listener detail (host:port, amplification-ack requirement). |
+| `listener approve` | `<ALIAS>` `[-c, --config <PATH>]` | Approve a non-loopback listener by its `[[endpoints]]` alias. Loopback listeners are auto-approved and don't need this. |
+| `listener deny` | `<ALIAS>` `[-c, --config <PATH>]` | Revoke a listener's approval. |
+
+### Security key management (Unix only, ADR-042)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `security status` | — | Show the network-approval HMAC key's fingerprint, age, and rotation warnings. |
+| `security rotate-hmac` | — | Rotate the HMAC key; existing approvals are re-signed under the new key. |
+
+### macOS permissions (ADR-029 §D3)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `permissions` | `[--check]` `[--open-input-monitoring]` | Inspect or open the macOS Input Monitoring grant needed for gamepad enumeration. Defaults to `--check` if neither flag is given. Tries the running daemon's own IPC-reported grant first (authoritative), falling back to a local probe if the daemon isn't reachable. On Linux/Windows, prints platform-appropriate guidance instead. |
+
+```bash
+conductorctl permissions --check
+conductorctl permissions --open-input-monitoring
+```
+
+### Config rollback and drift (ADR-034)
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `rollback-config` | — | Roll the live config back to the last known-good snapshot (CAS-protected). |
+| `rollback-config-force` | `--reason <TEXT>` (required) | Break-glass rollback that bypasses the CAS check. **CLI-only** — the daemon rejects this from GUI/LLM peers. `--reason` is audited and must be non-empty. |
+| `config drift` | — | Read-only: report whether the on-disk config has diverged from the daemon's live config. |
+| `config mark-known-good` | — | Mark the daemon's current live config as the known-good snapshot a later `rollback-config` returns to. |
+| `config reload` | `[--path <PATH>]` | Re-read the daemon's config file from disk and republish it (the "I hand-edited the file, pick it up" flow). With `--path`, loads that file instead (must be allowlisted). |
+| `config import` | `<PATH>` | Import a config from an explicit allowlisted `.toml` path (e.g. promoting a stash file). |
+| `config save` | `[--base-generation <N>]` | Commit a config read from **stdin**. To load a file from disk, use `config import` instead — `save` rejects a positional path, since that would bypass the daemon's path allowlist. |
+
+```bash
+conductorctl config drift
+conductorctl config mark-known-good
+conductorctl rollback-config
+conductorctl rollback-config-force --reason "bad hand-edit, need last-known-good immediately"
+cat generated-config.toml | conductorctl config save
+```
+
+### Config migration
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `migrate-config` | `--routing` (required) `[-c, --config <PATH>]` `[--no-backup]` `[--dry-run]` | Rewrite legacy `Trigger::Raw` + `Action::MidiForward` mappings into top-level `[[routes]]` entries (ADR-036), preserving comments/formatting. |
+
+The legacy `[device]` → `[[devices]]` migration and the `[[bindings]]` /
+`[[connectors]]` formats it targeted **no longer exist** — ADR-035 removed
+them entirely, so `migrate-config` without `--routing` now fails with an
+explicit error telling you to author `[[endpoints]]` directly (see the
+[Configuration Schema Reference](config-schema.md)).
+`--routing` is the only supported migration today, and it aborts the whole
+migration (no partial rewrite) if it finds a `Raw` trigger paired with
+anything other than `MidiForward`.
+
+```bash
+# Preview the routing migration without writing
+conductorctl migrate-config --routing --dry-run
+
+# Apply it (writes a .bak backup unless --no-backup)
+conductorctl migrate-config --routing
+
+# Without --routing: fails on purpose
+conductorctl migrate-config
+# Error: migrate-config now supports only --routing (legacy
+# [[bindings]]/[[connectors]]/[device] have been removed; author
+# [[endpoints]] directly).
+```
+
+### Schema validation
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `validate-schema` | `[-c, --config <PATH>]` | Validate a config against MIDI/HID/OSC protocol constraints (note/CC ranges, etc.) with a per-protocol coverage report. Defaults to `~/.conductor/config.toml` if `--config` is omitted — note this is a different default than the daemon's own OS-specific config path. |
+
+### Profile management
+
+"Profile" here means a named, standalone `config.toml` under the profiles
+directory — not the removed `.ncmm3` device-editor profile concept. `status`
+and `switch` talk to a running daemon; `list`, `create`, `delete`, and
+`validate` are local file operations.
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `profile status` | — | Show the daemon's currently active profile name and config path. |
+| `profile switch` | `<NAME_OR_PATH>` | Switch the daemon to a different profile — by name (resolved under the profiles directory) or by an explicit `.toml` path. |
+| `profile list` | `[DIR]` | List `.toml` files in a profiles directory (default: the OS config dir's `conductor/profiles/`). |
+| `profile create` | `<NAME>` `[--app <BUNDLE_ID>]...` | Create a new profile `.toml` with a starter config. Repeat `--app` for multiple bundle IDs (creates one mode per app instead of a single `Default` mode). |
+| `profile delete` | `<NAME>` `[--force]` | Delete a profile file. Refuses to delete the currently active one. `--force` skips the confirmation prompt. |
+| `profile validate` | `<PATH>` | Validate a profile `.toml` without loading it into the daemon. |
+
+```bash
+conductorctl profile list
+conductorctl profile create streaming --app com.obsproject.obs-studio
+conductorctl profile switch streaming
+conductorctl profile status
+conductorctl profile validate ~/.config/conductor/profiles/streaming.toml
+conductorctl profile delete streaming --force
+```
+
+### Service management (macOS LaunchAgent only)
+
+These commands manage Conductor as a LaunchAgent. The plist has
+`RunAtLoad=true`, so `install`/`start`/`enable` all start the daemon
+immediately — they differ in whether auto-start-on-login is also set.
+
+| Command | Args | `launchctl` op | Starts daemon? | Auto-start on login? |
+|---------|------|-----------------|-----------------|------------------------|
+| `install` | `[--install-binary]` `[-f, --force]` | `load` | Yes | No |
+| `start` | `[-w, --wait <SECS>]` (default `5`) | `load` | Yes | No |
+| `enable` | — | `load -w` | Yes | Yes |
+| `stop` | `[-f, --force]` | `unload` | Stops | No |
+| `disable` | — | `unload -w` | Stops | No |
+| `restart` | `[-w, --wait <SECS>]` | stop, wait 500ms, start | Yes | (unchanged) |
+| `uninstall` | `[--remove-binary]` `[--remove-logs]` | — | Stops, removes plist | — |
+| `service-status` | — | — | Reports install/load state | — |
+
+`--install-binary` (on `install`) copies the daemon binary to
+`/usr/local/bin/conductor`, typically requiring `sudo`. `stop --force` skips
+attempting a graceful IPC shutdown before unloading. Service management is
+currently macOS-only.
+
+```bash
+cargo build --release --bin conductor
+conductorctl install --install-binary   # installs + starts
+conductorctl enable                     # + auto-start on login
+conductorctl service-status
+conductorctl restart --wait 10
+conductorctl disable
+conductorctl uninstall --remove-binary --remove-logs
+```
+
+---
+
+## `conductor-sign` — plugin signing
+
+```bash
+conductor-sign <COMMAND> [ARGS]
+```
+
+Signs and verifies WASM plugins with Ed25519 keys. Key-generation and signing
+require the `plugin-signing` feature (`cargo build -p conductor-daemon
+--features plugin-signing`); without it, `generate-key` exits with an error
+telling you to rebuild.
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `generate-key` | `<output-path>` | Generate a new Ed25519 keypair (writes `<path>.private`, mode `0600`, and `<path>.public`). Refuses to overwrite an existing key. |
+| `sign` | `<plugin> <key> --name <NAME> --email <EMAIL>` | Sign a plugin. `--name`/`--email` are required. |
+| `verify` | `<plugin>` | Verify a plugin's signature. |
+| `migrate-keys` | `<plugin>` | Migrate a legacy `.sig` file to a root-only manifest. |
+| `rotate-key` | `<old> <new> <manifest>` | Append a key-rotation record to a manifest. |
+| `sign-registry` | `<reg.json> <key> <out>` | Sign a plugin registry JSON file. |
+| `trust add` | `<public-key> <name>` | Add a trusted signer key. |
+| `trust list` | — | List trusted keys. |
+| `trust remove` | `<public-key>` | Remove a trusted key. |
+| `trust verify` | `<manifest.json>` | Validate a key-rotation chain. |
+
+```bash
+conductor-sign generate-key ~/.conductor/my-key
+conductor-sign sign plugin.wasm ~/.conductor/my-key --name "Jane Doe" --email jane@example.com
+conductor-sign verify plugin.wasm
+conductor-sign trust add abcd1234... "Official Conductor"
+```
+
+See [Plugin Security](../development/plugin-security.md) for the trust model
+these commands implement.
+
+---
+
+## `conductor-skills` — Agent Skills management
+
+```bash
+conductor-skills <COMMAND> [ARGS]
+```
+
+| Command | Args | Description |
+|---------|------|--------------|
+| `validate` | `<PATH>` `[-v, --verbose]` | Validate a single skill directory (if `<PATH>/SKILL.md` exists) or every skill subdirectory under `<PATH>`. Exits non-zero on any failure. |
+| `list` | `[-p, --path <DIR>]` `[-v, --verbose]` | List installed skills (default: `~/.conductor/skills`). |
+| `install` | `<SOURCE>` `[-t, --target <DIR>]` | Validate, then copy a skill directory into the target skills dir (default: `~/.conductor/skills`). Fails if a skill of that name is already installed. |
+
+```bash
+conductor-skills validate ./skills/conductor-midi-mapping
+conductor-skills validate ./skills --verbose
+conductor-skills list
+conductor-skills install ./my-skill
+```
+
+There is no `test` or `show` subcommand. See [Agent Skills
+Development](../development/agent-skills.md) for the skill file format and
+the five skills shipped with this repo.
+
+---
+
+## `conductor-state` — control-state inspection
+
+```bash
+conductor-state [-d, --device <ALIAS>] [-j, --json]
+```
+
+Read-only diagnostic that connects to a **running** daemon and dumps its
+`PhysicalControlStateStore` snapshot (what the daemon currently believes
+about every physical control's state), via the `conductor_get_control_state`
+MCP tool. `--device` filters to one device alias; `--json` emits raw JSON.
+
+```bash
+conductor-state
+conductor-state --device mikro --json
+```
+
+---
+
+## Hardware diagnostic tools
+
+These are standalone binaries with no subcommands. Four of the five
+(`led_diagnostic`, `led_tester`, `pad_mapper`, and implicitly `midi_diagnostic`'s
+auto-select) are hardcoded to look for a **Native Instruments Maschine Mikro
+MK3** (HID vendor `0x17CC`, product `0x1700`) — they were built for that
+device during early development and haven't been generalized. `test_midi`
+and `midi_simulator` are device-agnostic.
+
+### `midi_diagnostic`
+
+```bash
+midi_diagnostic [PORT]
+```
+
+Lists all MIDI input ports, then connects to `[PORT]` (an index into that
+list) and prints every incoming MIDI event live (note on/off with a velocity
+bar, CC, pitch bend, aftertouch, program change) until Ctrl+C. Without
+`[PORT]`, it auto-selects the first port whose name contains "Mikro". A
+present-but-non-numeric argument is rejected outright — it does not silently
+fall back to auto-select.
+
+```bash
+midi_diagnostic 2
+```
+
+### `led_diagnostic`
+
+```bash
+led_diagnostic
+```
+
+No arguments. Opens the Mikro MK3's HID interface and MIDI port, then loops:
+prompts you to press a pad (60s timeout), reports the captured MIDI
+note/velocity, and asks you to confirm whether the pad's LED lit up — an
+interactive correlator, not an automatic all-pads cycle.
+
+### `led_tester`
+
+```bash
+led_tester
+```
+
+No arguments. An "LED address finder": captures a pad press, then walks a
+series of candidate byte offsets into the Mikro MK3's HID LED-report buffer,
+lighting each one red in turn and asking "did you see RED light? (y/n)" until
+you confirm the right offset for that pad.
+
+### `pad_mapper`
+
+```bash
+pad_mapper
+```
+
+No arguments. Opens the Mikro MK3's HID and MIDI interfaces and, as you press
+pads, prints the MIDI note number captured for each — for filling in
+`config.toml` note numbers.
+
+### `test_midi`
+
+```bash
+test_midi
+```
+
+No arguments and no interactivity. Prints every MIDI input port, every MIDI
+output port, and the OS/architecture, then exits. It does not open a
+connection or wait for a test event.
+
+### `midi_simulator`
+
+```bash
+midi_simulator
+```
+
+No arguments. An interactive REPL that fabricates MIDI events (note,
+velocity, long-press, double-tap, chord, encoder, aftertouch, pitch bend, CC)
+without any physical hardware — useful for testing mappings and the event
+console. Type `help` at the prompt for the full command list, or `demo` to
+run a scripted walkthrough.
+
+---
+
+## `conductor-capture` — input pattern recording (early development)
+
+```bash
+conductor-capture <COMMAND> [ARGS]
+```
+
+Part of an in-progress crowdsourced pattern-recording feature. The full
+subcommand surface is defined, but **most subcommands are stubs that exit
+non-zero** rather than doing anything — this is deliberate (the crate fails
+loudly rather than pretending to succeed) rather than a bug to work around.
+
+| Command | Args | Status |
+|---------|------|--------|
+| `start` | `--privacy <LEVEL>` `--protocol <midi\|gamepad\|both>` `--tag <TAG>`... `--description <TEXT>` | **Not implemented** — errors. |
+| `stop` | `--name <NAME>` | **Not implemented** — errors. |
+| `pause` | — | **Not implemented** — errors. |
+| `resume` | — | **Not implemented** — errors. |
+| `list` | `[--privacy <LEVEL>]` `[--tag <TAG>]` | Prints a header and "No captures found." (storage layer not wired up yet). |
+| `info` | `<NAME>` | **Not implemented** — errors. |
+| `delete` | `<NAME>` `[--force]` | **Not implemented** — errors. |
+| `import` | `<FILE>` `[--privacy <LEVEL>]` | **Not implemented** — errors. |
+| `export` | `<NAME>` `--output <FILE>` | **Not implemented** — errors. |
+| `upload` | `<NAME>` `[--privacy <LEVEL>]` | **Not implemented** — errors. |
+| `status` | — | Prints a header and "No active capture session." |
+
+`--privacy` accepts `public`, `private`, `friends`, or `premium`. Only
+`list` and `status` currently produce any real output; everything else is
+scaffolding for a feature that hasn't landed yet.
+
+---
+
+## Quick reference
+
+| Task | Command |
+|------|---------|
+| Start the daemon | `conductor` |
+| Check daemon status | `conductorctl status` |
+| Hot-reload config | `conductorctl reload` |
+| Validate a config file | `conductorctl validate --config path.toml` |
+| List MIDI/HID devices | `conductorctl list-devices` |
+| Switch MIDI device | `conductorctl set-device 2` |
+| Show resolved bindings | `conductorctl bindings` |
+| Set active mode (locked) | `conductorctl mode set DJ` |
+| Set active mode (no lock) | `conductorctl mode set DJ --no-lock` |
+| Release mode lock | `conductorctl mode unlock` |
+| Set LED scheme | `conductorctl led scheme rainbow` |
+| Tail live events | `conductorctl events --follow` |
+| Tail audit denials | `conductorctl audit denied --follow` |
+| Roll back to known-good config | `conductorctl rollback-config` |
+| Migrate legacy Raw+MidiForward mappings | `conductorctl migrate-config --routing` |
+| Validate config against protocol schemas | `conductorctl validate-schema` |
+| Switch profile | `conductorctl profile switch music` |
+| Install as a login service (macOS) | `conductorctl install --install-binary && conductorctl enable` |
+| Check macOS Input Monitoring grant | `conductorctl permissions --check` |
+| Register an MCP client | `conductorctl mcp register --name X --exe-path /path --tier Stateful` |
+| Validate a skill | `conductor-skills validate ./skills/my-skill` |
+| Sign a plugin | `conductor-sign sign plugin.wasm ~/.conductor/my-key --name N --email E` |
+| Dump live control state | `conductor-state` |
+| View raw MIDI events | `midi_diagnostic 2` |
+| List MIDI ports | `test_midi` |
+| Simulate MIDI without hardware | `midi_simulator` |
+
+## See Also
+
+- [Configuration Schema Reference](config-schema.md) — the `config.toml` structure these commands read, migrate, and validate
+- [MCP Tools Reference](mcp-tools.md) — the tools an MCP/LLM client calls through the daemon
+- [Agent Skills Development](../development/agent-skills.md) — the skill format `conductor-skills` validates
+- [Plugin Security](../development/plugin-security.md) — the signing model `conductor-sign` implements

@@ -1,269 +1,232 @@
 # Agent Skills Development
 
-Agent Skills are reusable capabilities that LLM agents can use when interacting with Conductor. This guide covers how skills work and how to create new ones.
+Agent Skills are self-contained Markdown documents that teach an LLM agent
+(Claude Code, Claude Desktop, or any other Skills-aware client) how to
+operate Conductor for a specific job — creating MIDI mappings, walking a
+user through Learn mode, routing signals between endpoints, and so on. This
+guide covers the real, on-disk skill format, how `conductor-daemon` validates
+and installs skills, and how a skill actually reaches an LLM.
 
 ## Overview
 
-Skills provide structured instructions that help LLMs understand how to accomplish specific tasks with Conductor. Each skill includes:
+A skill is a **directory**, not a config file. The daemon's `skills` module
+(`conductor-daemon/src/skills/`) implements the [agentskills.io][agentskills]
+progressive-disclosure convention:
 
-- **Metadata**: Name, description, version
-- **Instructions**: Step-by-step guidance for the LLM
-- **Tool references**: Which MCP tools to use
-- **Examples**: Sample interactions
+```text
+skill-name/
+├── SKILL.md              # Required: YAML frontmatter + Markdown instructions
+└── references/           # Optional: deeper reference docs, linked lazily
+    ├── TRIGGERS.md
+    └── ACTIONS.md
+```
 
-## Built-in Skills
+- **`SKILL.md`'s frontmatter** (Level 1) is small and cheap — an agent can
+  read every installed skill's frontmatter to decide which skill is relevant
+  before loading anything else.
+- **`SKILL.md`'s body** (Level 2) is the actual instructions, capped at
+  ~6000 estimated tokens by the validator.
+- **`references/*.md`** (Level 3) are pulled in only when the body links to
+  them (`[TRIGGERS.md](references/TRIGGERS.md)`) — the agent decides whether
+  it needs that detail.
 
-Conductor includes several bundled skills:
+[agentskills]: https://agentskills.io
+
+## Frontmatter fields
+
+`SkillMetadata` (`conductor-daemon/src/skills/validator.rs`) defines what the
+YAML frontmatter block can contain:
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `name` | Yes | Must exactly match the skill's directory name, or validation fails with a `NameMismatch` error. |
+| `description` | Yes | What the skill does and when an agent should reach for it. |
+| `license` | No (defaults to `Apache-2.0`) | Must be one of: `MIT`, `Apache-2.0`, `GPL-3.0`, `BSD-3-Clause`, `BSD-2-Clause`, `ISC`, `MPL-2.0`, `LGPL-3.0`, `Unlicense`, `CC0-1.0`. |
+| `compatibility` | No | Free-text note on runtime requirements (e.g. "Requires Conductor daemon running with MCP server enabled"). |
+| `allowed-tools` | No | Restricts which tools the skill may invoke — see below. |
+| `trust-level` | No (defaults to `user`) | `bundled`, `user`, or `remote`; consumed by the (currently unwired — see below) sandbox library. |
+| `metadata` | No | Free-form string map for anything else (`author`, `version`, `category`, ...). There is no dedicated top-level `version` field — the shipped skills put it under `metadata.version`. |
+
+### `allowed-tools` syntax
+
+The validator (`validate_tool_patterns`) accepts **two grammars**, chosen
+structurally by whether the value contains a comma:
+
+- **Legacy `namespace:pattern, …`** (comma-separated) — e.g.
+  `"conductor:get_*, conductor:list_*"`. Each pattern is
+  `<namespace>:<alphanumeric-and-underscore-pattern>`, with an optional
+  trailing `*` wildcard; a bare `*` means unrestricted.
+- **Claude Code space-separated** (no comma) — e.g. `Bash(conductor:*) Read
+  Write` or `Read mcp:llm-council/verify`. Tokens are bare identifiers
+  (`Bash`, `Read`), `Name(args)` permission scopes, or `mcp:<server>[/<tool>]`
+  references. **Every skill shipped in this repo uses this grammar.**
+
+Both grammars share the global `*` wildcard. A malformed pattern in either
+grammar fails validation with `InvalidToolPattern`.
+
+## The shipped skills
+
+Five skills ship under [`skills/`](../../skills) at the repo root, all using
+`allowed-tools: Bash(conductor:*) Read Write`:
 
 | Skill | Description |
 |-------|-------------|
-| `create-mapping` | Create a new MIDI/gamepad mapping |
-| `midi-learn` | Use MIDI Learn to capture input |
-| `configure-mode` | Create or modify modes |
-| `device-setup` | Configure MIDI devices |
-| `troubleshoot` | Diagnose common issues |
+| `conductor-binding-setup` | Set up and configure MIDI/HID device bindings; troubleshoot connections; migrate legacy `[device]` config to `[[bindings]]`. |
+| `conductor-learn` | Guide a user through Learn mode to capture controller inputs (MIDI or HID) and create mappings without knowing note/button/CC numbers up front. |
+| `conductor-midi-mapping` | Create and manage MIDI controller mappings — triggers (`Note`, `VelocityRange`, `LongPress`, `DoubleTap`, `NoteChord`, `EncoderTurn`, `CC`) and actions (`Keystroke`, `Launch`, `Shell`, `SendMidi`, `ModeChange`, `Sequence`). |
+| `conductor-signal-routing` | Route, forward, split, or merge signals between `[[endpoints]]` via `[[routes]]` — steady-state signal flow rather than per-event mappings. |
+| `conductor-troubleshooting` | Diagnose common issues: port detection failures, events not triggering, wrong device routing, LED feedback problems. |
 
-## Skill Structure
+Read [`skills/conductor-midi-mapping/SKILL.md`](../../skills/conductor-midi-mapping/SKILL.md)
+for a complete real example — it documents a decision framework, a cookbook
+of `let_through` recipes, common pitfalls, and error-recovery guidance, all
+in plain Markdown with no special syntax beyond the YAML frontmatter.
 
-Skills are defined in TOML files:
+## The `conductor-skills` CLI
 
-```toml
-[metadata]
-name = "create-mapping"
-version = "1.0.0"
-description = "Create a new MIDI mapping"
-author = "Conductor"
+`conductor-skills` (`conductor-daemon/src/bin/conductor_skills.rs`) has
+exactly three subcommands — there is no `test` or `show`:
 
-[instructions]
-summary = "Guide the user through creating a MIDI mapping"
-
-steps = [
-    "Ask which mode to add the mapping to (or use Default)",
-    "Ask what trigger to use (note number, CC, etc.)",
-    "Ask what action to perform",
-    "Call conductor_create_mapping with the parameters",
-    "Present the ConfigPlan for user approval"
-]
-
-[tools]
-required = ["conductor_create_mapping"]
-optional = ["conductor_list_modes", "conductor_start_midi_learn"]
-
-[[examples]]
-user = "Map pad 36 to copy"
-assistant = """
-I'll create a mapping for note 36 to trigger the copy action (Cmd+C).
-
-Let me set that up for you in the Default mode.
-"""
-tool_call = """
-conductor_create_mapping({
-  "mode": "Default",
-  "trigger": { "type": "Note", "note": 36 },
-  "action": { "type": "Keystroke", "keys": ["cmd", "c"] }
-})
-"""
-
-[[examples]]
-user = "In DJ mode, map the encoder to scroll"
-assistant = """
-I'll create an encoder mapping in DJ mode for scrolling.
-"""
-```
-
-## Skill Discovery
-
-Skills are loaded from:
-
-1. **Built-in**: `conductor-daemon/skills/` (bundled with daemon)
-2. **User**: `~/.conductor/skills/` (custom skills)
-3. **Plugins**: `~/.conductor/plugins/*/skills/` (plugin-provided)
-
-The skill loader:
-1. Scans all skill directories
-2. Parses TOML files
-3. Validates structure
-4. Makes skills available to LLM context
-
-## Creating a Custom Skill
-
-### 1. Create the Skill File
-
-Create `~/.conductor/skills/my-skill.toml`:
-
-```toml
-[metadata]
-name = "my-skill"
-version = "1.0.0"
-description = "My custom skill"
-author = "Your Name"
-
-[instructions]
-summary = "What this skill does"
-
-steps = [
-    "Step 1: ...",
-    "Step 2: ...",
-]
-
-[tools]
-required = ["conductor_get_config"]
-
-[[examples]]
-user = "Example user message"
-assistant = "Example response"
-```
-
-### 2. Validate the Skill
+| Command | Args | Description |
+|---------|------|--------------|
+| `validate` | `<PATH>` `[-v, --verbose]` | Validates one skill (if `<PATH>/SKILL.md` exists) or every skill directory under `<PATH>`. `--verbose` prints description, license, estimated body tokens, and reference files. Exits non-zero if any skill fails. |
+| `list` | `[-p, --path <DIR>]` `[-v, --verbose]` | Lists installed skills (default: `~/.conductor/skills`). |
+| `install` | `<SOURCE>` `[-t, --target <DIR>]` | Validates `<SOURCE>`, then copies it into the target skills directory (default: `~/.conductor/skills`). Fails if a skill of that name is already installed there — it does not overwrite. |
 
 ```bash
-conductor-skills validate ~/.conductor/skills/my-skill.toml
-```
+# Validate one skill
+conductor-skills validate ./skills/conductor-midi-mapping
 
-### 3. Test the Skill
+# Validate every skill in a directory
+conductor-skills validate ./skills --verbose
 
-```bash
-conductor-skills test my-skill "Sample user message"
-```
-
-### 4. Use the Skill
-
-The skill is automatically available in the Chat interface.
-
-## Skill Best Practices
-
-### Clear Instructions
-
-- Use imperative language ("Ask the user...", "Call the tool...")
-- Be specific about parameters and validation
-- Include error handling guidance
-
-### Useful Examples
-
-- Cover common use cases
-- Show both simple and complex scenarios
-- Include tool call examples
-
-### Appropriate Tools
-
-- Only require tools that are essential
-- List optional tools for enhanced functionality
-- Prefer ReadOnly tools when possible
-
-### Versioning
-
-- Increment version when making changes
-- Use semantic versioning (MAJOR.MINOR.PATCH)
-- Document breaking changes
-
-## Skill API
-
-### SkillLoader
-
-```rust
-pub struct SkillLoader {
-    skill_dirs: Vec<PathBuf>,
-    cache: HashMap<String, Skill>,
-}
-
-impl SkillLoader {
-    pub fn load_all(&mut self) -> Result<Vec<Skill>, SkillError>;
-    pub fn get(&self, name: &str) -> Option<&Skill>;
-    pub fn reload(&mut self) -> Result<(), SkillError>;
-}
-```
-
-### Skill Struct
-
-```rust
-pub struct Skill {
-    pub metadata: SkillMetadata,
-    pub instructions: SkillInstructions,
-    pub tools: SkillTools,
-    pub examples: Vec<SkillExample>,
-}
-
-pub struct SkillMetadata {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-    pub author: Option<String>,
-}
-```
-
-## CLI Tool
-
-The `conductor-skills` CLI validates and tests skills:
-
-```bash
-# List available skills
+# List what's installed
 conductor-skills list
 
-# Validate a skill file
-conductor-skills validate path/to/skill.toml
-
-# Test a skill with a sample message
-conductor-skills test skill-name "user message"
-
-# Show skill details
-conductor-skills show skill-name
+# Install a skill you've written
+conductor-skills install ./my-skill
 ```
 
-## Integration with LLM
+## What validation actually checks
 
-When the LLM receives a user message:
+`validate_skill()` (`conductor-daemon/src/skills/validator.rs`) runs, in
+order:
 
-1. Relevant skills are identified based on intent
-2. Skill instructions are injected into the system prompt
-3. Tool definitions from required tools are included
-4. Examples provide few-shot learning context
+1. `SKILL.md` exists in the directory.
+2. The file starts with a `---`-delimited YAML frontmatter block.
+3. The frontmatter parses and has non-empty `name` and `description`.
+4. `allowed-tools`, if present, matches one of the two grammars above.
+5. `name` in the frontmatter equals the directory's basename.
+6. `license` is a recognized SPDX identifier from the fixed list above.
+7. The body's estimated token count (`chars × 0.25`, rounded up) is ≤ 6000.
+8. Every `[text](references/FILE.md)`-style link in the body resolves to a
+   file that actually exists under `references/`.
 
-Example system prompt injection:
+Any failure is collected (not short-circuited on the first one, except for a
+missing `SKILL.md` or unparseable frontmatter) and returned as a
+`Vec<SkillValidationError>`.
 
-```
-You have access to the following skill: create-mapping
+## How a skill actually reaches an LLM
 
-Summary: Guide the user through creating a MIDI mapping
+There is **no MCP mechanism that serves skill content**. The daemon's MCP
+server declares its capabilities at handshake
+(`conductor-daemon/src/daemon/mcp/mod.rs`, `handle_initialize`) as
+`tools: Some(...)`, `resources: None`, `prompts: None` — it implements only
+the MCP *tools* primitive, not *resources* or *prompts*, so there is no
+protocol-level channel for it to hand skill files to a client even in
+principle. Its tool set (see [MCP Tools Reference](../reference/mcp-tools.md))
+is entirely about controlling Conductor (mappings, modes, devices, config),
+not about distributing skills. The skills pipeline works like this instead:
 
-Steps:
-1. Ask which mode to add the mapping to (or use Default)
-2. Ask what trigger to use (note number, CC, etc.)
-3. Ask what action to perform
-4. Call conductor_create_mapping with the parameters
-5. Present the ConfigPlan for user approval
+1. A skill is just files on disk — under this repo's `skills/` directory, or
+   installed to `~/.conductor/skills/<name>/` via `conductor-skills install`.
+2. **The LLM client** (Claude Code, Claude Desktop, or any other
+   Skills-compatible agent) discovers and loads `SKILL.md` files directly
+   from wherever it's configured to look — the same mechanism that client
+   uses for any other Agent Skill, with no Conductor-specific transport in
+   between.
+3. Once loaded, the skill's Markdown instructions steer the LLM to call
+   Conductor's regular MCP tools (`conductor_create_mapping`,
+   `conductor_get_config`, `conductor_start_midi_learn`, etc.) — the
+   `allowed-tools` frontmatter is a hint to that client about which tools
+   the skill is expected to need, expressed in *that client's* permission
+   syntax (hence the shipped skills using Claude Code's `Bash(...)`/`Read`
+   grammar rather than the legacy `namespace:pattern` one).
+4. Those MCP tool calls are gated by the daemon's own audit-tier system
+   (`ReadOnly` / `Stateful` / `ConfigChange` / `HardwareIO` — ADR-027), which
+   is independent of anything in a skill's frontmatter.
 
-Available tools: conductor_create_mapping, conductor_list_modes
-```
+`conductor_daemon::skills` also exports a `sandbox` module
+(`SkillSandbox`, `ToolPattern`, `SandboxConfig`) implementing tool-access
+matching against `allowed-tools` and trust-level rules. It's a real,
+unit-tested library — but as of this writing it isn't called from anywhere
+in the daemon's MCP request path or from `conductor-skills`; it exists as a
+building block for a host application that wants to enforce a skill's
+declared tool restrictions itself, not as an active runtime gate today.
 
-## Testing Skills
+## Writing a new skill
 
-### Unit Tests
+1. Create the directory and `SKILL.md`:
 
-```rust
-#[test]
-fn test_skill_validation() {
-    let skill = Skill::from_file("skills/create-mapping.toml").unwrap();
-    assert!(skill.validate().is_ok());
-}
-```
+   ```bash
+   mkdir -p my-skill/references
+   ```
 
-### Integration Tests
+   ```markdown
+   ---
+   name: my-skill
+   description: >
+     One or two sentences on what this skill does and when an agent
+     should use it.
+   license: MIT
+   compatibility: Requires Conductor daemon running
+   metadata:
+     author: Your Name
+     version: "0.1.0"
+   allowed-tools: Bash(conductor:*) Read Write
+   ---
 
-```rust
-#[tokio::test]
-async fn test_skill_execution() {
-    let loader = SkillLoader::new();
-    let skill = loader.get("create-mapping").unwrap();
+   # My Skill
 
-    // Verify required tools exist
-    for tool in &skill.tools.required {
-        assert!(tool_exists(tool));
-    }
-}
-```
+   Instructions for the LLM go here, in plain Markdown. Be specific about
+   what tools to call and in what order. Link to `references/*.md` for
+   detail the agent only needs occasionally.
+   ```
+
+2. Validate it:
+
+   ```bash
+   conductor-skills validate ./my-skill --verbose
+   ```
+
+3. Install it for local use:
+
+   ```bash
+   conductor-skills install ./my-skill
+   ```
+
+4. Point your LLM client at the install location (or this repo's `skills/`
+   directory) the same way you would for any other Agent Skill — Conductor
+   does not have a separate registration step.
+
+### Practical guidance
+
+- **Match the directory name exactly.** A `name` mismatch is one of the most
+  common validation failures.
+- **Keep the body under the token budget.** If a skill is growing past
+  ~6000 estimated tokens, move detail into `references/*.md` and link to it
+  — that's what progressive disclosure is for.
+- **Write `allowed-tools` in your target client's grammar.** All five
+  shipped skills use Claude Code's space-separated form; use the legacy
+  `namespace:pattern` form only if you have a specific reason to.
+- **Be concrete about Conductor's domain model.** Look at
+  `conductor-midi-mapping/SKILL.md` for the level of specificity that
+  works well — decision frameworks, a pitfalls table, and worked examples
+  beat abstract advice.
 
 ## See Also
 
 - [LLM Integration Architecture](llm-integration.md)
 - [MCP Server](mcp-server.md)
 - [MCP Tools Reference](../reference/mcp-tools.md)
+- [CLI Commands Reference](../reference/cli-commands.md)

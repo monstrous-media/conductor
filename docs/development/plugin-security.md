@@ -1,8 +1,5 @@
 # Plugin Security
 
-**Since:** v2.7
-**Status:** Production-ready
-
 Conductor provides enterprise-grade security for WASM plugins through cryptographic signatures, resource limiting, and filesystem sandboxing.
 
 ## Security Architecture
@@ -428,22 +425,26 @@ pub extern "C" fn capabilities() -> *const u8 {
 
 | Capability | Risk | Auto-Grant | Requires Approval |
 |-----------|------|------------|-------------------|
-| Network | 🟢 Low | Yes | No |
 | Audio | 🟢 Low | Yes | No |
 | Midi | 🟢 Low | Yes | No |
-| Filesystem | 🟡 Medium | No | Yes |
+| Network | 🟡 Medium | No | Yes |
+| SystemControl | 🟡 Medium | No | Yes |
+| Filesystem | 🔴 High | No | Yes + Warning |
 | Subprocess | 🔴 High | No | Yes + Warning |
-| SystemControl | 🔴 High | No | Yes + Warning |
 
 ### Granting Capabilities
 
-**Via GUI:** Plugin Manager → Select Plugin → Grant Capability
+Capabilities above Low risk are granted explicitly in `config.toml`:
 
-**Via Config:**
 ```toml
 [plugins.my_plugin]
 granted_capabilities = ["Network", "Filesystem"]
 ```
+
+`conductorctl plugin` (list/info/enable/disable) does not grant or revoke
+capabilities itself — that's config-only. A downstream GUI built on
+Conductor may add a richer approval flow on top of this, but nothing like
+that ships in this repository.
 
 ## Threat Model
 
@@ -573,48 +574,38 @@ config.max_fuel = 200_000_000;
 
 ## Advanced Topics
 
-### Hardware Security Keys
-
-For maximum security, use hardware keys (YubiKey, etc.):
-
-```bash
-# Generate key on hardware device
-# (Implementation depends on HSM/hardware)
-
-# Sign using hardware key
-conductor-sign sign my_plugin.wasm \
-  --hardware-key /dev/yubikey \
-  --name "Your Name" --email "you@example.com"
-```
-
 ### Key Rotation
 
+`conductor-sign` supports key rotation through an append-only rotation
+manifest, rather than re-signing with an unrelated key and hoping users
+notice:
+
 ```bash
-# Generate new key
+# First rotation: bootstraps a rotation manifest from the plugin's existing
+# root signature.
+conductor-sign migrate-keys my_plugin.wasm
+
+# Append a rotation from the old key to a newly generated one.
 conductor-sign generate-key ~/.conductor/my-plugin-key-v2
+conductor-sign rotate-key ~/.conductor/my-plugin-key ~/.conductor/my-plugin-key-v2 my_plugin.keys.json
 
-# Sign with new key
-conductor-sign sign my_plugin.wasm ~/.conductor/my-plugin-key-v2 \
-  --name "Your Name" --email "you@example.com"
-
-# Announce rotation to users
-# Include both old and new public keys in transition period
+# Validate the resulting rotation chain against your trusted keys.
+conductor-sign trust verify my_plugin.keys.json
 ```
 
-### Multi-Signature
+`migrate-keys` reads an existing `<plugin>.wasm.sig` and produces a
+root-only rotation manifest (`<plugin>.keys.json`); `rotate-key` appends a
+signed rotation entry to that manifest so verifiers can walk the chain from
+the original trusted key to the current one. `trust verify` validates the
+whole chain.
 
-For critical plugins, require multiple signatures:
+### Registry Signing
+
+For signing a plugin *registry* document (not an individual plugin), use
+`sign-registry`:
 
 ```bash
-# Sign with first key
-conductor-sign sign my_plugin.wasm ~/.conductor/key1 \
-  --name "Developer 1" --email "dev1@example.com"
-
-# Co-sign with second key
-conductor-sign cosign my_plugin.wasm ~/.conductor/key2 \
-  --name "Developer 2" --email "dev2@example.com"
-
-# Verify requires both signatures
+conductor-sign sign-registry registry.json ~/.conductor/registry-key signed-registry.json
 ```
 
 ## Further Reading

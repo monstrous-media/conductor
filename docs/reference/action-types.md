@@ -799,7 +799,7 @@ velocity = 100
 
 ### MidiForward
 
-Forwards MIDI messages from one device to another output port with optional real-time transformation. (v4.25.0+)
+Forwards MIDI messages from one device to another output port with optional real-time transformation.
 
 ```toml
 [action]
@@ -816,7 +816,7 @@ curve = "Logarithmic"
 ```
 
 **Parameters:**
-- `target` (string, required): Output port. **Prefer a `[[bindings]]` alias**
+- `target` (string, required): Output port. **Prefer an `[[endpoints]]` alias**
   over a raw port name — see "Target reference forms" below.
 - `transform` (table, optional): Real-time MIDI transformation (see below)
 
@@ -824,18 +824,17 @@ curve = "Logarithmic"
 
 `target` accepts two forms:
 
-| Form | Example | Hot-plug aware? | Status pill / mute? |
-|------|---------|-----------------|---------------------|
-| **Alias** — matches a `[[bindings]]` entry | `target = "studio_out"` | Yes — the hot-plug rescan refreshes the device output map | Yes |
+| Form | Example | Hot-plug aware? | Status/mute integration? |
+|------|---------|-----------------|---------------------------|
+| **Alias** — matches an `[[endpoints]]` entry | `target = "studio_out"` | Yes — the hot-plug rescan refreshes the device output map | Yes |
 | **Raw port name** — no matching alias | `target = "Komplete Audio 6 MK2"` | No — bypasses the rescan-managed map, falls through to direct `connect_by_name` | No |
 
 Raw port names are accepted for ergonomics and still forward correctly,
 but they receive **no runtime device-status integration**: no hot-plug
-liveness, no GUI status dot or mute toggle, and no future ADR-031
-connector treatment. `conductorctl validate-config` emits a non-blocking
-warning when a `MidiForward.target` doesn't match any `[[bindings]]`
-alias. Define a `[[bindings]]` entry with `alias = "<target>"` for full
-runtime tracking. (#1136)
+liveness, no mute toggle, and no status affordance in downstream GUIs.
+`conductorctl validate` emits a non-blocking warning when a
+`MidiForward.target` doesn't match any `[[endpoints]]` alias. Define an
+`[[endpoints]]` entry with `alias = "<target>"` for full runtime tracking.
 
 **Transform Parameters:**
 - `channel` (integer, optional): Remap to MIDI channel (0-15)
@@ -846,7 +845,7 @@ runtime tracking. (#1136)
 - `invert_value` (boolean, optional): Invert value (127 - value)
 - `curve` (string or table, optional): Value curve — `"Linear"`, `"Logarithmic"`, `"Exponential"`, or `Lut` with 128-entry lookup table
 
-**Lookup Table Curve (v4.26.0+):**
+**Lookup Table Curve:**
 ```toml
 [action.transform]
 curve = { Lut = [0, 1, 2, 3, ..., 127] }  # 128 entries mapping input to output
@@ -854,7 +853,7 @@ curve = { Lut = [0, 1, 2, 3, ..., 127] }  # 128 entries mapping input to output
 
 ### OscSend
 
-Sends an OSC (Open Sound Control) message over UDP to a remote host. (v4.26.0+)
+Sends an OSC (Open Sound Control) message over UDP to a remote host.
 
 ```toml
 [action]

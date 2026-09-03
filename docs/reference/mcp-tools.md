@@ -1,526 +1,206 @@
 # MCP Tools Reference
 
-Conductor exposes a Model Context Protocol (MCP) server that allows LLMs and other clients to interact with the daemon. This page documents the available MCP tools.
-
-## Overview
-
-The MCP server runs on a Unix domain socket at `~/.conductor/mcp.sock` and implements the JSON-RPC 2.0 protocol. Tools are organized by risk tier:
-
-| Risk Tier | Description | Execution |
-|-----------|-------------|-----------|
-| **ReadOnly** | Query-only, no side effects | Auto-executed |
-| **Stateful** | Affects runtime state | Logged, auto-executed |
-| **ConfigChange** | Modifies configuration | Requires user approval |
-
-## ReadOnly Tools
-
-These tools query information without making changes.
-
-### conductor_get_config
-
-Returns the current configuration file content.
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "content": "# config.toml content...",
-  "path": "/Users/you/.conductor/config.toml",
-  "hash": "sha256:abc123..."
-}
-```
-
-**Example**:
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "conductor_get_config",
-  "params": {},
-  "id": 1
-}
-```
-
-### conductor_get_status
-
-Returns daemon status and connected devices.
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "daemon_running": true,
-  "lifecycle_state": "Running",
-  "connected": true,
-  "device_connected": true,
-  "device": {
-    "name": "Maschine Mikro MK3",
-    "port": 2,
-    "last_event_at": 1706200000
-  },
-  "uptime_secs": 3600,
-  "input_mode": "MidiOnly",
-  "statistics": {
-    "events_processed": 1500,
-    "actions_executed": 750
-  }
-}
-```
-
-> **v4.17.0**: `daemon_running` indicates the daemon process is alive, independent of device connection. `device_connected` is an explicit alias for `connected` (which indicates device connection status).
->
-> **v4.17.1**: Status is now reported correctly via both the MCP Unix socket and the IPC path (used by the chat UI). Prior to v4.17.1, the IPC path always returned `connected: false` due to missing daemon state refs in the ToolExecutor.
-
-### conductor_list_modes
-
-Lists all configured modes.
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "modes": [
-    {
-      "name": "Default",
-      "color": "blue",
-      "mapping_count": 12
-    },
-    {
-      "name": "DJ",
-      "color": "purple",
-      "mapping_count": 8
-    }
-  ]
-}
-```
-
-### conductor_get_mappings
-
-Returns mappings for a specific mode.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `mode` | string | Yes | Mode name |
-
-**Returns**:
-```json
-{
-  "mode": "Default",
-  "mappings": [
-    {
-      "index": 0,
-      "trigger": { "type": "Note", "note": 36 },
-      "action": { "type": "Keystroke", "keys": ["cmd", "c"] }
-    }
-  ]
-}
-```
-
-### conductor_list_devices
-
-Lists available MIDI devices and gamepads.
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "midi_inputs": ["Maschine Mikro MK3", "Virtual MIDI Bus"],
-  "midi_outputs": ["Maschine Mikro MK3"],
-  "gamepads": ["Xbox Controller"]
-}
-```
-
-### conductor_list_device_bindings
-
-Returns multi-device binding status including connection state, mute state, and configuration status.
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "device_bindings": [
-    {
-      "device_id": "pads",
-      "port_name": "Mikro MK3 MIDI",
-      "connected": true,
-      "enabled": true,
-      "is_configured": true
-    }
-  ],
-  "multi_device_active": true,
-  "total_devices": 2,
-  "connected_count": 2,
-  "muted_count": 0
-}
-```
-
-> **v4.23.0**: Added in ADR-009 Phase 5. `is_configured` is `true` when the device_id is a named alias (not `raw:` prefixed).
-
-### conductor_validate_config
-
-Validates the configuration against MIDI/HID/OSC protocol standards and returns a report with errors, warnings, and coverage metrics.
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "valid": true,
-  "errors": [],
-  "warnings": ["CC 128 exceeds MIDI range 0-127"],
-  "coverage": {
-    "midi": { "notes_used": 12, "cc_used": 3 },
-    "hid": { "buttons_used": 0 },
-    "osc": { "addresses_used": 0 }
-  }
-}
-```
-
-> **v4.26.66**: Added for protocol-aware config validation.
-
-## Stateful Tools
-
-These tools affect runtime state and are logged for auditing.
-
-### conductor_start_midi_learn
-
-Starts MIDI Learn mode to capture input events.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `timeout_ms` | number | No | Timeout in milliseconds (default: 30000) |
-
-**Returns**:
-```json
-{
-  "status": "learning",
-  "expires_at": "2025-01-15T10:30:00Z"
-}
-```
-
-### conductor_stop_midi_learn
-
-Stops MIDI Learn mode and returns captured events.
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "events": [
-    {
-      "type": "NoteOn",
-      "note": 36,
-      "velocity": 100,
-      "timestamp": "2025-01-15T10:29:55Z"
-    }
-  ],
-  "suggestions": [
-    {
-      "type": "Note",
-      "note": 36,
-      "velocity_range": [1, 127]
-    }
-  ]
-}
-```
-
-### conductor_set_device_enabled
-
-Enable or disable (mute/unmute) a specific device by its device_id.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `device_id` | string | Yes | The device_id to enable or disable |
-| `enabled` | boolean | Yes | `true` to enable (unmute), `false` to disable (mute) |
-
-**Returns**:
-```json
-{
-  "device_id": "pads",
-  "enabled": false,
-  "message": "Device 'pads' muted"
-}
-```
-
-> **v4.23.0**: Added in ADR-009 Phase 5.
-
-### conductor_scan_ports
-
-Triggers an immediate port rescan to detect newly connected or disconnected MIDI devices (vs the default 5-second interval).
-
-**Parameters**: None
-
-**Returns**:
-```json
-{
-  "message": "Port rescan triggered"
-}
-```
-
-> **v4.23.0**: Added in ADR-009 Phase 5.
-
-### conductor_switch_mode
-
-Switches the active mapping mode by name.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `mode` | string | Yes | Mode name to switch to |
-
-**Returns**:
-```json
-{
-  "success": true,
-  "mode_name": "Performance",
-  "mode_index": 1,
-  "total_modes": 3
-}
-```
-
-> **v4.26.69**: Added for LLM-driven mode switching.
-
-## ConfigChange Tools
-
-These tools modify configuration and require user approval via the Plan/Apply workflow.
-
-### conductor_create_mapping
-
-Creates a new mapping in a mode.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `mode` | string | Yes | Target mode name |
-| `trigger` | object | Yes | Trigger configuration (see valid types below) |
-| `action` | object | Yes | Action configuration (see valid types below) |
-
-> **Note (v4.18.1):** Tool schemas include enriched descriptions listing all valid trigger and action types inline, preventing LLM hallucination of invalid types.
-
-**Valid trigger types**: `Note`, `CC`, `VelocityRange`, `LongPress`, `DoubleTap`, `NoteChord`, `EncoderTurn`, `Aftertouch`, `PitchBend`, `GamepadButton`, `GamepadButtonChord`, `GamepadAnalogStick`, `GamepadTrigger`
-
-**Valid action types**: `Keystroke`, `Text`, `Launch`, `Shell`, `VolumeControl`, `ModeChange`, `SendMidi`, `MidiForward`, `Sequence`, `Delay`
-
-**Valid SendMidi message_type values**: `NoteOn`, `NoteOff`, `CC`, `ProgramChange`, `PitchBend`, `Aftertouch`
-
-**Returns**: `ConfigPlan` (see below)
-
-**Example**:
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "conductor_create_mapping",
-  "params": {
-    "mode": "Default",
-    "trigger": { "type": "Note", "note": 36 },
-    "action": { "type": "Keystroke", "keys": ["cmd", "c"] }
-  },
-  "id": 1
-}
-```
-
-### conductor_update_mapping
-
-Updates an existing mapping.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `mode` | string | Yes | Mode name |
-| `index` | number | Yes | Mapping index (0-based) |
-| `trigger` | object | No | New trigger (if changing) |
-| `action` | object | No | New action (if changing) |
-
-**Returns**: `ConfigPlan`
-
-### conductor_delete_mapping
-
-Deletes a mapping from a mode.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `mode` | string | Yes | Mode name |
-| `index` | number | Yes | Mapping index to delete |
-
-**Returns**: `ConfigPlan`
-
-### conductor_create_endpoint
-
-Creates a unified I/O endpoint in the `[[endpoints]]` configuration (ADR-035). This is the single tool for authoring any device/connector identity; it supersedes the removed `conductor_create_binding` / `conductor_create_connector` / `conductor_create_device_identity` tools (ADR-035 Phase 2).
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `alias` | string | Yes | Unique endpoint alias (e.g. "keystep", "synth") |
-| `direction` | string | Yes | `Input`, `Output`, or `Bidirectional` |
-| `type` | string | Yes | `Matcher`, `OscEndpoint`, `ArtNetEndpoint`, or `MidiVirtualPort` |
-| `protocol` | string | No | `Midi` / `Osc` / `ArtNet` / `Hid` (inferred from `type` when omitted) |
-| `matchers` | array | For `Matcher` | Device matchers (at least one matcher list non-empty) |
-| `description` | string | No | Human-readable description |
-
-**Matcher types**: `ExactName`, `NameContains`, `NameRegex`, `UsbIdentifier`, `CoreMidiUniqueId`
-
-**Returns**: `ConfigPlan`
-
-**Example**:
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "conductor_create_endpoint",
-  "params": {
-    "alias": "keystep",
-    "direction": "Input",
-    "type": "Matcher",
-    "matchers": [{ "type": "NameContains", "value": "KeyStep" }],
-    "description": "Arturia KeyStep 37"
-  },
-  "id": 1
-}
-```
-
-> **ADR-035**: `conductor_create_endpoint` is the unified replacement for the
-> legacy binding/connector authoring tools. Updating or deleting an existing
-> endpoint via MCP is not yet supported — edit `[[endpoints]]` TOML or use the
-> GUI endpoint editor.
-
-## ConfigPlan Response
-
-ConfigChange tools return a `ConfigPlan` that must be approved:
+Conductor exposes a Model Context Protocol (MCP) server so LLM clients (Claude
+Desktop, Cursor, or any MCP-speaking agent) can inspect — and, in richer
+builds, control — a running daemon. This page documents the tool catalog as
+actually compiled into `conductor-daemon`.
+
+## The feature gate (ADR-045)
+
+The MCP tool catalog is split across daemon cargo features, and **which tools
+a running daemon advertises depends entirely on how it was built**:
+
+| Feature | Adds | Notes |
+|---|---|---|
+| `mcp` (default) | ~27 **ReadOnly** inspection tools | Ships in every official OSS artifact. Read-only: no mutation, no hardware emission. |
+| `mcp-write` | ~27 additional **Stateful / ArtifactRender / ConfigChange / HardwareIO** tools, advertised on the MCP socket | **Not enabled in any official artifact** — source builders only. |
+| `llm-executor` | The daemon-side plan/apply executor (`ToolExecutor`) that backs the write-tier risk handling | Pulled in automatically by `mcp-write`; also used standalone by the IPC-based LLM executor path (see [LLM Integration](../development/llm-integration.md)) that downstream GUI clients use. |
+
+A daemon built with just `default = ["mcp"]` (i.e. any plain `cargo build` of
+this repository) exposes **only the ReadOnly tools below**. If you're
+following an LLM's suggestion to call a write-tier tool (`conductor_create_mapping`,
+`conductor_send_midi`, etc.) against a stock build, the daemon will reject it —
+`tools/list` never advertises a tool the binary didn't compile in, and calling
+one anyway returns a "not available in this build" error naming the
+`mcp-write` feature.
+
+Regardless of which tools are *advertised*, the MCP socket enforces a
+per-peer tier ceiling: an unregistered MCP client is clamped to ReadOnly even
+on an `mcp-write` build; higher tiers require `conductorctl mcp register`.
+`Privileged` is never reachable from the MCP socket at all — it's reserved
+for daemon-internal operations. See [MCP Server Implementation](../development/mcp-server.md)
+for the registration and peer-ceiling mechanics.
+
+## Risk tiers
+
+Every tool (and every dispatchable IPC command / mapping action) carries one
+of six risk tiers:
+
+| Tier | Meaning | Execution |
+|---|---|---|
+| **ReadOnly** | Pure inspection — no state mutation, no side effects | Auto-executed |
+| **Stateful** | Session-scoped, in-memory mutation (mode switching, MIDI Learn, mapping-editor staging) | Auto-executed, logged |
+| **ArtifactRender** | Projects an artifact into a workspace UI | Auto-executed, logged like Stateful |
+| **ConfigChange** | Persistent config mutation | Returns a `ConfigPlan` requiring approval (Plan/Apply) |
+| **HardwareIO** | Emits MIDI/OSC/SysEx to a physical device | Requires a confirmation step |
+| **Privileged** | Blast radius beyond the daemon process/devices | Daemon-internal only; never reachable via MCP or IPC from an external peer |
+
+## ReadOnly tools (`mcp` — always available)
+
+All of these take no required arguments unless noted, and none of them can be
+disabled by a feature flag: they're the base catalog.
+
+| Tool | Purpose | Key args |
+|---|---|---|
+| `conductor_get_status` | Daemon lifecycle state, device connection, uptime | — |
+| `conductor_list_devices` | Available MIDI and HID (gamepad) devices | — |
+| `conductor_get_config` | Current configuration (endpoints, modes, mappings) | — |
+| `conductor_list_mappings` | List mappings, optionally filtered to one mode | `mode?` |
+| `conductor_get_mapping` | A single mapping by mode + index | `mode`, `index` |
+| `conductor_validate_config` | Validate config against MIDI/HID/OSC schemas; coverage report | — |
+| `conductor_list_routes` | List declared `[[routes]]` (ADR-031) | — |
+| `conductor_get_routing_graph` | Declared routing graph: `[[endpoints]]` + `[[routes]]` in one call | — |
+| `conductor_get_resolved_routing_graph` | Runtime-resolved routing graph from the live `connector_registry` (bound ports, `from_missing`/`to_missing`) | — |
+| `conductor_explain_route_match` | Explain why each route fires/is skipped for a hypothetical MIDI event (ADR-036 D5) | `event` (device, type, channel, data1, data2?), `active_mode` |
+| `conductor_get_dispatch_trace` | Recent route-dispatch decisions from the in-memory ring buffer (ADR-036 §8) | `last?` (1-256, default 32) |
+| `conductor_get_connector_metrics` | Live per-connector throughput/error metrics | — |
+| `conductor_mode_status` | Active mode + lock state | — |
+| `conductor_get_topology_summary` | Structured signal-routing topology summary (devices, mappings, cross-device routing, feedback loops) | — |
+| `conductor_get_active_profile` | Currently active profile name + config path | — |
+| `conductor_get_binding_health` | Health diagnostic for a specific binding | `alias` |
+| `conductor_list_discovered_ports` | All visible ports across protocols, with binding status | — |
+| `conductor_get_workspace_state` | Current workspace view/editing context | — |
+| `conductor_list_device_bindings` | Multi-device binding status (connection, mute state) | — |
+| `conductor_list_plugins` | Available and loaded plugins | — |
+| `conductor_plugin_info` | Plugin metadata (name, version, capabilities, status) | `name` |
+| `conductor_suggest_binding` | Suggest a binding config for a port, from live fingerprinting or name heuristics | `port_name` |
+| `conductor_get_device_identity` | Cached SysEx identity for a port, if probed this session | `port_name` |
+| `conductor_list_device_identities` | Every device with a cached SysEx identity this session | — |
+| `conductor_get_control_state` | Current physical control state (last PC, CC values, held notes, aftertouch) | `device?` |
+| `conductor_get_active_pc` | Active Program Change per (device, channel) | `device?` |
+| `conductor_security_status` | Network-approval HMAC key rotation status | — |
+
+> **Note on profile tools:** `conductor_list_profiles`, `conductor_create_profile`,
+> and `conductor_delete_profile` carry ReadOnly/Stateful risk-tier classifications
+> in the daemon's tier table, but they are **not** part of the compiled MCP tool
+> catalog returned by `tools/list` — they are GUI-intercepted tools (ADR-023)
+> that always error with "This tool is managed by the GUI and should not reach
+> the daemon" if a client somehow reaches the daemon with them. They're
+> mentioned here only because the risk-tier classification is visible in
+> source; don't expect them to show up in `tools/list`.
+
+## Write-tier tools (`mcp-write` — source builds only)
+
+These are only advertised on the MCP socket when the daemon is compiled with
+`--features mcp-write`. No official Conductor artifact ships this way.
+
+### Stateful
+
+| Tool | Purpose | Key args |
+|---|---|---|
+| `conductor_start_learn` / `conductor_start_midi_learn`* | Start Learn mode to capture controller input | `timeout_seconds?` |
+| `conductor_stop_learn` / `conductor_stop_midi_learn`* | Stop Learn mode; return captured events + suggested trigger | — |
+| `conductor_set_mapping_editor` | Open a mapping editor pre-filled with trigger/action/description | `trigger?`, `action?`, `description?`, `mode?` |
+| `conductor_update_mapping_editor` | Update fields in the currently open mapping editor | `fields` |
+| `conductor_switch_mode` | **Deprecated** — switch active mode without lock semantics; prefer `conductor_set_mode` | `mode` |
+| `conductor_set_mode` | Set active mode and (by default) lock it against auto-switching | `mode`, `lock?` |
+| `conductor_unlock_mode` | Release the manual mode lock | — |
+| `conductor_switch_profile` | Switch active profile by name + config path | `profile_name`, `config_path` |
+| `conductor_set_device_enabled` | Enable/disable (mute) a device | `device_id`, `enabled` |
+| `conductor_scan_ports` | Trigger an immediate port rescan | — |
+| `conductor_enable_plugin` / `conductor_disable_plugin` | Enable/disable a plugin by name | `name` |
+| `conductor_reset_control_state` | Clear tracked control state (store-only — sends no MIDI) | `device` (or `device_id`), `channel?`, `scope?` |
+
+\* `_learn` and `_midi_learn` are aliases; the `_midi_learn` forms are deprecated but kept so older prompts still resolve.
+
+### ArtifactRender
+
+| Tool | Purpose | Key args |
+|---|---|---|
+| `conductor_render_artifact` | Render an artifact (visual overlay) in the workspace canvas | `artifact_type`, `title`, `data?` |
+| `conductor_dismiss_artifact` | Dismiss an artifact by ID | `artifact_id` |
+
+### ConfigChange (returns a `ConfigPlan` for approval)
+
+| Tool | Purpose | Key args |
+|---|---|---|
+| `conductor_create_endpoint` | Create a unified I/O endpoint in `[[endpoints]]` (ADR-035) — the sole I/O-authoring tool | `alias`, `direction`, `type`, plus type-specific fields (matchers / host+port / universe / port_name) |
+| `conductor_create_mapping` | Create a new mapping in a mode | `mode`, `trigger`, `action`, `description?`, `let_through?` |
+| `conductor_update_mapping` | Update an existing mapping | `mode`, `index`, `trigger`, `action`, `description?` |
+| `conductor_delete_mapping` | Delete a mapping | `mode`, `index` |
+| `conductor_batch_changes` | Atomically apply multiple operations — mapping/mode CRUD plus route CRUD (`create_route`/`update_route`/`delete_route`, ADR-031 §5.4) | `operations[]` |
+| `conductor_set_context_mapping` | Create a mapping whose action routes on prior MIDI state (`PcContextSwitch` / `CcContextSwitch`, ADR-025) | `mode`, `trigger`, `action` |
+
+> `conductor_create_endpoint` is create-only: there is no MCP tool to update
+> or delete an existing endpoint (`ConfigChange` has no such variant). Edit
+> `[[endpoints]]` in TOML directly, or use whatever endpoint-authoring UI a
+> downstream GUI client provides.
+
+### HardwareIO (requires confirmation)
+
+| Tool | Purpose | Key args |
+|---|---|---|
+| `conductor_send_sysex` | Send a raw SysEx message | `device`, `data[]`, `confirmation_token?` |
+| `conductor_device_reset` | Send a device reset (soft/hard/factory) | `device`, `reset_type`, `confirmation_token?` |
+| `conductor_send_midi` | Send standard MIDI messages (note/CC/program change auto-confirm) | `port`, `messages[]` |
+| `conductor_probe_device_identity` | Send a Universal SysEx Identity Request and return the parsed identity | `port_name` |
+
+## ConfigPlan response shape
+
+`ConfigChange`-tier tools return a `ConfigPlan` requiring approval rather than
+mutating config directly:
 
 ```json
 {
-  "plan_id": "550e8400-e29b-41d4-a716-446655440000",
-  "description": "Create mapping for note 36 in Default mode",
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "description": "Create mapping 'new mapping' in mode 'Default'",
   "changes": [
-    {
-      "change_type": "CreateMapping",
-      "mode": "Default",
-      "description": "Add Note 36 -> Keystroke Cmd+C"
-    }
+    { "type": "CreateMapping", "mode": "Default", "trigger": { "...": "..." }, "action": { "...": "..." } }
   ],
-  "diff_preview": "+ [[modes.mappings]]\n+ trigger = { type = \"Note\", note = 36 }\n+ action = { type = \"Keystroke\", keys = [\"cmd\", \"c\"] }",
-  "base_state_hash": "sha256:abc123...",
-  "expires_at": "2025-01-15T10:35:00Z"
+  "base_state_hash": "sha256:...",
+  "expires_at": "2026-09-03T10:35:00Z"
 }
 ```
 
-### Applying a Plan
+(Abbreviated — the real `ConfigPlan` also carries `created_at`, a
+pre-rendered `diff_preview`, `change_descriptions`, `validation_warnings`/
+`validation_errors`, and an optional `deprecation` block when the plan came
+from a deprecated tool like `conductor_switch_mode`.)
 
-To apply a plan, call `llm_apply_plan` via the Tauri command interface:
+### TOCTOU protection
 
-```javascript
-await invoke('llm_apply_plan', { planId: plan.plan_id });
-```
+1. When a plan is created, the current config hash is captured as
+   `base_state_hash`.
+2. Before applying, the current config hash is recomputed and compared.
+3. If the config changed underneath the plan, the apply is rejected.
+4. Plans expire 5 minutes after creation.
 
-### Rejecting a Plan
+Applying or rejecting a plan is not itself an MCP tool call — it goes through
+the daemon's IPC protocol (`ExecuteMcpTool`'s siblings `ApplyPlan` /
+`RejectPlan`), which is how downstream GUI clients drive the plan/apply
+workflow. See [LLM Integration](../development/llm-integration.md).
 
-To reject a plan:
+## Error handling
 
-```javascript
-await invoke('llm_reject_plan', { planId: plan.plan_id });
-```
-
-## HardwareIO Tools
-
-These tools interact with hardware devices and require confirmation for safety.
-
-### conductor_send_sysex
-
-Sends raw SysEx messages to a connected MIDI device.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `port` | string | Yes | Output port name |
-| `data` | array | Yes | SysEx bytes (hex) |
-
-**Returns**: Confirmation token or execution result.
-
-### conductor_send_midi
-
-Sends standard MIDI messages (note, CC, program change) to a connected device.
-
-**Parameters**:
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `port` | string | Yes | Output port name |
-| `messages` | array | Yes | Array of MIDI messages |
-
-Each message has:
-| Field | Type | Description |
-|-------|------|-------------|
-| `type` | string | `note_on`, `note_off`, `cc`, or `program_change` |
-| `channel` | number | MIDI channel (1-16) |
-| `note` | number | Note number (0-127, for note_on/note_off) |
-| `velocity` | number | Velocity (0-127, for note_on/note_off) |
-| `controller` | number | CC number (0-127, for cc) |
-| `value` | number | CC value (0-127, for cc) |
-| `program` | number | Program number (0-127, for program_change) |
-
-**Returns**:
-```json
-{
-  "success": true,
-  "messages_sent": 3,
-  "port": "IAC Driver Bus 1"
-}
-```
-
-> **v4.26.67**: Standard MIDI messages auto-confirm (low risk). SysEx still requires confirmation token.
-
-## Tool Risk Tiers
-
-### Security Model
-
-The risk tier system provides defense-in-depth:
-
-1. **ReadOnly tools** cannot modify state, safe to auto-execute
-2. **Stateful tools** are logged for audit trails
-3. **ConfigChange tools** require explicit user approval
-
-### TOCTOU Protection
-
-ConfigChange tools use Time-of-Check to Time-of-Use (TOCTOU) protection:
-
-1. When a plan is created, the current config hash is captured
-2. Before applying, the current config hash is compared
-3. If the config changed, the plan is rejected
-4. Plans expire after 5 minutes
-
-This prevents race conditions and accidental overwrites.
-
-## Error Handling
-
-Tools return JSON-RPC error responses for failures:
+Tools return JSON-RPC 2.0 error responses for protocol-level failures:
 
 ```json
 {
   "jsonrpc": "2.0",
-  "error": {
-    "code": -32600,
-    "message": "Invalid mode: 'Unknown' does not exist"
-  },
+  "error": { "code": -32602, "message": "Invalid params: missing field `mode`" },
   "id": 1
 }
 ```
 
-Common error codes:
-- `-32600`: Invalid request
-- `-32601`: Method not found
-- `-32602`: Invalid params
-- `-32603`: Internal error
+Standard JSON-RPC codes in use: `-32700` (parse error), `-32600` (invalid
+request), `-32601` (method not found), `-32602` (invalid params), `-32603`
+(internal error). A tool that runs but fails its own validation returns a
+successful JSON-RPC envelope with `isError: true` on the `ToolCallResult`
+rather than a JSON-RPC error — check `isError` in the response, not just the
+outer envelope.
 
-## See Also
+## See also
 
-- [Chat Interface](https://getconductor.dev/guides/chat.html) - Using Chat with MCP tools
-- [Development: MCP Server](../development/mcp-server.md) - Server implementation details
-- [Development: LLM Integration](../development/llm-integration.md) - Architecture overview
+- [MCP Server Implementation](../development/mcp-server.md) — server internals, peer registration, adding new tools
+- [LLM Integration](../development/llm-integration.md) — the daemon-side plan/apply executor and IPC path
+- [Architecture Decision Records](../architecture/adrs.md) — ADR-007, ADR-031, ADR-035, ADR-036, ADR-045 anchors referenced above

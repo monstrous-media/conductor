@@ -1,8 +1,5 @@
 # WASM Plugins
 
-**Since:** v2.5
-**Status:** Production-ready
-
 Conductor's WASM (WebAssembly) plugin system provides a secure, sandboxed environment for running third-party plugins with enterprise-grade safety guarantees.
 
 ## Overview
@@ -32,7 +29,7 @@ WASM plugins offer several advantages over native plugins:
 │  └───────────────────────────────────────────────┘ │
 │                                                     │
 │  ┌───────────────────────────────────────────────┐ │
-│  │  Signature Verification (v2.7)                │ │
+│  │  Signature Verification                       │ │
 │  │  - Ed25519 digital signatures                 │ │
 │  │  - SHA-256 integrity checking                 │ │
 │  │  - Trust management                           │ │
@@ -42,8 +39,8 @@ WASM plugins offer several advantages over native plugins:
 
 ## Quick Comparison
 
-| Feature | Native Plugins (v2.3) | WASM Plugins (v2.5+) |
-|---------|----------------------|---------------------|
+| Feature | Native Plugins | WASM Plugins |
+|---------|----------------|--------------|
 | **Platform** | Platform-specific (.dylib/.so/.dll) | Universal (.wasm) |
 | **Security** | Full system access | Sandboxed |
 | **Memory Safety** | Depends on language | Guaranteed |
@@ -57,7 +54,7 @@ WASM plugins offer several advantages over native plugins:
 ## Plugin Lifecycle
 
 1. **Load** - WASM module loaded and validated
-2. **Verify** (v2.7) - Cryptographic signature checked
+2. **Verify** - Cryptographic signature checked
 3. **Initialize** - Plugin setup, capabilities granted
 4. **Execute** - Plugin called for MIDI events
 5. **Shutdown** - Cleanup and resource release
@@ -65,7 +62,7 @@ WASM plugins offer several advantages over native plugins:
 
 ## Security Features
 
-### Resource Limiting (v2.7)
+### Resource Limiting
 
 **Fuel Metering:**
 - CPU execution limited to prevent infinite loops
@@ -81,7 +78,7 @@ WASM plugins offer several advantages over native plugins:
 - Prevents unbounded table allocation
 - Maximum elements configurable
 
-### Filesystem Sandboxing (v2.7)
+### Filesystem Sandboxing
 
 **Directory Preopening:**
 - WASI filesystem isolated to specific directories
@@ -89,7 +86,7 @@ WASM plugins offer several advantages over native plugins:
 - Default: `~/Library/Application Support/conductor/plugin-data/` (macOS)
 - Plugins cannot access files outside sandbox
 
-### Cryptographic Signatures (v2.7)
+### Cryptographic Signatures
 
 **Ed25519 Digital Signatures:**
 - Industry-standard cryptography
@@ -195,12 +192,13 @@ Output: `target/wasm32-wasip1/release/my_wasm_plugin.wasm`
 ```
 my-plugin/
 ├── my_plugin.wasm           # WASM binary
-├── my_plugin.wasm.sig       # Cryptographic signature (v2.7)
+├── my_plugin.wasm.sig       # Cryptographic signature
+├── plugin.toml              # Plugin manifest (discovery + metadata)
 ├── README.md                # Documentation
 └── LICENSE                  # License file
 ```
 
-### Signing Your Plugin (v2.7)
+### Signing Your Plugin
 
 ```bash
 # Generate keypair (one-time)
@@ -219,45 +217,43 @@ conductor-sign verify my_plugin.wasm
 
 ### User Installation
 
+WASM plugins are discovered the same way native plugins are: as a
+`plugin.toml` manifest plus binary under a named subdirectory of
+`~/.conductor/plugins/` (the manifest's `binary` field just points at a
+`.wasm` file instead of a `.dylib`/`.so`/`.dll`):
+
 ```bash
-# Copy plugin to Conductor directory
-mkdir -p ~/.conductor/wasm-plugins/
-cp my_plugin.wasm ~/.conductor/wasm-plugins/
-cp my_plugin.wasm.sig ~/.conductor/wasm-plugins/  # v2.7
+mkdir -p ~/.conductor/plugins/my_plugin/
+cp my_plugin.wasm ~/.conductor/plugins/my_plugin/
+cp my_plugin.wasm.sig ~/.conductor/plugins/my_plugin/
+cp plugin.toml ~/.conductor/plugins/my_plugin/
 ```
 
 ### Configuration
+
+Actions reference the plugin **by name** (the `name` in its `plugin.toml`),
+not by file path — the same `Plugin` action variant used for native
+plugins:
 
 ```toml
 # config.toml
 [[modes.mappings]]
 trigger = { Note = { note = 60 } }
-action = { WasmPlugin = {
-    path = "~/.conductor/wasm-plugins/my_plugin.wasm",
+action = { Plugin = {
+    plugin = "my_plugin",
     params = {
         "action": "play"
     }
 }}
 ```
 
-## Official Plugins
+## Example Plugins
 
-Conductor provides several official WASM plugins:
-
-### Spotify Control
-**File:** `conductor_wasm_spotify.wasm`
-**Capabilities:** Network
-**Actions:** play, pause, next, previous, volume, shuffle, repeat
-
-### OBS Studio Control
-**File:** `conductor_wasm_obs_control.wasm`
-**Capabilities:** Network
-**Actions:** scene switching, recording, streaming, mute/unmute
-
-### System Utilities
-**File:** `conductor_wasm_system_utils.wasm`
-**Capabilities:** SystemControl
-**Actions:** lock screen, sleep, notifications, brightness
+This repository ships two WASM plugin crates as starting points —
+`plugins/wasm-template/` and `plugins/wasm-minimal/` — plus a native
+`ActionPlugin` example (`examples/http-plugin/`). See
+[Plugin Examples](plugin-examples.md) for what each demonstrates; there are
+no other official WASM plugins shipped in this repository.
 
 ## Performance
 
@@ -324,16 +320,6 @@ conductor-sign trust add <public-key-hex> "Plugin Author"
 - [WASM Plugin Development Guide](wasm-plugin-development.md) - Complete development tutorial
 - [Plugin Security](plugin-security.md) - Signing and verification
 - [Plugin Examples](plugin-examples.md) - Real-world examples
-- [Plugin API Reference](../reference/wasm-plugin-api.md) - API documentation
-
-## Version History
-
-- **v2.5** - Initial WASM plugin runtime
-- **v2.6** - Example plugins (Spotify, OBS, System Utils)
-- **v2.7** - Security hardening:
-  - Resource limiting (fuel, memory, tables)
-  - Directory preopening (filesystem sandboxing)
-  - Plugin signing/verification (Ed25519)
 
 ## Further Reading
 

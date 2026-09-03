@@ -1,6 +1,6 @@
 # Plugin Development
 
-Conductor v2.3 introduces a powerful plugin architecture that allows third-party developers to create custom actions through dynamically loaded shared libraries.
+Conductor's plugin architecture allows third-party developers to create custom actions through dynamically loaded shared libraries.
 
 ## Overview
 
@@ -10,7 +10,7 @@ Plugins extend Conductor's functionality by implementing the `ActionPlugin` trai
 - Access event metadata (velocity, mode, timestamp)
 - Request specific capabilities (network, filesystem, etc.)
 - Be loaded/unloaded dynamically without restart
-- Be managed through the GUI Plugin Manager
+- Be managed via `conductorctl plugin` and the `[plugins.<name>]` config table
 
 ## Quick Start
 
@@ -27,15 +27,19 @@ cd my_plugin
 [package]
 name = "conductor-my-plugin"
 version = "1.0.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]  # Required for dynamic loading
 
 [dependencies]
-conductor-core = { path = "../conductor-core", features = ["plugin"] }
+conductor-core = { version = "0.1", features = ["plugin"] }
 serde_json = "1.0"
 ```
+
+Building inside this workspace (e.g. under `examples/`), `conductor-core` is
+typically a `path` dependency instead. Either way, `features = ["plugin"]`
+is what pulls in the `ActionPlugin` trait and related types.
 
 ### 3. Implement the ActionPlugin Trait
 
@@ -57,14 +61,6 @@ impl ActionPlugin for MyPlugin {
 
     fn description(&self) -> &str {
         "My custom Conductor plugin"
-    }
-
-    fn author(&self) -> &str {
-        "Your Name"
-    }
-
-    fn license(&self) -> &str {
-        "MIT"
     }
 
     fn capabilities(&self) -> Vec<Capability> {
@@ -138,26 +134,26 @@ Plugins request capabilities to access system resources. Conductor uses a risk-l
 
 | Capability | Risk Level | Description |
 |-----------|-----------|-------------|
-| `Network` | Low | HTTP requests, websockets |
 | `Audio` | Low | Audio device access |
 | `Midi` | Low | MIDI device access |
-| `Filesystem` | Medium | File read/write |
+| `Network` | Medium | HTTP requests, websockets |
+| `SystemControl` | Medium | System-level control |
+| `Filesystem` | High | File read/write |
 | `Subprocess` | High | Execute shell commands |
-| `SystemControl` | High | System-level control |
 
 ### Risk Levels
 
 - **Low** (🟢): Auto-granted by default, considered safe
-- **Medium** (🟡): Requires user approval
-- **High** (🔴): Requires explicit user approval with warning
+- **Medium** (🟡): Requires explicit grant via `granted_capabilities`
+- **High** (🔴): Requires explicit grant via `granted_capabilities`
 
 ### Requesting Capabilities
 
 ```rust
 fn capabilities(&self) -> Vec<Capability> {
     vec![
-        Capability::Network,      // Auto-granted
-        Capability::Filesystem,   // Requires approval
+        Capability::Midi,         // Low risk: auto-granted
+        Capability::Network,      // Medium risk: requires explicit grant
     ]
 }
 ```
@@ -244,7 +240,7 @@ mod tests {
         let context = TriggerContext {
             velocity: Some(127),
             current_mode: Some(0),
-            timestamp: std::time::Instant::now(),
+            timestamp: 0, // milliseconds since Unix epoch
         };
 
         assert!(plugin.execute(params, context).is_ok());
@@ -252,15 +248,30 @@ mod tests {
 }
 ```
 
-## GUI Plugin Manager
+## Granting Capabilities
 
-Plugins can be managed through the GUI:
+Capabilities above Low risk are not auto-granted. Grant them explicitly per
+plugin in `config.toml`:
 
-1. **Discover**: Scan for new plugins
-2. **Load/Unload**: Control plugin lifecycle
-3. **Enable/Disable**: Toggle plugin availability
-4. **Grant/Revoke**: Manage capabilities
-5. **Statistics**: View execution counts and latency
+```toml
+[plugins.my_plugin]
+granted_capabilities = ["Network", "Filesystem"]
+```
+
+Plugin lifecycle (list, inspect, enable, disable) is managed with
+`conductorctl plugin`:
+
+```bash
+conductorctl plugin list
+conductorctl plugin info my_plugin
+conductorctl plugin enable my_plugin
+conductorctl plugin disable my_plugin
+```
+
+Note that `conductorctl plugin` does not itself grant or revoke capabilities
+— that's config-only, via `granted_capabilities` above. A downstream GUI
+built on top of Conductor may expose capability granting as a richer
+approval flow, but nothing like that ships in this repository.
 
 ## Example Plugins
 
@@ -372,16 +383,17 @@ checksum = "abc123..."
 
 ### Capability Denied
 
-- Check risk level in GUI Plugin Manager
-- Grant capability manually if needed
+- Check the capability's risk level (see the table above)
+- Add it to `granted_capabilities` in `config.toml` if it isn't Low risk
 - Consider using lower-risk alternatives
 
 ## Further Reading
 
-- [PLUGIN_DEVELOPMENT_GUIDE.md](https://github.com/monstrous-media/conductor/blob/main/docs/PLUGIN_DEVELOPMENT_GUIDE.md) - Comprehensive guide
-- [HTTP Plugin Example](https://github.com/monstrous-media/conductor/tree/main/examples/http-plugin) - Reference implementation
-- [Plugin API Reference](../reference/plugin-api.md) - Complete API documentation
+- [HTTP Plugin Example](../../examples/http-plugin/) - Reference native plugin implementation
+- [Plugin Examples](plugin-examples.md) - Overview of every shipped example
+- [Plugin Security](plugin-security.md) - Signing and capability model
 
 ## Community Plugins
 
-Share your plugins with the community! Submit a PR to add your plugin to the [Plugin Registry](https://github.com/monstrous-media/conductor-plugins).
+A public plugin registry for sharing community plugins is planned but does
+not exist yet in this repository.

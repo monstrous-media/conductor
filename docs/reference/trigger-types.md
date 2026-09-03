@@ -2,9 +2,9 @@
 
 Triggers define when an action should execute. Conductor supports a wide range of trigger types from simple note presses to complex patterns like chords and long presses.
 
-## Device Filter (v4.19+)
+## Device Filter
 
-All trigger types support an optional `device` field for multi-device configurations. When set, the trigger only fires for events from the specified device alias (defined in `[[devices]]`). When omitted, the trigger matches events from any device.
+All trigger types support an optional `device` field for multi-device configurations. When set, the trigger only fires for events whose source matches the given `alias` from a `[[endpoints]]` entry. When omitted, the trigger matches events from any device.
 
 ```toml
 [trigger]
@@ -26,13 +26,13 @@ Basic MIDI note on/off detection.
 type = "Note"
 note = 60  # Middle C
 velocity_min = 1  # Optional: minimum velocity (default 1)
-device = "pads"  # Optional: device filter (v4.19+)
+device = "pads"  # Optional: device filter (matches an [[endpoints]] alias)
 ```
 
 **Parameters:**
 - `note` (integer): MIDI note number (0-127)
 - `velocity_min` (integer, optional): Minimum velocity to trigger (default 1)
-- `device` (string, optional): Device alias to filter by (v4.19+)
+- `device` (string, optional): Endpoint alias (from `[[endpoints]]`) to filter by
 
 **Use Cases:**
 - Simple pad presses

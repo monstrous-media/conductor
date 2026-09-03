@@ -6,12 +6,12 @@ Conductor provides comprehensive LED feedback for supported MIDI controllers, wi
 
 The LED system consists of four main features:
 
-1. **F23: LED Lighting Schemes** - 10 pre-defined animation patterns
-2. **F24: LED Velocity Feedback** - Color-coded response based on pad velocity
-3. **F25: LED Mode Indicators** - Visual feedback for active mode
-4. **F26: LED Fade Effects** - Smooth transitions and fade-out animations
+1. **LED Lighting Schemes** - 10 pre-defined animation patterns
+2. **LED Velocity Feedback** - Color-coded response based on pad velocity
+3. **LED Mode Indicators** - Visual feedback for active mode
+4. **LED Fade Effects** - Smooth transitions and fade-out animations
 
-## Feature F23: LED Lighting Schemes
+## LED Lighting Schemes
 
 Conductor supports 10 distinct lighting schemes that can be selected at startup or configured in your config file.
 
@@ -62,7 +62,7 @@ scheme = "reactive"  # Default scheme on startup
 
 ---
 
-## Feature F24: LED Velocity Feedback
+## LED Velocity Feedback
 
 Reactive LED feedback provides immediate visual confirmation of pad velocity, using color-coded responses.
 
@@ -109,7 +109,7 @@ fade_duration_ms = 1000
 
 ---
 
-## Feature F25: LED Mode Indicators
+## LED Mode Indicators
 
 Visual feedback showing the currently active mode, helping users stay oriented when switching contexts.
 
@@ -184,7 +184,7 @@ mode_indicator_pads = [13, 14, 15, 16]  # Bottom row shows mode
 
 ---
 
-## Feature F26: LED Fade Effects
+## LED Fade Effects
 
 Smooth transitions and fade animations provide polished visual feedback.
 

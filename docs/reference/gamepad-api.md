@@ -1,10 +1,10 @@
 # Game Controllers (HID) - Rust API Documentation
 
-This document provides comprehensive API documentation for Conductor v3.0's Game Controller (HID) support. These types enable integration of gamepads, joysticks, racing wheels, flight sticks, HOTAS setups, and other HID-compliant game controllers.
+This document provides comprehensive API documentation for Conductor's Game Controller (HID) support. These types enable integration of gamepads, joysticks, racing wheels, flight sticks, HOTAS setups, and other HID-compliant game controllers.
 
 ## Overview
 
-Conductor v3.0 introduces a unified input system that supports both MIDI controllers and Game Controllers (HID) simultaneously. The architecture uses protocol-agnostic abstractions to enable hybrid setups where MIDI and gamepad inputs coexist without ID conflicts.
+Conductor's unified input system supports both MIDI controllers and Game Controllers (HID) simultaneously. The architecture uses protocol-agnostic abstractions to enable hybrid setups where MIDI and gamepad inputs coexist without ID conflicts.
 
 **Key Design Principles:**
 - **Non-overlapping ID ranges**: Gamepad buttons use IDs 128-255, MIDI uses 0-127
@@ -17,7 +17,7 @@ Conductor v3.0 introduces a unified input system that supports both MIDI control
 
 ```text
 ┌────────────────────────────────────────────────────────────────┐
-│  InputManager (input_manager.rs)                               │
+│  InputManager (input_manager/)                                 │
 │  ┌──────────────────────────────────────────────────────────┐ │
 │  │  InputMode Selection                                     │ │
 │  │  - MidiOnly / GamepadOnly / Both                         │ │
@@ -40,7 +40,7 @@ Conductor v3.0 introduces a unified input system that supports both MIDI control
 
 ### InputMode
 
-**Location**: `conductor-daemon/src/input_manager.rs`
+**Location**: `conductor-daemon/src/input_manager/`
 
 Enum representing the device selection mode for the unified input system.
 
@@ -298,7 +298,7 @@ When a gamepad disconnects and `auto_reconnect` is enabled:
 
 ### InputManager
 
-**Location**: `conductor-daemon/src/input_manager.rs`
+**Location**: `conductor-daemon/src/input_manager/`
 
 Unified manager for both MIDI and gamepad input devices. Provides a single `InputEvent` stream for all inputs.
 
@@ -1234,12 +1234,3 @@ impl GamepadDeviceManager {
 | **GamepadId** | gilrs identifier for a specific connected gamepad |
 | **Arc/Mutex** | Rust concurrency primitives for shared state |
 | **mpsc** | Multi-Producer, Single-Consumer channel for thread communication |
-
----
-
-**Last Updated**: 2025-11-21
-**API Version**: v3.0
-**Crate Versions**:
-- `conductor-core`: 3.0.0
-- `conductor-daemon`: 3.0.0
-- `gilrs`: 0.11.0

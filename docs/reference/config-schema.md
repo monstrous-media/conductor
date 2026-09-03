@@ -1,898 +1,549 @@
 # Configuration Schema Reference
 
-Complete reference for Conductor's TOML configuration file format. Covers both MIDI and Game Controllers (HID) with detailed field descriptions, examples, and validation rules.
+Complete reference for Conductor's TOML configuration file format, verified against
+`conductor-core/src/config/types.rs` and `conductor-core/src/config/validation.rs`.
+
+> **ADR-035 note:** the legacy `[device]`, `[[devices]]`, `[[bindings]]`, and
+> `[[connectors]]` blocks were removed with no migration path. All I/O — inputs,
+> outputs, and bidirectional devices — is declared under a single `[[endpoints]]`
+> array. If you have an old config using any of those blocks, it will fail to load;
+> rewrite it using `[[endpoints]]` as shown below.
 
 ## Table of Contents
 
 - [File Structure](#file-structure)
-- [Device Configuration](#device-configuration)
-- [Input Mode Selection](#input-mode-selection)
 - [Modes](#modes)
 - [Mappings](#mappings)
 - [Trigger Types](#trigger-types)
-  - [MIDI Triggers](#midi-triggers)
-  - [Gamepad Triggers](#gamepad-triggers)
 - [Action Types](#action-types)
-- [Advanced Settings](#advanced-settings)
-- [ID Range Allocation](#id-range-allocation)
+- [Advanced Settings](#advanced-settings-advanced_settings)
+- [Logging](#logging-logging)
+- [Endpoints](#endpoints-endpoints)
+- [Routes](#routes-routes)
+- [MCP Socket](#mcp-socket-mcp)
+- [Security](#security-security)
+- [Other Top-Level Blocks](#other-top-level-blocks)
+- [Validation Rules](#validation-rules)
 - [Complete Examples](#complete-examples)
 
 ## File Structure
 
-A Conductor configuration file consists of these top-level sections:
+A Conductor config file is a single TOML document. Every field below is a field
+of the top-level `Config` struct; nothing else is recognized at the root.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `modes` | Array of tables (`[[modes]]`) | **Yes** | — | Mode definitions. No `#[serde(default)]` in the struct, so the key must be present — either one or more `[[modes]]` tables, or an explicit `modes = []`. An empty list is valid: the daemon then runs on `global_mappings` only. |
+| `global_mappings` | Array of tables (`[[global_mappings]]`) | No | `[]` | Mappings active in every mode, checked before mode-specific mappings. |
+| `logging` | Table (`[logging]`) | No | `None` | Log level and optional file path. |
+| `advanced_settings` | Table (`[advanced_settings]`) | No | struct defaults | Timing thresholds, listen mode, rate limits, shell/interpreter policy, route-engine tuning. |
+| `last_selected_mode` | String | No | `None` | Last mode selected at runtime; persisted across restarts. Takes priority over `default_mode` on startup. |
+| `default_mode` | String | No | `None` | Startup mode name, used when `last_selected_mode` is absent or stale. |
+| `led` | Table (`[led]`) | No | `None` | LED feedback configuration. See [LED System Reference](led-system.md). |
+| `event_console` | Table (`[event_console]`) | No | struct defaults | Event monitoring buffer size, capture toggles, named filters, event-based triggers. |
+| `per_app_modes` | Table (`[per_app_modes]`) | No | `None` | Mode auto-switching by frontmost app / window title (ADR-040). |
+| `endpoints` | Array of tables (`[[endpoints]]`) | No | `[]` | Unified I/O endpoints — see [Endpoints](#endpoints-endpoints). |
+| `routes` | Array of tables (`[[routes]]`) | No | `[]` | Signal routes between endpoints — see [Routes](#routes-routes). |
+| `security` | Table (`[security]`) | No | struct defaults | Shell-action sandbox policy. Omitted entirely from a saved config when it holds only default values. |
+| `config` | Table (`[config]`) | No | struct defaults | Config-source mode (`managed`/`file`) and the external-write policy for `user.toml` (ADR-034). Internal field name is `config_meta`; the TOML key is `config`. |
+| `mcp` | Table (`[mcp]`) | No | `{ enabled = true }` | Toggles the daemon's read-only MCP Unix socket. |
+
+Minimal skeleton:
 
 ```toml
-[device]                    # Legacy device configuration (optional)
-[[devices]]                 # Multi-device identities (optional, v4.19+)
-[logging]                   # Logging settings (optional)
-[advanced_settings]         # Timing thresholds and behavior
-[[modes]]                   # Mode definitions (array)
-[[global_mappings]]         # Global mappings (array, optional)
+[[endpoints]]
+alias = "pads"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Mikro" }]
+
+[advanced_settings]
+chord_timeout_ms = 50
+
+[[modes]]
+name = "Default"
+
+[[modes.mappings]]
+[modes.mappings.trigger]
+type = "Note"
+note = 60
+[modes.mappings.action]
+type = "Keystroke"
+keys = "space"
+
+[[global_mappings]]
+[global_mappings.trigger]
+type = "EncoderTurn"
+cc = 1
+[global_mappings.action]
+type = "VolumeControl"
+operation = "Up"
 ```
 
-## Device Configuration
+## Modes
 
-### [device] (Legacy)
-
-The `[device]` section defines basic single-device settings. For multi-device setups, use `[[devices]]` instead.
+Modes group mappings that are active together and can be switched between at
+runtime (e.g. via a `ModeChange` action).
 
 ```toml
-[device]
-name = "My Controller"           # String: Device name (for display)
-auto_connect = true              # Boolean: Auto-connect on startup (default: true)
+[[modes]]
+name = "Default"     # String, required, unique across all modes
+color = "blue"        # String, optional — free-form badge color for UI display
+                       # (no fixed enum in the schema; any string is accepted)
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | String | Yes | Unique mode name. Empty string and duplicate names are both hard config-load errors. |
+| `color` | String | No | Optional color hint for UI badges. Not validated against a fixed palette. |
+| `mappings` | Array of tables (`[[modes.mappings]]`) | No | Mappings active only while this mode is selected. Defaults to `[]`. |
+
+## Mappings
+
+A mapping connects one `trigger` to one `action`. Mappings appear either nested
+inside a mode (`[[modes.mappings]]`) or at the top level as `[[global_mappings]]`
+(active in every mode, evaluated before the active mode's own mappings).
+
+```toml
+[[modes.mappings]]                 # or [[global_mappings]]
+description = "Spotlight search"   # Optional, human-readable
+[modes.mappings.trigger]
+type = "Note"
+note = 60
+device = "pads"                    # Optional: matches an [[endpoints]] alias
+[modes.mappings.action]
+type = "Keystroke"
+keys = "space"
+modifiers = ["cmd"]
 ```
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `name` | String | Yes | - | Human-readable device name |
-| `auto_connect` | Boolean | No | `true` | Automatically connect to device on startup |
+| `trigger` | Table | Yes | — | See [Trigger Types](trigger-types.md). |
+| `action` | Table | Yes | — | See [Action Types](action-types.md). |
+| `description` | String | No | `None` | Human-readable label. |
+| `let_through` | Boolean | No | `false` | ADR-038: when `true`, fire the action **and** still let the event continue to the route stage (`[[routes]]`), instead of being swallowed once a mapping matches it. Does not affect first-match-wins among mappings — only the winning mapping's post-match route disposition. |
 
-### [[devices]] (v4.19+)
-
-The `[[devices]]` section defines named device identities for multi-device configurations. Each device has an alias and one or more matchers that bind MIDI ports to that identity.
-
-```toml
-[[devices]]
-alias = "pads"                   # String: Unique device alias
-
-[[devices.matchers]]
-type = "NameContains"            # String: Matcher type
-value = "Mikro"                  # Matcher-specific value
-
-[[devices]]
-alias = "faders"
-
-[[devices.matchers]]
-type = "ExactName"
-value = "nanoKONTROL2"
-```
-
-#### Device Field Reference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `alias` | String | Yes | Unique identifier for this device |
-| `matchers` | Array | Yes | One or more matchers (see below) |
-
-#### Matcher Types
-
-Matchers are ordered by specificity (highest first). When multiple matchers match a port, the most specific one wins.
-
-| Type | Specificity | Fields | Description |
-|------|-------------|--------|-------------|
-| `CoreMidiUniqueId` | 70 | `value` (integer) | macOS CoreMIDI unique device ID |
-| `UsbIdentifier` | 60 | `vendor_id`, `product_id` (integers) | USB vendor/product ID pair |
-| `UsbTopology` | 50 | `value` (string) | USB topology path (e.g., "1-2.3") |
-| `ExactName` | 40 | `value` (string) | Exact port name match |
-| `PlatformId` | 30 | `value` (string) | Platform-specific device ID |
-| `NameContains` | 20 | `value` (string) | Substring match on port name |
-| `NameRegex` | 10 | `value` (string) | Regex match (max 256 chars) |
-
-#### Binding Rules
-
-- Each port is matched against all device identities
-- The highest-specificity matching identity claims the port
-- If an identity is already claimed by another port, subsequent matches are marked as ambiguous (first-come-first-served)
-- Unmatched ports remain unbound
-
-### Examples
-
-**Single MIDI Controller** (legacy):
-```toml
-[device]
-name = "Maschine Mikro MK3"
-auto_connect = true
-```
-
-**Multi-Device Setup** (v4.19+):
-```toml
-[[devices]]
-alias = "pads"
-
-[[devices.matchers]]
-type = "NameContains"
-value = "Mikro"
-
-[[devices]]
-alias = "faders"
-
-[[devices.matchers]]
-type = "ExactName"
-value = "nanoKONTROL2"
-```
-
-**Gamepad**:
-```toml
-[device]
-name = "Xbox Controller"
-auto_connect = true
-```
-
-## Input Mode Selection
-
-**Note**: The `input_mode` field is not yet implemented in the configuration file format. The daemon currently determines input mode based on available devices at runtime:
-
-- **MIDI Only**: When only MIDI devices are connected
-- **Gamepad Only**: When only gamepads are connected
-- **Both**: When both MIDI and gamepad devices are available
-
-### Future Configuration (Planned)
-
-In a future release, you'll be able to explicitly set the input mode in the `[device]` section:
-
-```toml
-[device]
-name = "My Setup"
-input_mode = "Both"  # Options: "MidiOnly", "GamepadOnly", "Both"
-```
-
-### Current Behavior
-
-The system automatically handles:
-- **MIDI-only configs**: Mappings use ID range 0-127
-- **Gamepad-only configs**: Mappings use ID range 128-255
-- **Hybrid configs**: Mappings can use both ranges simultaneously
-
-No configuration changes are needed to support multiple input types - simply define mappings using the appropriate ID ranges.
-
-## Modes
-
-Modes allow you to define different sets of mappings for different contexts. Switch between modes using encoder rotation or button combinations.
-
-### Mode Definition
-
-```toml
-[[modes]]
-name = "Default"                # String: Mode name (unique)
-color = "blue"                  # String: Color for LED feedback (MIDI controllers)
-# mappings array follows...
-```
-
-### Field Reference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | String | Yes | Unique mode identifier |
-| `color` | String | No | LED color: "blue", "green", "purple", "red", "yellow", "cyan", "white", "off" |
-
-### Examples
-
-```toml
-[[modes]]
-name = "Desktop"
-color = "blue"
-
-[[modes]]
-name = "Media"
-color = "purple"
-
-[[modes]]
-name = "Development"
-color = "green"
-```
-
-## Mappings
-
-Mappings connect triggers (input events) to actions (system commands). Two types:
-- **Mode mappings**: Active only in their parent mode
-- **Global mappings**: Active across all modes
-
-### Mapping Structure
-
-```toml
-[[modes.mappings]]               # Mode-specific mapping
-description = "Action description"
-[modes.mappings.trigger]
-type = "Note"                    # Trigger type
-note = 60                        # Trigger parameters
-device = "pads"                  # Optional: device filter (v4.19+)
-[modes.mappings.action]
-type = "Keystroke"               # Action type
-keys = "Space"                   # Action parameters
-
-[[global_mappings]]              # Global mapping
-description = "Global action"
-[global_mappings.trigger]
-# ... trigger definition
-[global_mappings.action]
-# ... action definition
-```
-
-### Field Reference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `description` | String | No | Human-readable description of the mapping |
-| `trigger` | Table | Yes | Trigger definition (see [Trigger Types](#trigger-types)) |
-| `action` | Table | Yes | Action definition (see [Action Types](#action-types)) |
-
-All trigger types support an optional `device` field (v4.19+) that restricts the trigger to events from a specific device alias. When omitted, the trigger matches events from any device.
+Two mappings with a **structurally identical trigger** in the same scope (the
+same mode, or `global_mappings`) are a hard config-load error — the second one
+could never fire (first-match-wins).
 
 ## Trigger Types
 
-Triggers define when an action should execute. Conductor supports MIDI triggers (ID range 0-127) and Gamepad triggers (ID range 128-255).
-
-### MIDI Triggers
-
-MIDI triggers use the standard MIDI ID range (0-127) for notes, control changes, and other MIDI messages.
-
-#### Note
-
-Basic MIDI note on/off detection.
-
-```toml
-[trigger]
-type = "Note"
-note = 60                        # Integer: MIDI note number (0-127)
-velocity_min = 1                 # Integer (optional): Minimum velocity (default 1)
-```
-
-**Use Cases**: Pad presses, piano keys, basic button mapping
-
-#### VelocityRange
-
-Different actions based on press intensity.
-
-```toml
-[trigger]
-type = "VelocityRange"
-note = 60                        # Integer: MIDI note number
-min_velocity = 80                # Integer: Minimum velocity (0-127)
-max_velocity = 127               # Integer: Maximum velocity (0-127)
-```
-
-**Velocity Levels**:
-- **Soft**: 0-40
-- **Medium**: 41-80
-- **Hard**: 81-127
-
-**Use Cases**: Soft press for play, hard press for stop; velocity-sensitive shortcuts
-
-#### LongPress
-
-Detect when a pad is held for a duration.
-
-```toml
-[trigger]
-type = "LongPress"
-note = 60                        # Integer: MIDI note number
-min_duration_ms = 1000           # Integer: Minimum hold duration (default 2000)
-```
-
-**Use Cases**: Hold 2s to quit app (prevent accidental quits); confirmation for destructive actions
-
-#### DoubleTap
-
-Detect quick double presses.
-
-```toml
-[trigger]
-type = "DoubleTap"
-note = 60                        # Integer: MIDI note number
-max_interval_ms = 300            # Integer (optional): Max time between taps (default 300)
-```
-
-**Use Cases**: Double-tap to toggle fullscreen; gesture-based shortcuts
-
-#### NoteChord
-
-Multiple notes pressed simultaneously.
-
-```toml
-[trigger]
-type = "NoteChord"
-notes = [60, 64, 67]            # Array: List of MIDI note numbers
-max_interval_ms = 100            # Integer (optional): Max time between notes (default 100)
-```
-
-**Use Cases**: Emergency exit (press 3 corners); complex shortcuts requiring multiple pads
-
-#### CC (Control Change)
-
-Continuous controller messages.
-
-```toml
-[trigger]
-type = "CC"
-cc = 1                          # Integer: Control change number (0-127)
-value_min = 64                  # Integer (optional): Minimum value to trigger
-```
-
-**Use Cases**: Button presses sending CC messages; threshold-based triggers
-
-#### EncoderTurn
-
-Encoder rotation with direction detection.
-
-```toml
-[trigger]
-type = "EncoderTurn"
-cc = 2                          # Integer: Control change number
-direction = "Clockwise"         # String: "Clockwise" or "CounterClockwise"
-```
-
-**Use Cases**: Volume control with encoder; mode switching; parameter adjustment
-
-#### Aftertouch
-
-Channel pressure sensitivity (pressure after initial press).
-
-```toml
-[trigger]
-type = "Aftertouch"
-note = 1                        # Integer (optional): Specific pad for polyphonic (omit for channel)
-min_pressure = 64               # Integer (optional): Minimum pressure (0-127)
-max_pressure = 127              # Integer (optional): Maximum pressure (0-127)
-```
-
-**Aftertouch Types**:
-- **Polyphonic (0xA0)**: Per-pad pressure
-- **Channel (0xD0)**: Global pressure for entire device
-
-**Use Cases**: Apply pressure to modulate effects; pressure-sensitive volume control
-
-#### PitchBend
-
-Touch strip or pitch wheel control (14-bit precision).
-
-```toml
-[trigger]
-type = "PitchBend"
-min_value = 8192                # Integer: Minimum bend value (0-16383)
-max_value = 16383               # Integer: Maximum bend value (0-16383)
-center_deadzone = 100           # Integer (optional): Deadzone around center (8192)
-```
-
-**Value Range**:
-- **Full Range**: 0-16383 (14-bit resolution)
-- **Center**: 8192
-- **Down**: 0-8191
-- **Up**: 8193-16383
-
-**Use Cases**: Touch strip for volume control; timeline scrubbing; multi-zone selection
-
-### Gamepad Triggers
-
-Gamepad triggers use the extended ID range (128-255) for buttons, analog sticks, and triggers. All SDL2-compatible controllers are supported (Xbox, PlayStation, Nintendo Switch Pro, joysticks, racing wheels, flight sticks, HOTAS, custom controllers).
-
-#### GamepadButton
-
-Simple button press trigger.
-
-```toml
-[trigger]
-type = "GamepadButton"
-button = 128                    # Integer: Button ID (128-255)
-velocity_min = 1                # Integer (optional): Minimum pressure (default 1)
-```
-
-**Button ID Reference**:
-
-| ID | Xbox | PlayStation | Switch | Description |
-|----|------|-------------|--------|-------------|
-| 128 | A | Cross (✕) | B | South button |
-| 129 | B | Circle (○) | A | East button |
-| 130 | X | Square (□) | Y | West button |
-| 131 | Y | Triangle (△) | X | North button |
-| 132 | - | - | - | D-Pad Up |
-| 133 | - | - | - | D-Pad Down |
-| 134 | - | - | - | D-Pad Left |
-| 135 | - | - | - | D-Pad Right |
-| 136 | LB | L1 | L | Left shoulder |
-| 137 | RB | R1 | R | Right shoulder |
-| 138 | L3 | L3 | L-Click | Left stick click |
-| 139 | R3 | R3 | R-Click | Right stick click |
-| 140 | Menu | Options | + | Start button |
-| 141 | View | Share | - | Select/Back button |
-| 142 | Xbox | PS | Home | Guide/Home button |
-| 143 | LT | L2 | ZL | Left trigger (digital) |
-| 144 | RT | R2 | ZR | Right trigger (digital) |
-
-**Use Cases**: Face button for confirm/cancel; D-Pad for arrow keys; shoulder buttons for tab switching
-
-**Examples**:
-
-```toml
-# Xbox A button (PlayStation Cross, Switch B)
-[[modes.mappings]]
-description = "Confirm action"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 128
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Return"
-
-# D-Pad Up
-[[modes.mappings]]
-description = "Navigate up"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 132
-[modes.mappings.action]
-type = "Keystroke"
-keys = "UpArrow"
-
-# Left shoulder button
-[[modes.mappings]]
-description = "Previous tab"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 136
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Tab"
-modifiers = ["cmd", "shift"]
-```
-
-#### GamepadButtonChord
-
-Multiple buttons pressed simultaneously.
-
-```toml
-[trigger]
-type = "GamepadButtonChord"
-buttons = [128, 129]            # Array: List of button IDs (128-255)
-timeout_ms = 50                 # Integer (optional): Max time between buttons (default 50)
-```
-
-**Use Cases**: Multi-button combos for screenshots; safety mechanisms; mode switching
-
-**Examples**:
-
-```toml
-# A+B chord for screenshot
-[[modes.mappings]]
-description = "A+B: Screenshot"
-[modes.mappings.trigger]
-type = "GamepadButtonChord"
-buttons = [128, 129]  # A + B
-timeout_ms = 50
-[modes.mappings.action]
-type = "Keystroke"
-keys = "3"
-modifiers = ["cmd", "shift"]
-
-# LB+RB chord for Mission Control
-[[modes.mappings]]
-description = "LB+RB: Mission Control"
-[modes.mappings.trigger]
-type = "GamepadButtonChord"
-buttons = [136, 137]  # LB + RB
-[modes.mappings.action]
-type = "Keystroke"
-keys = "UpArrow"
-modifiers = ["ctrl"]
-
-# L3+R3 (both stick clicks) for mode change
-[[global_mappings]]
-description = "Stick clicks: Switch mode"
-[global_mappings.trigger]
-type = "GamepadButtonChord"
-buttons = [138, 139]
-[global_mappings.action]
-type = "ModeChange"
-mode = "Media"
-```
-
-#### GamepadAnalogStick
-
-Analog stick movement detection with direction.
-
-```toml
-[trigger]
-type = "GamepadAnalogStick"
-axis = 130                      # Integer: Axis ID (128-133)
-direction = "Clockwise"         # String: "Clockwise" or "CounterClockwise"
-```
-
-**Axis ID Reference**:
-
-| ID | Axis | Description |
-|----|------|-------------|
-| 128 | Left Stick X | Horizontal movement (left/right) |
-| 129 | Left Stick Y | Vertical movement (up/down) |
-| 130 | Right Stick X | Horizontal movement (left/right) |
-| 131 | Right Stick Y | Vertical movement (up/down) |
-| 132 | Left Trigger | Analog trigger pressure (L2/LT/ZL) |
-| 133 | Right Trigger | Analog trigger pressure (R2/RT/ZR) |
-
-**Direction Mapping**:
-- **X-axis**: "Clockwise" = moving right, "CounterClockwise" = moving left
-- **Y-axis**: "Clockwise" = moving up, "CounterClockwise" = moving down
-
-**Use Cases**: Right stick for browser navigation; left stick for scrolling; camera control
-
-**Examples**:
-
-```toml
-# Right stick horizontal: Browser navigation
-[[modes.mappings]]
-description = "Right stick right: Forward"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 130  # Right stick X-axis
-direction = "Clockwise"  # Moving right
-[modes.mappings.action]
-type = "Keystroke"
-keys = "RightArrow"
-modifiers = ["cmd"]
-
-[[modes.mappings]]
-description = "Right stick left: Back"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 130  # Right stick X-axis
-direction = "CounterClockwise"  # Moving left
-[modes.mappings.action]
-type = "Keystroke"
-keys = "LeftArrow"
-modifiers = ["cmd"]
-
-# Right stick vertical: Scrolling
-[[modes.mappings]]
-description = "Right stick up: Scroll up"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 131  # Right stick Y-axis
-direction = "Clockwise"  # Moving up
-[modes.mappings.action]
-type = "Keystroke"
-keys = "UpArrow"
-
-[[modes.mappings]]
-description = "Right stick down: Scroll down"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 131  # Right stick Y-axis
-direction = "CounterClockwise"  # Moving down
-[modes.mappings.action]
-type = "Keystroke"
-keys = "DownArrow"
-```
-
-#### GamepadTrigger
-
-Analog trigger pressure detection with threshold.
-
-```toml
-[trigger]
-type = "GamepadTrigger"
-trigger = 132                   # Integer: Trigger axis ID (132 or 133)
-threshold = 64                  # Integer (optional): Pressure threshold (0-255, default 128)
-```
-
-**Trigger IDs**:
-- **132**: Left trigger (L2/LT/ZL)
-- **133**: Right trigger (R2/RT/ZR)
-
-**Threshold Values**:
-- **0**: Triggers immediately on any pressure
-- **64**: Triggers at 25% pressure (light press)
-- **128**: Triggers at 50% pressure (half-press, default)
-- **192**: Triggers at 75% pressure (hard press)
-- **255**: Triggers only at full press
-
-**Use Cases**: Gradual volume control; variable speed actions; pressure-sensitive shortcuts
-
-**Examples**:
-
-```toml
-# Light trigger press for volume control
-[[modes.mappings]]
-description = "Right trigger: Volume up"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 133  # Right trigger
-threshold = 64  # 25% pressure
-[modes.mappings.action]
-type = "VolumeControl"
-operation = "Up"
-
-[[modes.mappings]]
-description = "Left trigger: Volume down"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 132  # Left trigger
-threshold = 64
-[modes.mappings.action]
-type = "VolumeControl"
-operation = "Down"
-
-# Full trigger press for different action
-[[modes.mappings]]
-description = "Right trigger full press: Next track"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 133
-threshold = 240  # ~94% pressure
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Next"
-```
-
-### Device-Specific Controller Types
-
-While the trigger types above work with all SDL2-compatible controllers, here are specific device type examples:
-
-#### Joysticks (Flight Sticks)
-
-```toml
-# Joystick trigger button
-[[modes.mappings]]
-description = "Trigger button: Fire"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 128  # Primary trigger
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Space"
-
-# Hat switch (often mapped to D-Pad buttons 132-135)
-[[modes.mappings]]
-description = "Hat up: Look up"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 132
-[modes.mappings.action]
-type = "Keystroke"
-keys = "UpArrow"
-
-# Joystick pitch axis
-[[modes.mappings]]
-description = "Pitch forward"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 129  # Y-axis
-direction = "CounterClockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "w"
-```
-
-#### Racing Wheels
-
-```toml
-# Wheel rotation (left/right)
-[[modes.mappings]]
-description = "Steer left"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 128  # Wheel X-axis
-direction = "CounterClockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "LeftArrow"
-
-# Throttle pedal
-[[modes.mappings]]
-description = "Accelerate"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 133  # Throttle
-threshold = 32  # Light pressure
-[modes.mappings.action]
-type = "Keystroke"
-keys = "w"
-
-# Brake pedal
-[[modes.mappings]]
-description = "Brake"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 132  # Brake
-threshold = 32
-[modes.mappings.action]
-type = "Keystroke"
-keys = "s"
-```
-
-#### HOTAS (Hands On Throttle And Stick)
-
-```toml
-# Throttle axis
-[[modes.mappings]]
-description = "Throttle up"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 132  # Throttle axis
-direction = "Clockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "="
-
-# Multiple hat switches (mapped to available buttons)
-[[modes.mappings]]
-description = "Hat 1 up: Target up"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 132
-[modes.mappings.action]
-type = "Keystroke"
-keys = "UpArrow"
-
-# Pinky switch
-[[modes.mappings]]
-description = "Pinky switch: Modifier"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 143
-[modes.mappings.action]
-type = "ModeChange"
-mode = "Combat"
-```
+Full field-by-field trigger documentation (including the gamepad ID ranges and
+matcher-specificity notes) lives in [Trigger Types Reference](trigger-types.md).
+In brief: MIDI triggers (`Note`, `VelocityRange`, `LongPress`, `DoubleTap`,
+`NoteChord`, `EncoderTurn`, `CC`, `Aftertouch`, `PolyAftertouch`, `PitchBend`,
+`ProgramChange`) use the 0-127 MIDI ID space; gamepad triggers (`GamepadButton`,
+`GamepadButtonChord`, `GamepadAnalogStick`, `GamepadTrigger`) use IDs 128 and up.
+Every trigger type accepts an optional `channel` (0-15, MIDI triggers only) and
+an optional `device` filter — `device` matches the `alias` of an `[[endpoints]]`
+entry, not a legacy `[[devices]]` binding.
 
 ## Action Types
 
-Actions define what happens when a trigger fires. For complete action type documentation, see [Action Types Reference](action-types.md).
-
-Common action types:
+Full field-by-field action documentation lives in
+[Action Types Reference](action-types.md). Common actions: `Keystroke`, `Text`,
+`Launch`, `Shell`, `MouseClick`, `VolumeControl`, `ModeChange`, `Delay`,
+`Sequence`, `Repeat`, `Conditional`, `PcContextSwitch`, `CcContextSwitch`,
+`SendMidi`, `MidiForward`, `HidForward`, `OscSend`. `MidiForward`/`SendMidi`
+targets should reference an `[[endpoints]]` alias (a raw port name still works
+but loses hot-plug status tracking).
 
 ```toml
-# Keystroke
 [action]
 type = "Keystroke"
 keys = "c"
 modifiers = ["cmd"]
-
-# Launch application
-[action]
-type = "Launch"
-app = "Terminal"
-
-# Shell command
-[action]
-type = "Shell"
-command = "echo Hello"
-
-# Volume control
-[action]
-type = "VolumeControl"
-operation = "Up"  # "Up", "Down", "Mute", "Set"
-
-# Mode change
-[action]
-type = "ModeChange"
-mode = "Media"
 ```
 
-## Advanced Settings
+## Advanced Settings (`[advanced_settings]`)
 
-The `[advanced_settings]` section configures timing thresholds, detection behavior, and multi-device settings.
-
-### Fields
+Timing thresholds, listen behavior, rate limits, and security/routing tuning
+knobs. Every field has a default, so the whole section may be omitted.
 
 ```toml
 [advanced_settings]
-chord_timeout_ms = 50           # Integer: Chord detection window (default 100)
-double_tap_timeout_ms = 300     # Integer: Double-tap window (default 300)
-hold_threshold_ms = 2000        # Integer: Long press threshold (default 2000)
-listen_mode = "All"             # String: "All", "Configured", or "Single" (default "All")
-ignore_ports = []               # Array: Port names to exclude (v4.19+)
-max_midi_ports = 32             # Integer: Max simultaneous ports (v4.19+)
-default_max_events_per_sec = 10000  # Integer: Per-device rate limit (v4.26.0+)
+chord_timeout_ms = 50
+chord_learn_timeout_ms = 150
+double_tap_timeout_ms = 300
+hold_threshold_ms = 2000
+short_press_ms = 200
+listen_mode = "All"          # "All" | "Configured"
+ignore_ports = []
+max_midi_ports = 32
+max_events_per_sec = 10000
+input_mode = "Both"          # "MidiOnly" | "GamepadOnly" | "Both"
+stick_deadzone = 0.1
+trigger_deadzone = 0.1
+sysex_identity_probing = true
+probe_on_connect = true
+allow_interpreters = "warn"  # "allow" | "warn" | "deny"
+allow_cascade = false
+cascade_ttl_ms = 100
+max_route_depth = 8
+trace_buffer_size = 1000
+window_title_poll_ms = 500
 ```
-
-### Field Reference
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `chord_timeout_ms` | Integer | 100 | Max time between first and last note/button in chord (ms) |
-| `double_tap_timeout_ms` | Integer | 300 | Max time between taps for double-tap detection (ms) |
-| `hold_threshold_ms` | Integer | 2000 | Minimum hold duration for long press detection (ms) |
-| `listen_mode` | String | `"All"` | `"All"` listens on all MIDI ports so hardware is immediately visible; `"Configured"` listens only on ports matching `[[devices]]`; `"Single"` uses legacy mode. |
-| `ignore_ports` | Array | `[]` | Port names to exclude from listening (v4.19+) |
-| `max_midi_ports` | Integer | 32 | Maximum number of simultaneous MIDI ports (v4.19+) |
-| `default_max_events_per_sec` | Integer | 10000 | Per-device event rate limit. Events beyond this threshold are dropped with a warning. Prevents malfunctioning USB devices from flooding the event bus. (v4.26.0+) |
+| `chord_timeout_ms` | Integer | 50 | Time window for chord (`NoteChord`) detection. |
+| `chord_learn_timeout_ms` | Integer | 150 | Wider chord window used only while MIDI Learn is active. |
+| `double_tap_timeout_ms` | Integer | 300 | Max gap between taps for `DoubleTap`. |
+| `hold_threshold_ms` | Integer | 2000 | Minimum hold duration for `LongPress` / the "long press" event class. |
+| `short_press_ms` | Integer | 200 | Short→medium press classification boundary. |
+| `listen_mode` | String | `"All"` | `"All"` opens every available MIDI port; `"Configured"` listens only on ports matching an `[[endpoints]]` entry. (There is no `"Single"` variant.) |
+| `ignore_ports` | Array of strings | `[]` | Port names excluded from listening. |
+| `max_midi_ports` | Integer | 32 | Maximum simultaneous open MIDI ports. |
+| `max_events_per_sec` | Integer | 10000 | Default per-device event rate limit; excess events are dropped with a warning. |
+| `input_mode` | String | `"Both"` | `"MidiOnly"`, `"GamepadOnly"`, or `"Both"`. |
+| `stick_deadzone` | Float | 0.1 | Analog-stick dead zone, as a 0.0-1.0 fraction. |
+| `trigger_deadzone` | Float | 0.1 | Analog-trigger dead zone, as a 0.0-1.0 fraction. |
+| `sysex_identity_probing` | Boolean | `true` | Global on/off switch for SysEx Universal Device Identity probing. |
+| `probe_on_connect` | Boolean | `true` | Auto-probe each newly-bound MIDI port on connect. Ignored (probing stays off) when `sysex_identity_probing = false`. |
+| `allow_interpreters` | String | `"warn"` | Policy for `Shell` actions whose resolved binary is a known interpreter (sh, bash, python, ruby, perl, node, awk, lua, tclsh, php), including via `env`/`sudo`/`nice`/`nohup` wrappers. `"allow"` is silent, `"warn"` logs at load, `"deny"` rejects the config. |
+| `allow_cascade` | Boolean | `false` | When `false`, MIDI input on a port is suppressed for `cascade_ttl_ms` after a `SendMidi`/`MidiForward` action writes to that port (broader than the per-message echo guard). Set `true` to allow deliberate MIDI-routed cascades. |
+| `cascade_ttl_ms` | Integer | 100 | TTL for the cascade suppression window. Runtime-clamped to at most 60000. |
+| `max_route_depth` | Integer | 8 | Maximum route-dispatch chain depth before the re-entrancy guard drops output (catches multi-hop route cycles). |
+| `trace_buffer_size` | Integer | 1000 | Capacity of the in-memory dispatch-trace ring buffer. **Validated**: must be in `[1, 1_000_000]`; `0` and values above the max are hard config-load errors. |
+| `window_title_poll_ms` | Integer | 500 | Poll interval for window-title detection, used only when `[per_app_modes].window_rules` are present. Runtime-clamped to a floor of 100ms. |
 
-### Recommendations
+## Logging (`[logging]`)
 
-**For gamepads** (faster input):
 ```toml
-[advanced_settings]
-chord_timeout_ms = 50           # Shorter window for button chords
-double_tap_timeout_ms = 200     # Faster double-tap
-hold_threshold_ms = 1000        # Shorter long press (1s)
+[logging]
+level = "info"   # "off" | "error" | "warn" | "info" | "debug" | "trace"
+file = "/path/to/conductor.log"   # Optional; omit to log to stdout/stderr only
 ```
 
-**For MIDI controllers** (larger physical pads):
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `level` | String | `"info"` | Log verbosity. |
+| `file` | String | `None` | Optional file path for log output. |
+
+## Endpoints (`[[endpoints]]`)
+
+`[[endpoints]]` is the single way to declare I/O in a Conductor config (ADR-035).
+Each entry gives a stable `alias` to a physical or virtual I/O port; triggers and
+actions reference that alias (`device = "pads"`, `target = "synth"`) instead of a
+raw, renumbering-prone port name.
+
+**Deserialization is strict**: an unknown or misspelled field on an
+`[[endpoints]]` entry is a hard config-load error, not a silently-ignored key.
+
+### Common fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `alias` | String | Yes | — | Unique across all endpoints. Duplicate aliases are a hard config-load error. |
+| `direction` | String | **Yes** | — | `"Input"`, `"Output"`, or `"Bidirectional"`. No default — must be stated explicitly. |
+| `type` | String | Yes | — | `"Matcher"`, `"OscEndpoint"`, `"ArtNetEndpoint"`, or `"MidiVirtualPort"`. Selects the fields below. |
+| `protocol` | String | No | inferred from `type` | Override: `"Midi"`, `"Osc"`, `"ArtNet"`, or `"Hid"`. `OscEndpoint`→Osc, `ArtNetEndpoint`→ArtNet, `Matcher`/`MidiVirtualPort`→Midi by inference; set explicitly for a HID `Matcher`. |
+| `description` | String | No | `None` | Human-readable note. |
+| `enabled` | Boolean | No | `true` | `false` mutes the endpoint. |
+| `channels` | Array of integers | No | `[]` | MIDI channel scope (0-15, 0-indexed). Empty = all channels. Only meaningful for `protocol = "Midi"`; the validator warns if set on a non-MIDI endpoint. Values above 15 are a hard error. |
+
+### `type = "Matcher"` (MIDI / HID ports)
+
 ```toml
-[advanced_settings]
-chord_timeout_ms = 100          # Longer window for pad chords
-double_tap_timeout_ms = 300     # Standard double-tap
-hold_threshold_ms = 2000        # Standard long press (2s)
+[[endpoints]]
+alias = "pads"
+direction = "Bidirectional"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Mikro" }]
+# Or asymmetric input/output ports on a bidirectional device:
+# input_matchers = [{ type = "NameContains", value = "Mikro In" }]
+# output_matchers = [{ type = "NameContains", value = "Mikro Out" }]
+no_probe = false
 ```
 
-## ID Range Allocation
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `matchers` | Array of matcher tables | conditionally | `[]` | Symmetric matchers, used for both directions (or the sole direction). |
+| `input_matchers` | Array of matcher tables | conditionally | `[]` | Overrides `matchers` for the input side of a `Bidirectional` endpoint whose input port differs from its output. |
+| `output_matchers` | Array of matcher tables | conditionally | `[]` | Overrides `matchers` for the output side. |
+| `no_probe` | Boolean | No | `false` | Skip SysEx identity probing for this endpoint. Silently overridden (probing still happens) if the endpoint also declares a `SysExIdentity` matcher, since that matcher can never resolve without a probe. |
 
-Conductor uses non-overlapping ID ranges to prevent conflicts between input protocols.
+At least one of `matchers` / `input_matchers` / `output_matchers` must be
+non-empty, or the config fails to load. Setting `output_matchers` on a
+`direction = "Input"` endpoint (or `input_matchers` on `direction = "Output"`)
+is also a hard error — those fields would silently never be consulted.
 
-### Current Allocation
+**Matcher types** (ordered by specificity, highest first):
 
-| Range | Protocol | Type | Examples |
-|-------|----------|------|----------|
-| **0-127** | **MIDI** | **Notes/Pads** | C0=36, C4=60, G9=127 |
-| 0-127 | MIDI | CC/Encoders | Mod Wheel=1, Volume=7 |
-| **128-144** | **Game Controllers** | **Buttons** | Face buttons, D-Pad, shoulders |
-| 128-133 | Game Controllers | Analog Axes | Sticks, triggers |
-| 145-255 | Reserved | Future | Extended gamepad, keyboard, mouse |
+| Type | Fields | Description |
+|------|--------|-------------|
+| `CoreMidiUniqueId` | `value` (integer) | macOS CoreMIDI unique device ID |
+| `SysExIdentity` | `manufacturer_id` (bytes), `family?`, `model?` | SysEx Universal Device Identity Reply; requires probing |
+| `UsbIdentifier` | `vendor_id`, `product_id` (integers) | USB vendor/product ID pair |
+| `UsbTopology` | `value` (string) | USB topology path, e.g. `"1-2.3"` |
+| `ExactName` | `value` (string) | Exact port name match |
+| `PlatformId` | `value` (string) | Platform-specific device ID |
+| `NameContains` | `value` (string) | Substring match on port name |
+| `NameRegex` | `value` (string) | Regex match (max 256 chars) |
+| `ControllerGuid` | `value` (32-hex-char string) | Gamepad model identity (SDL GUID) |
 
-### Detailed Gamepad ID Mapping
+### `type = "OscEndpoint"`
 
-**Face Buttons (128-131)**:
-- 128: South (A/Cross/B)
-- 129: East (B/Circle/A)
-- 130: West (X/Square/Y)
-- 131: North (Y/Triangle/X)
+```toml
+[[endpoints]]
+alias = "osc_lights"
+direction = "Output"
+type = "OscEndpoint"
+host = "127.0.0.1"
+port = 9000
+```
 
-**D-Pad (132-135)**:
-- 132: Up
-- 133: Down
-- 134: Left
-- 135: Right
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `host` | String | Yes | Target/listen host. |
+| `port` | Integer | Yes | UDP port. |
 
-**Shoulders & Sticks (136-139)**:
-- 136: Left shoulder (LB/L1/L)
-- 137: Right shoulder (RB/R1/R)
-- 138: Left stick click (L3)
-- 139: Right stick click (R3)
+An `Input`/`Bidirectional` OSC endpoint (a *listener*) also accepts the shared
+network-security fields below. A loopback `host` (`127.0.0.1`, `::1`, or
+`localhost`) always loads. A non-loopback `host` requires `allow_network = true`
+plus a concrete IP literal (DNS names are never resolved) and a non-empty
+`network_acl`; the actual bind is then additionally gated at runtime behind an
+HMAC-verified approval (ADR-042). A non-loopback `host` without `allow_network`
+is a config-load error:
 
-**Menu Buttons (140-142)**:
-- 140: Start (Menu/Options/+)
-- 141: Select (View/Share/-)
-- 142: Guide (Xbox/PS/Home)
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `allow_network` | Boolean | `false` | Opt-in to bind a non-loopback listener host (with a required `network_acl`). The bind is still gated at runtime by an HMAC-verified approval. |
+| `network_acl` | Array of CIDR strings | `[]` | Allow-listed source ranges. `0.0.0.0/0` / `::/0` are rejected. |
+| `sender_acl` | Array of IP strings | `[]` | Narrower allow-list of individual sender IPs. |
+| `rate_limit_total` | Integer | `None` | Total inbound packet budget. |
+| `rate_limit_per_sender` | Integer | `None` | Per-sender inbound packet budget. |
+| `i_understand_amplification_risk` | Boolean | `false` | Required acknowledgement for a broad broadcast ACL. |
+| `allow_sensitive_actions` | Boolean | `false` | When `false`, events from this listener cannot dispatch `Shell`/`Launch`/`Keystroke` actions — applies even to loopback listeners. |
+| `strict_mode` | Table | `None` | `{ type = "SessionToken", arg_index, window_sec = 30, replay_window = 1000 }` — replay-defence nonce checking (forward-compat). |
 
-**Trigger Buttons (143-144)**:
-- 143: Left trigger digital (L2/LT/ZL)
-- 144: Right trigger digital (R2/RT/ZR)
+### `type = "ArtNetEndpoint"`
 
-**Analog Axes (128-133)**:
-- 128: Left stick X-axis
-- 129: Left stick Y-axis
-- 130: Right stick X-axis
-- 131: Right stick Y-axis
-- 132: Left trigger analog
-- 133: Right trigger analog
+```toml
+[[endpoints]]
+alias = "dmx"
+direction = "Output"
+type = "ArtNetEndpoint"
+universe = 1
+# host and port both optional — default to Art-Net broadcast
+```
 
-### Usage Guidelines
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `universe` | Integer | Yes | — | Art-Net universe number. |
+| `host` | String | No | `"255.255.255.255"` | Target/listen host. |
+| `port` | Integer | No | `6454` | UDP port. |
+| `allow_broadcast` | Boolean | No | `false` | Enables Art-Net broadcast; when set on a listener, the ACL amplification budget is enforced. |
 
-1. **MIDI configs**: Use IDs 0-127 only
-2. **Gamepad configs**: Use IDs 128-255 only
-3. **Hybrid configs**: Mix both ranges freely - no conflicts!
+Also accepts the same network-security fields as `OscEndpoint` (listed above).
+
+### `type = "MidiVirtualPort"`
+
+Creates a system-visible virtual MIDI port (CoreMIDI on macOS, ALSA on Linux)
+that DAWs and other apps can connect to — the "DAW proxy" pattern. Virtual
+ports are created lazily, only when referenced by an enabled route.
+
+```toml
+[[endpoints]]
+alias = "daw_proxy"
+direction = "Bidirectional"
+type = "MidiVirtualPort"
+port_name = "Conductor: Logic"
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `port_name` | String | Yes | Name of the virtual port as it appears to the OS and other apps. |
+
+`direction = "Input"` on a `MidiVirtualPort` is legal but triggers a warning — a
+port Conductor itself creates is inherently an output/bidirectional concept.
+
+## Routes (`[[routes]]`)
+
+Routes are mode-independent (by default), fan-out-by-default signal paths
+between endpoints, evaluated below the mapping engine — an event flows through
+any matching route only if no mapping already claimed it (or if the claiming
+mapping sets `let_through = true`). See ADR-031 and ADR-036.
+
+```toml
+[[routes]]
+from = "pads"          # Source: an [[endpoints]] alias
+to = "synth"            # Destination: an [[endpoints]] alias
+enabled = true          # Default true
+description = "..."     # Optional
+modes = ["Mix"]         # Optional; empty/omitted = active in all modes
+
+[routes.filter]         # Optional. All populated criteria AND-combine.
+message_types = ["NoteOn", "NoteOff"]
+channels = [0]
+cc_range = [0, 32]
+note_range = [60, 72]
+
+[routes.transform]      # Optional for same-protocol routes; REQUIRED for
+type = "Midi"            # most cross-protocol pairs (see below).
+channel = 5
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `from` | String | Yes | — | Source endpoint alias. Must reference a declared `[[endpoints]]` entry. |
+| `to` | String | Yes | — | Destination endpoint alias. Must reference a declared `[[endpoints]]` entry. |
+| `filter` | Table | No | `None` | See below. |
+| `transform` | Table | No | `None` | See below. |
+| `enabled` | Boolean | No | `true` | |
+| `description` | String | No | `None` | |
+| `modes` | Array of strings | No | `[]` | Mode-name scope (ADR-036). Empty = fires in every mode. Each name must match a declared `[[modes]]` block. |
+
+### `[routes.filter]`
+
+Only signals matching **all** populated fields pass through. Absent/empty
+fields are unconstrained.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_types` | Array of strings | Subset of `NoteOn`, `NoteOff`, `CC`, `ProgramChange`, `Aftertouch`, `PitchBend`, `PolyAftertouch`. `ChannelPressure` and `SysEx` are rejected — the input pipeline doesn't emit them yet. |
+| `channels` | Array of integers | 0-indexed (0-15). Values above 15 are a hard error. |
+| `cc_range` | `[min, max]` | Inclusive. `min > max` is a hard error (would silently match nothing). |
+| `note_range` | `[min, max]` | Inclusive. Same `min > max` rejection. |
+| `osc_address_prefix` | String | OSC address prefix match. |
+
+A route whose source protocol is HID or OSC must currently be catch-all — any
+active filter on a HID- or OSC-sourced route is a hard config-load error (a
+gamepad event serializes to MIDI bytes lossily, and OSC carries no MIDI bytes
+at all, so a byte-level filter is meaningless there).
+
+### `[routes.transform]`
+
+Tagged by `type`. Whether one is required depends on the `(from, to)` protocol
+pair: same-protocol routes accept an optional transform (or none); most
+cross-protocol pairs *require* the matching variant below, and a few
+cross-protocol pairs (e.g. HID→OSC, Art-Net→MIDI) have no defined variant and
+are rejected outright.
+
+| `type` | Direction | Fields |
+|--------|-----------|--------|
+| `Midi` | MIDI→MIDI | Same shape as `MidiForward`'s transform: `channel?`, `cc?`, `note?`, `velocity_scale?`, `velocity_offset?`, `invert_value?`, `curve?` (`"Linear"` \| `"Logarithmic"` \| `"Exponential"` \| `{ Lut = [...128 entries...] }`). |
+| `MidiToOsc` | MIDI→OSC | `cc_to_address?`, `note_to_address?`, `value_to_float` (default `false`) |
+| `OscToMidi` | OSC→MIDI | `address_to_cc?`, `address_to_note?`, `channel?` |
+| `MidiToArtNet` | MIDI→Art-Net | `cc_to_dmx` (map of CC number → DMX channel, required), `note_to_dmx?` (same shape) |
+| `HidToArtNet` | HID→Art-Net | `trigger_to_channel` (map of gamepad trigger name → DMX channel) |
+| `OscToArtNet` | OSC→Art-Net | `address_to_dmx` (address template with one `{dmx}` placeholder, e.g. `"/dmx/{dmx}"`) |
+| `HidToMidi` | HID→MIDI | `trigger_to_cc` (map of gamepad trigger name → CC number), `channel` (default `0`) |
+| `HidToOsc` | HID→OSC | `trigger_to_address` (map of gamepad trigger name → OSC address), `value_to_float` (default `false`) |
+
+Other route-level validation: `from == to` (self-loop) is rejected; a direct
+`A→B` + `B→A` pair of routes is rejected as a guaranteed feedback cycle
+(multi-hop cycles, e.g. `A→B→C→A`, are only caught at runtime by
+`max_route_depth`); an exact duplicate route (same `from`/`to`/`filter`/
+`transform`/mode-scope-overlap) is a warning.
+
+## MCP Socket (`[mcp]`)
+
+```toml
+[mcp]
+enabled = true   # Default true
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | Boolean | `true` | Binds the daemon's read-only MCP Unix socket at startup. Setting `false` leaves the socket entirely unbound (not merely refused). Takes effect on daemon restart. |
+
+## Security (`[security]`)
+
+```toml
+[security.shell]
+allow_unsandboxed = true   # Default true
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `security.shell.allow_unsandboxed` | Boolean | `true` | On platforms without an OS sandbox (Windows; Linux kernels < 5.13 without Landlock), `true` allows `Shell` actions to run unsandboxed with a spawn-time warning; `false` fails closed and refuses to spawn a `Shell` action it cannot sandbox. |
+
+A `[security]` block that only holds default values is omitted from a
+canonically-saved config, so its absence in a file you're reading does not
+imply anything unusual.
+
+Individual `Shell` actions can widen the sandbox further with a per-action
+`sandbox` table (`fs_write`, `network`) — see
+[Action Types Reference](action-types.md).
+
+## Other Top-Level Blocks
+
+These `Config` fields exist and are documented elsewhere or are narrow enough
+not to need a full section here:
+
+- **`[led]`** — LED feedback (schemes, brightness, velocity-color mapping,
+  HID/MIDI LED protocols). See [LED System Reference](led-system.md).
+- **`[event_console]`** — event-monitoring buffer size, capture toggles
+  (`capture_midi`, `capture_processed`, `capture_actions`), named filters, and
+  simple event-count/error-rate triggers (`condition`, `action` = `Log` or
+  `Notification`).
+- **`[per_app_modes]`** — mode auto-switching by frontmost app name or window
+  title (ADR-040): `default` mode name, `rules` (app name → mode), and
+  `window_rules` (`{ app, title_pattern? | title_regex?, mode }`, higher
+  specificity than `rules`).
+- **`[config]`** — `source` (`"managed"` default, or `"file"` for the
+  deprecated auto-reload-on-external-edit behavior) and `user_file_policy`
+  (`"notify"` default, or `"ignore"`) for how the daemon reacts to external
+  edits of `user.toml` while running (ADR-034).
+
+## Validation Rules
+
+Conductor validates configs at load time. Selected hard errors (config refuses
+to load) and warnings (config loads, diagnostic surfaced):
+
+**Hard errors**
+
+- Duplicate `[[modes]]` names, or an empty mode name.
+- Two mappings in the same scope (mode, or `global_mappings`) with a
+  structurally identical trigger.
+- Duplicate `[[endpoints]]` aliases.
+- An `[[endpoints]]` entry with an unknown/misspelled field.
+- A `Matcher` endpoint with no matchers set across `matchers` /
+  `input_matchers` / `output_matchers`.
+- `output_matchers` set with `direction = "Input"`, or `input_matchers` set
+  with `direction = "Output"`.
+- A HID endpoint with `direction` other than `"Input"` (HID output was
+  dropped).
+- An endpoint `channels` value above 15.
+- A `[[routes]]` `from`/`to` that doesn't match a declared endpoint alias, or
+  that names the same endpoint on both sides (self-loop).
+- A direct `A→B` + `B→A` route pair.
+- A cross-protocol route missing its required `transform` variant, or
+  declaring the wrong one.
+- An active filter on a HID- or OSC-sourced route.
+- `routes[].filter.cc_range` / `note_range` with `min > max`.
+- `routes[].filter.channels` values above 15.
+- `routes[].filter.message_types` containing `ChannelPressure` or `SysEx`.
+- A `routes[].modes` entry that doesn't match a declared mode.
+- `advanced_settings.trace_buffer_size` of `0` or above 1,000,000.
+- A `ModeChange` action referencing a mode name that doesn't exist.
+
+**Warnings** (config still loads)
+
+- A trigger's `device` filter referencing an alias with no matching
+  `[[endpoints]]` entry — the mapping can never fire until the alias is added
+  or the filter removed.
+- `MidiForward`/`SendMidi` targeting a raw port name instead of an
+  `[[endpoints]]` alias (still forwards; loses hot-plug status tracking).
+- `channels` set on a non-MIDI endpoint.
+- `direction = "Input"` on a `MidiVirtualPort`.
+- An exact-duplicate route.
+- `allow_interpreters = "warn"` (the default) firing when a `Shell` action
+  resolves to a known interpreter binary.
 
 ## Complete Examples
 
-### Example 1: MIDI-Only Configuration
+### Minimal: single MIDI controller
 
 ```toml
-[device]
-name = "Maschine Mikro MK3"
-auto_connect = true
-
-[advanced_settings]
-chord_timeout_ms = 100
-double_tap_timeout_ms = 300
-hold_threshold_ms = 2000
+[[endpoints]]
+alias = "pads"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Mikro" }]
 
 [[modes]]
 name = "Default"
@@ -903,390 +554,87 @@ description = "Pad 1: Play/Pause"
 [modes.mappings.trigger]
 type = "Note"
 note = 36
+device = "pads"
 [modes.mappings.action]
 type = "Keystroke"
 keys = "PlayPause"
 
-[[modes.mappings]]
-description = "Pads 1+2: Screenshot"
-[modes.mappings.trigger]
-type = "NoteChord"
-notes = [36, 37]
-[modes.mappings.action]
-type = "Keystroke"
-keys = "3"
-modifiers = ["cmd", "shift"]
-
 [[global_mappings]]
-description = "Encoder: Volume"
+description = "Encoder: Volume Up"
 [global_mappings.trigger]
 type = "EncoderTurn"
 cc = 2
 direction = "Clockwise"
+device = "pads"
 [global_mappings.action]
 type = "VolumeControl"
 operation = "Up"
 ```
 
-### Example 2: Gamepad-Only Configuration
+### Controller + hardware synth output + DAW virtual port, with routing
 
 ```toml
-[device]
-name = "Xbox Controller"
-auto_connect = true
+[[endpoints]]
+alias = "pads"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Mikro" }]
+
+[[endpoints]]
+alias = "synth"
+direction = "Output"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Absynth" }]
+
+[[endpoints]]
+alias = "daw_proxy"
+direction = "Bidirectional"
+type = "MidiVirtualPort"
+port_name = "Conductor: Logic"
 
 [advanced_settings]
 chord_timeout_ms = 50
-double_tap_timeout_ms = 200
-hold_threshold_ms = 1000
+hold_threshold_ms = 2000
+listen_mode = "All"
+
+[logging]
+level = "info"
 
 [[modes]]
-name = "Desktop"
+name = "Default"
 color = "blue"
 
 [[modes.mappings]]
-description = "A button: Confirm"
+description = "Pad 1: Play/Pause"
 [modes.mappings.trigger]
-type = "GamepadButton"
-button = 128
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Return"
-
-[[modes.mappings]]
-description = "B button: Cancel"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 129
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Escape"
-
-[[modes.mappings]]
-description = "Right stick right: Forward"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 130
-direction = "Clockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "RightArrow"
-modifiers = ["cmd"]
-
-[[modes.mappings]]
-description = "A+B chord: Screenshot"
-[modes.mappings.trigger]
-type = "GamepadButtonChord"
-buttons = [128, 129]
-timeout_ms = 50
-[modes.mappings.action]
-type = "Keystroke"
-keys = "3"
-modifiers = ["cmd", "shift"]
-
-[[modes]]
-name = "Media"
-color = "purple"
-
-[[modes.mappings]]
-description = "A button: Play/Pause"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 128
+type = "Note"
+note = 36
+device = "pads"
 [modes.mappings.action]
 type = "Keystroke"
 keys = "PlayPause"
 
-[[modes.mappings]]
-description = "Right trigger: Volume up"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 133
-threshold = 64
-[modes.mappings.action]
-type = "VolumeControl"
-operation = "Up"
+# All pad note-on/note-off events also flow straight to the synth, unless a
+# mapping above matched first (or a matching mapping set let_through = true).
+[[routes]]
+from = "pads"
+to = "synth"
+description = "Pad input to hardware synth"
+[routes.filter]
+message_types = ["NoteOn", "NoteOff"]
 
-[[global_mappings]]
-description = "LB+RB: Switch mode"
-[global_mappings.trigger]
-type = "GamepadButtonChord"
-buttons = [136, 137]
-[global_mappings.action]
-type = "ModeChange"
-mode = "Media"
-```
-
-### Example 3: Hybrid Configuration (MIDI + Gamepad)
-
-Use both MIDI controller and gamepad simultaneously. No conflicts - they use different ID ranges.
-
-```toml
-[device]
-name = "Studio Hybrid Setup"
-auto_connect = true
-
-[advanced_settings]
-chord_timeout_ms = 75
-double_tap_timeout_ms = 300
-hold_threshold_ms = 1500
-
-[[modes]]
-name = "Production"
-color = "green"
-
-# MIDI mappings (ID range 0-127)
-[[modes.mappings]]
-description = "MIDI Pad 1: Record"
-[modes.mappings.trigger]
-type = "Note"
-note = 36  # MIDI note
-[modes.mappings.action]
-type = "Keystroke"
-keys = "r"
-modifiers = ["cmd"]
-
-[[modes.mappings]]
-description = "MIDI Encoder: Volume"
-[modes.mappings.trigger]
-type = "EncoderTurn"
-cc = 2  # MIDI CC
-direction = "Clockwise"
-[modes.mappings.action]
-type = "VolumeControl"
-operation = "Up"
-
-# Gamepad mappings (ID range 128-255)
-[[modes.mappings]]
-description = "Gamepad A: Play/Pause"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 128  # Gamepad button
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Space"
-
-[[modes.mappings]]
-description = "Gamepad Right Stick: Navigate"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 130  # Gamepad axis
-direction = "Clockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "RightArrow"
-modifiers = ["cmd"]
-
-# Hybrid chord: MIDI pad + Gamepad button
-[[modes.mappings]]
-description = "MIDI Pad 1 + Gamepad A: Save"
-[modes.mappings.trigger]
-type = "NoteChord"
-notes = [36, 128]  # Mix MIDI and gamepad IDs
-[modes.mappings.action]
-type = "Keystroke"
-keys = "s"
-modifiers = ["cmd"]
-
-[[global_mappings]]
-description = "Gamepad Guide: Spotlight"
-[global_mappings.trigger]
-type = "GamepadButton"
-button = 142
-[global_mappings.action]
-type = "Keystroke"
-keys = "Space"
-modifiers = ["cmd"]
-```
-
-### Example 4: Joystick/Flight Stick Configuration
-
-```toml
-[device]
-name = "Logitech Flight Stick"
-auto_connect = true
-
-[advanced_settings]
-chord_timeout_ms = 50
-double_tap_timeout_ms = 300
-hold_threshold_ms = 1000
-
-[[modes]]
-name = "Flight"
-color = "blue"
-
-[[modes.mappings]]
-description = "Trigger: Fire"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 128
-[modes.mappings.action]
-type = "Keystroke"
-keys = "Space"
-
-[[modes.mappings]]
-description = "Hat up: Look up"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 132
-[modes.mappings.action]
-type = "Keystroke"
-keys = "UpArrow"
-
-[[modes.mappings]]
-description = "Pitch forward"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 129
-direction = "CounterClockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "w"
-
-[[modes.mappings]]
-description = "Yaw left"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 128
-direction = "CounterClockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "a"
-```
-
-### Example 5: Racing Wheel Configuration
-
-```toml
-[device]
-name = "Logitech G29"
-auto_connect = true
-
-[advanced_settings]
-chord_timeout_ms = 50
-double_tap_timeout_ms = 300
-hold_threshold_ms = 1000
-
-[[modes]]
-name = "Racing"
-color = "red"
-
-[[modes.mappings]]
-description = "Steer left"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 128  # Wheel rotation
-direction = "CounterClockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "LeftArrow"
-
-[[modes.mappings]]
-description = "Steer right"
-[modes.mappings.trigger]
-type = "GamepadAnalogStick"
-axis = 128
-direction = "Clockwise"
-[modes.mappings.action]
-type = "Keystroke"
-keys = "RightArrow"
-
-[[modes.mappings]]
-description = "Throttle"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 133
-threshold = 32
-[modes.mappings.action]
-type = "Keystroke"
-keys = "w"
-
-[[modes.mappings]]
-description = "Brake"
-[modes.mappings.trigger]
-type = "GamepadTrigger"
-trigger = 132
-threshold = 32
-[modes.mappings.action]
-type = "Keystroke"
-keys = "s"
-
-[[modes.mappings]]
-description = "Shift up"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 137  # Right paddle
-[modes.mappings.action]
-type = "Keystroke"
-keys = "e"
-
-[[modes.mappings]]
-description = "Shift down"
-[modes.mappings.trigger]
-type = "GamepadButton"
-button = 136  # Left paddle
-[modes.mappings.action]
-type = "Keystroke"
-keys = "q"
-```
-
-## Validation Rules
-
-Conductor validates configurations at load time. Common validation errors:
-
-### ID Range Violations
-
-```toml
-# ❌ INVALID: MIDI trigger using gamepad ID
-[trigger]
-type = "Note"
-note = 150  # ERROR: MIDI notes must be 0-127
-
-# ✅ VALID: Use GamepadButton for IDs 128+
-[trigger]
-type = "GamepadButton"
-button = 150
-```
-
-### Missing Required Fields
-
-```toml
-# ❌ INVALID: Missing 'note' field
-[trigger]
-type = "Note"
-# ERROR: 'note' is required
-
-# ✅ VALID: All required fields present
-[trigger]
-type = "Note"
-note = 60
-```
-
-### Invalid Values
-
-```toml
-# ❌ INVALID: Direction typo
-[trigger]
-type = "EncoderTurn"
-cc = 2
-direction = "CW"  # ERROR: Must be "Clockwise" or "CounterClockwise"
-
-# ✅ VALID: Correct direction value
-[trigger]
-type = "EncoderTurn"
-cc = 2
-direction = "Clockwise"
+# Mirror pad input into a virtual DAW port at the same time.
+[[routes]]
+from = "pads"
+to = "daw_proxy"
+description = "Mirror pad input into the DAW"
 ```
 
 ## See Also
 
-- [Trigger Types Reference](trigger-types.md) - Detailed trigger documentation
-- [Action Types Reference](action-types.md) - Detailed action documentation
-- [Gamepad Support Guide](https://getconductor.dev/guides/gamepad-support.html) - Getting started with gamepads
-- [Configuration Examples](https://getconductor.dev/configuration/examples.html) - Real-world configuration examples
-- [CLI Commands](cli-commands.md) - Command-line tools and debugging
-
----
-
-**Last Updated**: 2026-02-08
-**Version**: 4.26.0
-**Status**: Complete
+- [Trigger Types Reference](trigger-types.md) — Full trigger field documentation
+- [Action Types Reference](action-types.md) — Full action field documentation
+- [LED System Reference](led-system.md) — `[led]` block and LED behavior
+- [MCP Tools Reference](mcp-tools.md) — MCP tools exposed over the `[mcp]` socket
+- [CLI Commands](cli-commands.md) — Command-line tools and debugging
+- `docs/llm-reference.md` — Token-budgeted schema summary used in LLM system prompts

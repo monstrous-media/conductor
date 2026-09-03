@@ -1,588 +1,123 @@
 # Plugin Examples
 
-Conductor includes three official WASM plugins that demonstrate real-world integration patterns. All plugins are signed with the official Conductor team key and include full source code.
+This repository ships two WASM plugin crates and one native plugin example.
+They're starting points, not finished products — there are no official
+"Spotify" or "OBS" plugins in this repo. If you're building your own plugin,
+copy one of these out and adapt it.
 
-## Official Plugins
+| Example | Type | Purpose |
+|---------|------|---------|
+| [`plugins/wasm-template/`](../../plugins/wasm-template/) | WASM | Full-featured starting point (metadata, actions, tests) |
+| [`plugins/wasm-minimal/`](../../plugins/wasm-minimal/) | WASM | Smallest possible plugin — no allocator, no `std` |
+| [`examples/http-plugin/`](../../examples/http-plugin/) | Native (`ActionPlugin`) | HTTP requests via the dylib plugin API |
 
-### Spotify Web API Plugin
+See [Plugin Development](plugin-development.md) for the native `ActionPlugin`
+API and [WASM Plugins](wasm-plugins.md) / [Plugin Security](plugin-security.md)
+for the WASM ABI and signing model.
 
-**File:** `conductor_wasm_spotify.wasm`
-**Capabilities:** Network
-**Status:** Production-ready
+## `plugins/wasm-template/` — the starting point
 
-Control Spotify playback directly from your MIDI controller.
+`plugins/wasm-template/src/lib.rs` implements the full WASM plugin ABI:
 
-#### Features
+- `init() -> u64` returns a pointer+length packed into a single `u64` (JSON
+  metadata: `name`, `version`, `description`, `author`, optional `homepage`,
+  `license`, `type`, `capabilities`).
+- `execute(ptr: u32, len: u32) -> i32` reads a JSON `ActionRequest` from WASM
+  memory and dispatches on `action`.
+- `alloc`/`dealloc` let the host copy request bytes into the plugin's linear
+  memory.
 
-- Play/Pause control
-- Track navigation (next/previous)
-- Volume control
-- Shuffle toggle
-- Repeat mode toggle
-- Get current playback state
+The template ships three example actions (`hello`, `greet`, `goodbye`) and
+unit tests for metadata/request serialization and the action dispatch logic.
+Its `plugin.toml` declares the manifest shape used for the marketplace/registry
+(`[plugin]` name/version/description/author/license, `entry_point`,
+`capabilities`, `[[actions]]` entries) — note this is a different shape from
+the native `[plugin.capabilities]` table used by `examples/http-plugin/`.
 
-#### Setup
+Because it lives under `plugins/` but is excluded from the root Cargo
+workspace, its `Cargo.toml` declares its own empty `[workspace]` table so
+`cargo build` works standalone once you copy it out.
 
-1. **Get Spotify API Credentials**
-   - Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-   - Create an app
-   - Note Client ID and Client Secret
-   - Add redirect URI: `http://localhost:8888/callback`
+### Building it
 
-2. **Authenticate**
-   ```bash
-   # First-time setup (opens browser for OAuth)
-   spotify-auth --client-id YOUR_ID --client-secret YOUR_SECRET
-   ```
-
-3. **Configuration**
-   ```toml
-   # Play/Pause
-   [[modes.mappings]]
-   trigger = { Note = { note = 60 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_spotify.wasm",
-       params = {
-           "action": "play_pause"
-       }
-   }}
-
-   # Next track
-   [[modes.mappings]]
-   trigger = { Note = { note = 61 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_spotify.wasm",
-       params = {
-           "action": "next"
-       }
-   }}
-
-   # Previous track
-   [[modes.mappings]]
-   trigger = { Note = { note = 59 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_spotify.wasm",
-       params = {
-           "action": "previous"
-       }
-   }}
-
-   # Volume control (velocity-sensitive)
-   [[modes.mappings]]
-   trigger = { Note = { note = 62 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_spotify.wasm",
-       params = {
-           "action": "volume",
-           "level": "{velocity}"  # 0-127 mapped to 0-100%
-       }
-   }}
-   ```
-
-#### Available Actions
-
-| Action | Parameters | Description |
-|--------|-----------|-------------|
-| `play` | None | Resume playback |
-| `pause` | None | Pause playback |
-| `play_pause` | None | Toggle play/pause |
-| `next` | None | Skip to next track |
-| `previous` | None | Previous track |
-| `volume` | `level: 0-127` | Set volume (maps to 0-100%) |
-| `shuffle` | None | Toggle shuffle |
-| `repeat` | `mode: "off"\|"track"\|"context"` | Set repeat mode |
-| `get_state` | None | Get current playback state |
-
-#### Advanced: Velocity-Sensitive Volume
-
-```toml
-[[modes.mappings]]
-trigger = { VelocityRange = {
-    note = 62,
-    ranges = [
-        { min = 0, max = 40, action_index = 0 },    # Soft: -10%
-        { min = 41, max = 80, action_index = 1 },   # Medium: no change
-        { min = 81, max = 127, action_index = 2 }   # Hard: +10%
-    ]
-}}
-actions = [
-    { WasmPlugin = {
-        path = "~/.conductor/wasm-plugins/conductor_wasm_spotify.wasm",
-        params = { "action": "volume", "delta": "-10" }
-    }},
-    { WasmPlugin = {
-        path = "~/.conductor/wasm-plugins/conductor_wasm_spotify.wasm",
-        params = { "action": "get_state" }
-    }},
-    { WasmPlugin = {
-        path = "~/.conductor/wasm-plugins/conductor_wasm_spotify.wasm",
-        params = { "action": "volume", "delta": "+10" }
-    }}
-]
-```
-
----
-
-### OBS Studio Control Plugin
-
-**File:** `conductor_wasm_obs_control.wasm`
-**Capabilities:** Network
-**Status:** Production-ready
-
-Control OBS Studio streaming/recording via WebSocket.
-
-#### Features
-
-- Scene switching
-- Start/Stop streaming
-- Start/Stop recording
-- Source mute/unmute
-- Filter toggle
-- Transition control
-
-#### Setup
-
-1. **Enable OBS WebSocket**
-   - OBS Studio → Tools → WebSocket Server Settings
-   - Enable WebSocket server
-   - Set password (optional but recommended)
-   - Note port (default: 4455)
-
-2. **Configuration**
-   ```toml
-   # Scene switching
-   [[modes.mappings]]
-   trigger = { Note = { note = 48 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_obs_control.wasm",
-       params = {
-           "action": "set_scene",
-           "scene_name": "Gaming",
-           "host": "localhost:4455",
-           "password": "your_password"  # Optional
-       }
-   }}
-
-   # Start streaming
-   [[modes.mappings]]
-   trigger = { Note = { note = 49 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_obs_control.wasm",
-       params = {
-           "action": "start_streaming",
-           "host": "localhost:4455"
-       }
-   }}
-
-   # Stop streaming
-   [[modes.mappings]]
-   trigger = { Note = { note = 50 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_obs_control.wasm",
-       params = {
-           "action": "stop_streaming",
-           "host": "localhost:4455"
-       }
-   }}
-
-   # Toggle mic mute
-   [[modes.mappings]]
-   trigger = { Note = { note = 51 } }
-   action = { WasmPlugin = {
-       path = "~/.conductor/wasm-plugins/conductor_wasm_obs_control.wasm",
-       params = {
-           "action": "toggle_mute",
-           "source_name": "Microphone",
-           "host": "localhost:4455"
-       }
-   }}
-   ```
-
-#### Available Actions
-
-| Action | Parameters | Description |
-|--------|-----------|-------------|
-| `set_scene` | `scene_name` | Switch to scene |
-| `get_current_scene` | None | Get active scene |
-| `start_streaming` | None | Start streaming |
-| `stop_streaming` | None | Stop streaming |
-| `toggle_streaming` | None | Toggle streaming |
-| `start_recording` | None | Start recording |
-| `stop_recording` | None | Stop recording |
-| `toggle_recording` | None | Toggle recording |
-| `toggle_mute` | `source_name` | Mute/unmute source |
-| `set_volume` | `source_name`, `volume: 0-1` | Set source volume |
-| `toggle_filter` | `source_name`, `filter_name` | Toggle filter |
-| `set_transition` | `transition_name`, `duration_ms` | Set scene transition |
-
-#### Advanced: Scene Hotkeys
-
-```toml
-# Map pads to scenes
-[[modes]]
-name = "OBS Control"
-
-[[modes.mappings]]
-trigger = { Note = { note = 36 } }  # Pad 1
-action = { WasmPlugin = { path = "...", params = { "action": "set_scene", "scene_name": "Intro" }}}
-
-[[modes.mappings]]
-trigger = { Note = { note = 37 } }  # Pad 2
-action = { WasmPlugin = { path = "...", params = { "action": "set_scene", "scene_name": "Gaming" }}}
-
-[[modes.mappings]]
-trigger = { Note = { note = 38 } }  # Pad 3
-action = { WasmPlugin = { path = "...", params = { "action": "set_scene", "scene_name": "Chatting" }}}
-
-[[modes.mappings]]
-trigger = { Note = { note = 39 } }  # Pad 4
-action = { WasmPlugin = { path = "...", params = { "action": "set_scene", "scene_name": "BRB" }}}
-```
-
----
-
-### System Utilities Plugin
-
-**File:** `conductor_wasm_system_utils.wasm`
-**Capabilities:** SystemControl
-**Status:** Production-ready
-
-System-level operations like screen lock, sleep, notifications.
-
-#### Features
-
-- Lock screen
-- Sleep/shutdown
-- Brightness control
-- System notifications
-- Application launcher
-- Volume control (system-wide)
-
-#### Configuration
-
-```toml
-# Lock screen
-[[modes.mappings]]
-trigger = { LongPress = { note = 60, duration_ms = 2000 } }
-action = { WasmPlugin = {
-    path = "~/.conductor/wasm-plugins/conductor_wasm_system_utils.wasm",
-    params = {
-        "action": "lock_screen"
-    }
-}}
-
-# Display notification
-[[modes.mappings]]
-trigger = { Note = { note = 61 } }
-action = { WasmPlugin = {
-    path = "~/.conductor/wasm-plugins/conductor_wasm_system_utils.wasm",
-    params = {
-        "action": "notify",
-        "title": "Recording Started",
-        "message": "Stream is now live!",
-        "sound": true
-    }
-}}
-
-# Brightness control (velocity-sensitive)
-[[modes.mappings]]
-trigger = { Note = { note = 62 } }
-action = { WasmPlugin = {
-    path = "~/.conductor/wasm-plugins/conductor_wasm_system_utils.wasm",
-    params = {
-        "action": "brightness",
-        "level": "{velocity}"  # 0-127 mapped to 0-100%
-    }
-}}
-
-# Launch application
-[[modes.mappings]]
-trigger = { Note = { note = 63 } }
-action = { WasmPlugin = {
-    path = "~/.conductor/wasm-plugins/conductor_wasm_system_utils.wasm",
-    params = {
-        "action": "launch",
-        "app": "Spotify"
-    }
-}}
-```
-
-#### Available Actions
-
-| Action | Parameters | Description |
-|--------|-----------|-------------|
-| `lock_screen` | None | Lock screen (macOS/Linux) |
-| `sleep` | None | Put system to sleep |
-| `shutdown` | `force: bool` | Shutdown system |
-| `notify` | `title`, `message`, `sound: bool` | Show notification |
-| `brightness` | `level: 0-127` | Set screen brightness |
-| `launch` | `app: string` | Launch application |
-| `volume` | `level: 0-127` | Set system volume |
-| `volume_up` | None | Increase volume 10% |
-| `volume_down` | None | Decrease volume 10% |
-| `mute` | None | Toggle system mute |
-
-#### Platform-Specific Notes
-
-**macOS:**
-- `lock_screen`: Uses `pmset` command
-- `brightness`: Requires screen brightness permission
-- `launch`: Uses `open -a`
-
-**Linux:**
-- `lock_screen`: Uses `loginctl` or `xdg-screensaver`
-- `brightness`: Requires `/sys/class/backlight` access
-- `launch`: Uses `xdg-open`
-
-**Windows:**
-- `lock_screen`: Uses `rundll32.exe`
-- `brightness`: Uses WMI
-- `launch`: Uses `start`
-
----
-
-## Creating Your Own Plugin
-
-### Template Repository
-
-Start with the official template:
+The template's `Makefile` wraps the real build commands:
 
 ```bash
-git clone https://github.com/monstrous-media/conductor-wasm-plugin-template
-cd conductor-wasm-plugin-template
+cd plugins/wasm-template
+
+make install-deps    # rustup target add wasm32-wasip1; brew/apt install binaryen
+make build           # debug build -> target/wasm32-wasip1/debug/*.wasm
+make build-release   # release build (opt-level "z", LTO, stripped)
+make optimize         # build-release, then wasm-opt -Oz
+make inspect          # list WASM exports via wasm-objdump
+make test             # cargo test (native, not WASM)
 ```
 
-### Example: Simple Notification Plugin
+Install the resulting `.wasm` file the same way any WASM plugin is installed
+— copy it into `~/.conductor/plugins/` (see
+[Plugin Development](plugin-development.md) for the directory layout and the
+`[plugins.<name>] granted_capabilities` config used to grant it capabilities).
 
-```rust
-// src/lib.rs
-use serde::Deserialize;
+## `plugins/wasm-minimal/` — the smallest working plugin
 
-#[derive(Deserialize)]
-struct NotifyParams {
-    message: String,
-}
+`plugins/wasm-minimal/src/lib.rs` is `#![no_std]` with no allocator:
 
-#[no_mangle]
-pub extern "C" fn init() {
-    eprintln!("Notification plugin initialized");
-}
+- `init()` returns a pointer to a static, pre-serialized metadata byte string
+  — no heap allocation, no `serde_json` at runtime.
+- `execute()` is a stub that always returns `0` (success) without inspecting
+  its arguments.
+- `alloc()` returns a null pointer — it does not support dynamic allocation
+  at all, since the host never needs to write request data. `dealloc()` is a
+  no-op.
+- A `#[panic_handler]` that loops forever, required for `no_std`.
 
-#[no_mangle]
-pub extern "C" fn execute(params_ptr: *const u8, params_len: usize) -> i32 {
-    let params_bytes = unsafe {
-        std::slice::from_raw_parts(params_ptr, params_len)
-    };
+Use this as a reference for the *minimum* ABI surface Conductor's WASM
+runtime requires (`init`, `execute`, `alloc`, `dealloc`), stripped of every
+convenience the template adds. Its `Cargo.toml` also declares its own empty
+`[workspace]` and builds with `panic = "abort"` in the release profile.
 
-    let params: NotifyParams = match serde_json::from_slice(params_bytes) {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("Invalid params: {}", e);
-            return 1;
-        }
-    };
+## `examples/http-plugin/` — a native plugin
 
-    // Platform-specific notification (simplified)
-    #[cfg(target_os = "macos")]
-    {
-        let cmd = format!(
-            "osascript -e 'display notification \"{}\" with title \"Conductor\"'",
-            params.message
-        );
-        std::process::Command::new("sh")
-            .arg("-c")
-            .arg(&cmd)
-            .output()
-            .expect("Failed to show notification");
-    }
+Unlike the two WASM crates above, `examples/http-plugin/` is a **native**
+plugin: it implements `conductor_core::plugin::ActionPlugin` directly and
+compiles to a `cdylib` (`.dylib`/`.so`/`.dll`), loaded via `libloading`
+instead of `wasmtime`.
 
-    eprintln!("Notification sent: {}", params.message);
-    0
-}
-```
+`HttpRequestPlugin` in `src/lib.rs`:
 
-### Build and Test
+- Declares `capabilities() -> vec![Capability::Network]`.
+- `execute()` builds a `reqwest::blocking::Client` with a configurable
+  per-request timeout (`timeout_secs` param, default 30s, capped at 300s) so
+  a stalled endpoint can't block the daemon's synchronous action-dispatch
+  path indefinitely.
+- Supports GET/POST/PUT/DELETE, custom headers, a JSON body, and a
+  `{velocity}` placeholder substituted with the triggering MIDI velocity
+  (works in nested objects and arrays).
+- Its test suite includes a regression test that spins up a TCP listener
+  which accepts a connection but never responds, confirming `execute()`
+  returns an error near the configured timeout instead of hanging.
+
+Build it like any native plugin:
 
 ```bash
-# Build
-cargo build --target wasm32-wasip1 --release
-
-# Sign
-conductor-sign sign \
-  target/wasm32-wasip1/release/my_notify_plugin.wasm \
-  ~/.conductor/my-key \
-  --name "Your Name" --email "you@example.com"
-
-# Test
-cat > test_config.toml <<EOF
-[[modes.mappings]]
-trigger = { Note = { note = 60 } }
-action = { WasmPlugin = {
-    path = "target/wasm32-wasip1/release/my_notify_plugin.wasm",
-    params = { "message": "Test notification" }
-}}
-EOF
-
-conductor --config test_config.toml 0
+cd examples/http-plugin
+cargo build --release
 ```
 
-## Best Practices
+## WASM integration test fixtures
 
-### Error Handling
+`conductor-core/tests/spotify_wasm_test.rs` and `obs_wasm_test.rs` exist in
+the test suite, but both are `#[ignore]`d: they exercise
+`conductor_core::plugin::wasm_runtime::WasmPlugin` against pre-built `.wasm`
+artifacts from plugin source trees (`plugins/wasm-spotify`,
+`plugins/wasm-obs-control`) that are **not present in this repository**. They
+document the intended shape of a real-world plugin (multi-action dispatch,
+parameterized actions, metadata checks) but you cannot run them — or find
+the plugins they test — without that external source. Treat them as design
+references for `execute()` dispatch patterns, not as shipped examples.
 
-```rust
-#[no_mangle]
-pub extern "C" fn execute(params_ptr: *const u8, params_len: usize) -> i32 {
-    // Always validate inputs
-    if params_len == 0 {
-        eprintln!("ERROR: Empty parameters");
-        return 1;
-    }
+## Signing a plugin
 
-    // Handle JSON parsing errors
-    let params: MyParams = match serde_json::from_slice(params_bytes) {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("ERROR: Invalid JSON: {}", e);
-            return 1;
-        }
-    };
-
-    // Handle operation errors
-    match perform_action(&params) {
-        Ok(_) => 0,   // Success
-        Err(e) => {
-            eprintln!("ERROR: Action failed: {}", e);
-            1  // Error
-        }
-    }
-}
-```
-
-### Performance Optimization
-
-```rust
-use std::sync::OnceLock;
-
-// Lazy initialization (runs once)
-static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-
-fn get_client() -> &'static reqwest::Client {
-    HTTP_CLIENT.get_or_init(|| {
-        reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
-            .expect("Failed to create HTTP client")
-    })
-}
-
-#[no_mangle]
-pub extern "C" fn execute(params_ptr: *const u8, params_len: usize) -> i32 {
-    // Reuse client instead of creating new one
-    let client = get_client();
-
-    // Your code...
-    0
-}
-```
-
-### Resource Management
-
-```rust
-// Use Drop for cleanup
-struct PluginState {
-    connection: Option<Connection>,
-}
-
-impl Drop for PluginState {
-    fn drop(&mut self) {
-        if let Some(conn) = &mut self.connection {
-            let _ = conn.close();
-        }
-        eprintln!("Plugin state cleaned up");
-    }
-}
-
-static mut STATE: Option<PluginState> = None;
-
-#[no_mangle]
-pub extern "C" fn init() {
-    unsafe {
-        STATE = Some(PluginState {
-            connection: None,
-        });
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn shutdown() {
-    unsafe {
-        STATE = None;  // Triggers Drop
-    }
-}
-```
-
-## Troubleshooting
-
-### Plugin Not Executing
-
-1. **Check logs:**
-   ```bash
-   DEBUG=1 conductor --config config.toml 0 2>&1 | grep WASM
-   ```
-
-2. **Verify WASM format:**
-   ```bash
-   file my_plugin.wasm
-   # Should show: WebAssembly (wasm) binary module
-   ```
-
-3. **Check signature:**
-   ```bash
-   conductor-sign verify my_plugin.wasm
-   ```
-
-### Out of Fuel
-
-```rust
-// Symptoms: Plugin terminates early
-
-// Solution 1: Optimize code
-// - Move heavy work to init()
-// - Reduce loop iterations
-// - Use lazy initialization
-
-// Solution 2: Increase fuel limit (config.toml)
-[wasm]
-max_fuel = 200_000_000
-```
-
-### Network Requests Failing
-
-```rust
-// Check capability is granted
-fn capabilities() -> Vec<String> {
-    vec!["Network".to_string()]
-}
-
-// Use appropriate timeout
-let client = reqwest::Client::builder()
-    .timeout(Duration::from_secs(5))
-    .build()?;
-
-// Handle errors gracefully
-match client.get(url).send().await {
-    Ok(response) => { /* ... */ },
-    Err(e) => {
-        eprintln!("Network error: {}", e);
-        return 1;
-    }
-}
-```
-
-## Further Reading
-
-- [WASM Plugin Development Guide](wasm-plugin-development.md)
-- [Plugin Security](plugin-security.md)
-- [WASM Plugins Overview](wasm-plugins.md)
-- [Official Plugin Source Code](https://github.com/monstrous-media/conductor/tree/main/plugins)
+Both WASM and native plugins can be signed with `conductor-sign`; see
+[Plugin Security](plugin-security.md) for the full workflow
+(`generate-key`, `sign`, `verify`, `trust`).

@@ -1,246 +1,137 @@
 # LLM Integration Architecture
 
-This document describes the architecture of Conductor's LLM integration, introduced in v4.11.0 as part of ADR-007.
+This document describes the **daemon-side** LLM integration: the tool
+catalog, the risk-tier execution model, and the plan/apply flow. It does not
+cover any chat UI — this repository doesn't contain one. A closed-source
+downstream product (a desktop GUI) implements its own chat surface and LLM
+provider wiring on top of the contract described here; that code lives
+outside this repository.
 
-## Overview
+## Two ways an LLM reaches Conductor
 
-The LLM integration enables natural language configuration of MIDI mappings. Users can describe what they want in plain English, and an AI assistant translates their intent into proper configuration changes.
+1. **The MCP socket** (`conductor-mcp.sock`) — any MCP-speaking client
+   (Claude Desktop, Cursor, a script) connects directly and calls
+   `tools/list` / `tools/call`. What's available depends on how the daemon
+   was compiled (see below). This is the surface documented in
+   [MCP Tools Reference](../reference/mcp-tools.md) and
+   [MCP Server Implementation](mcp-server.md).
+2. **The daemon's IPC protocol** — a GUI client connects over the IPC socket
+   and issues an `ExecuteMcpTool` command (alongside sibling commands
+   `ApplyPlan` / `RejectPlan` / `ListPendingPlans`). This is what a chat-style
+   product wires an LLM's tool calls through, because it gets the full
+   risk-tier handling — plan/apply, hardware confirmation, undo/redo, audit
+   logging — that the thinner MCP socket path doesn't need for ReadOnly-only
+   builds. See [Downstream consumer contract](consumer-contract.md) for the
+   exact wire shapes.
 
-```
-┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
-│   Chat UI       │ ───▶ │  LLM Provider    │ ───▶ │  MCP Server     │
-│   (Svelte)      │ ◀─── │  (OpenAI/Claude) │ ◀─── │  (Daemon)       │
-└─────────────────┘      └──────────────────┘      └─────────────────┘
-         │                                                   │
-         │                                                   │
-         ▼                                                   ▼
-┌─────────────────┐                               ┌─────────────────┐
-│  Svelte Store   │                               │  ToolExecutor   │
-│  (pendingPlan)  │                               │  (Risk Tiers)   │
-└─────────────────┘                               └─────────────────┘
-└─────────────────┘                                        │
-                                                           ▼
-                                                ┌─────────────────┐
-                                                │  ConfigPlan     │
-                                                │  (TOCTOU)       │
-                                                └─────────────────┘
-```
+Both paths dispatch against the **same** tool catalog and risk-tier table
+(`mcp_tools::get_tool_definitions`, `mcp_tools::get_tool_risk_tier`) — a tool
+named `conductor_create_mapping` means the same thing and carries the same
+tier whichever way it's invoked.
 
-## Components
+## The `llm-executor` feature (ADR-045)
 
-### 1. Chat UI (Svelte)
-
-Located in `conductor-gui/ui/src/lib/components/`:
-
-- **ChatPane.svelte**: Main chat interface with message history
-- **PlanReviewModal.svelte**: Modal for reviewing and approving ConfigPlans (mounted in ChatView.svelte, controlled via `chatStore.pendingPlan` props)
-- **InlineDiff.svelte**: Diff display with red/green highlighting
-
-The Chat UI communicates with the backend via Tauri commands.
-
-### 2. LLM Providers
-
-Located in `conductor-gui/src-tauri/src/llm/`:
-
-- **mod.rs**: Provider traits and types
-- **providers/openai.rs**: OpenAI API integration
-- **providers/anthropic.rs**: Anthropic API integration
-- **keychain.rs**: Secure API key storage
-
-Providers implement the `LLMProvider` trait:
-
-```rust
-#[async_trait]
-pub trait LLMProvider: Send + Sync {
-    fn name(&self) -> &str;
-    fn capabilities(&self) -> ProviderCapabilities;
-    async fn chat(&self, request: ChatRequest) -> Result<ChatResponse, LlmError>;
-    async fn health_check(&self) -> Result<ProviderStatus, LlmError>;
-}
+```toml
+llm-executor = ["audit-db"]
+mcp-write = ["mcp", "llm-executor"]
 ```
 
-### 3. MCP Server
+`llm-executor` compiles in `llm::executor::ToolExecutor` — the full
+plan/apply/confirmation/undo machinery — plus the write-tier risk
+classification (`mcp_tools::write_tiers`). It does **not** by itself expose
+write tools on the MCP socket; that additionally requires `mcp-write`. A
+daemon built without `llm-executor` returns a fixed error for
+`ExecuteMcpTool` on the IPC path: *"LLM tool execution is not available in
+this build ... source builds can enable the `llm-executor` cargo feature."*
 
-Located in `conductor-daemon/src/daemon/`:
+## Plan/apply flow
 
-- **mcp.rs**: JSON-RPC 2.0 server over Unix socket
-- **mcp_tools.rs**: Tool definitions and implementations
+### `ExecutionResult` (`daemon/llm/executor.rs`)
 
-The MCP server exposes tools that LLMs can call:
-
-| Tool | Risk Tier | Description |
-|------|-----------|-------------|
-| `conductor_get_config` | ReadOnly | Get current configuration |
-| `conductor_get_status` | ReadOnly | Get daemon status |
-| `conductor_list_modes` | ReadOnly | List configured modes |
-| `conductor_get_mappings` | ReadOnly | Get mappings for a mode |
-| `conductor_list_devices` | ReadOnly | List MIDI/gamepad devices |
-| `conductor_create_mapping` | ConfigChange | Create a new mapping |
-| `conductor_update_mapping` | ConfigChange | Update an existing mapping |
-| `conductor_delete_mapping` | ConfigChange | Delete a mapping |
-| `conductor_start_midi_learn` | Stateful | Start MIDI Learn mode |
-| `conductor_stop_midi_learn` | Stateful | Stop MIDI Learn mode |
-
-### 4. ToolExecutor
-
-Located in `conductor-daemon/src/daemon/llm/executor.rs`:
-
-The ToolExecutor handles tool execution based on risk tier:
+`ToolExecutor::execute(tool_name, arguments, caller_ctx)` looks up the tool's
+risk tier, runs it through the ADR-027 security gate and the per-tier rate
+limiter, then dispatches to one of:
 
 ```rust
 pub enum ExecutionResult {
-    Success(serde_json::Value),        // ReadOnly: immediate result
-    PlanCreated(ConfigPlan),           // ConfigChange: needs approval
-    Logged { result: serde_json::Value }, // Stateful: logged execution
-    Error(String),
+    Success { result: ToolCallResult },                 // ReadOnly
+    Logged { result: ToolCallResult, log_entry: LogEntry }, // Stateful
+    PlanCreated { plan: ConfigPlan },                    // ConfigChange
+    HardwareIoConfirmation { status: ConfirmationStatus, tool_name: String }, // HardwareIO
+    RateLimited { tier: ToolRiskTier, current: u32, limit: u32, retry_after_secs: u64 },
+    Error { message: String },                           // gate denial, validation failure, etc.
 }
 ```
 
-### 5. ConfigPlan
+A caller (the IPC dispatch layer) matches on this enum to decide what to send
+back over the wire: a `Success`/`Logged` result is returned immediately; a
+`PlanCreated` plan is handed back to the client for review before a follow-up
+`ApplyPlan`/`RejectPlan` call; a `HardwareIoConfirmation` requires a
+confirmation round-trip; `RateLimited` and `Error` are surfaced as-is.
 
-Located in `conductor-daemon/src/daemon/llm/plan.rs`:
+### `ConfigPlan` and `ConfigChange` (`daemon/llm/plan.rs`)
 
-ConfigPlan provides TOCTOU (Time-of-Check to Time-of-Use) protection:
+`ConfigChange` is the set of persistable mutations a `ConfigChange`-tier tool
+can request — `CreateMapping`, `UpdateMapping`, `DeleteMapping`, `CreateMode`,
+`DeleteMode`, `InsertMapping`/`RestoreMode` (undo inverses),
+`CreateEndpoint`, `CreateRoute`, `UpdateRoute`, `DeleteRoute`.
 
-```rust
-pub struct ConfigPlan {
-    pub id: Uuid,
-    pub description: String,
-    pub changes: Vec<ConfigChange>,
-    pub diff_preview: String,
-    pub base_state_hash: String,  // SHA256 of config at creation
-    pub expires_at: DateTime<Utc>, // 5-minute TTL
-}
-```
+`ConfigPlan` wraps one or more `ConfigChange`s with TOCTOU (time-of-check to
+time-of-use) protection:
 
-Before applying a plan:
-1. Current config hash is computed
-2. Compared against `base_state_hash`
-3. If different, plan is rejected
-4. If expired, plan is rejected
+1. `base_state_hash` — a hash of the config at plan-creation time.
+2. On apply, the current config hash is recomputed and compared; a mismatch
+   fails with `PlanError::StateChanged`.
+3. Plans expire 5 minutes after creation (`PlanError::Expired`).
+4. Before commit, the resulting config is revalidated against
+   `conductor_core::config::validation::validate_config()` — a plan that
+   would produce an invalid config is rejected (`PlanError::ValidationFailed`)
+   rather than silently corrupting the live config.
 
-### 6. Tauri Events
+Other `PlanError` variants: `ModeNotFound`, `IndexOutOfRange`,
+`InvalidTrigger`, `InvalidAction`, `NotFound` (unknown plan ID).
 
-Located in `conductor-gui/src-tauri/src/events.rs`:
+### Security gate and rate limiting
 
-Communication for real-time UI updates:
+Every `ToolExecutor::execute` call goes through `security::gate::enforce`
+first — a caller's pinned trust level (from `CallerContext`, ADR-027 D1)
+determines whether the requested tier is `Allow`ed, `AllowWithAudit`ed, or
+`Deny`d outright, before any rate-limit budget is consumed. Tools that pass
+the gate are then checked against the per-tier `RateLimiter`
+(`daemon/ratelimit/`) — exceeding a tier's budget short-circuits to
+`ExecutionResult::RateLimited` without executing.
 
-| Mechanism | Description |
-|-----------|-------------|
-| `chatStore.pendingPlan` | Svelte store field — triggers PlanReviewModal when set (v4.26.42+) |
-| `chatStore.applyPendingPlan()` | Invokes `llm_apply_plan` and clears pendingPlan |
-| `chatStore.rejectPendingPlan()` | Invokes `llm_reject_plan` and clears pendingPlan |
-| `llm:config-updated` | Tauri event — Configuration was updated |
-| `llm:midi-learn-state-changed` | Tauri event — MIDI Learn state changed |
+## How MCP tools are exposed to LLM clients
 
-> **Note (v4.26.42):** PlanReviewModal was originally designed to use Tauri events (`llm:plan-ready`, `llm:plan-applied`, `llm:plan-rejected`), but Tauri v2's `emit()` from `@tauri-apps/api/event` does not reliably deliver events to frontend `listen()` handlers. The modal now uses Svelte store props (same pattern as MidiLearnDialog).
+- **`tools/list`** on the MCP socket returns `mcp_tools::get_tool_definitions()`
+  — ReadOnly tools always, write-tier tools only under `mcp-write`. Each
+  `ToolDefinition` carries `name`, `description`, and a JSON Schema
+  `input_schema` an LLM's function-calling layer can consume directly.
+- **`tools/call`** dispatches by risk tier: ReadOnly calls go through the
+  stateless `McpToolExecutor`; everything else is either rejected (if
+  `mcp-write` isn't compiled in) or routed to the same tier-aware handling
+  described above.
+- A registered MCP peer's tier ceiling (`conductorctl mcp register`) further
+  restricts what that specific client may invoke, independent of what the
+  binary compiled in — see [MCP Server Implementation](mcp-server.md#peer-registration-and-tier-ceilings).
 
-## Data Flow
+## Downstream GUI clients
 
-### Creating a Mapping
+A closed-source desktop GUI (and potentially other downstream products) links
+this daemon's IPC client types and drives a chat-style interface: it sends
+user intent to an LLM provider of its choosing, receives tool calls back, and
+issues them as `ExecuteMcpTool` IPC commands against the daemon — reviewing
+`ConfigPlan`s with the user before calling `ApplyPlan`. None of that provider
+integration, UI, or API-key handling lives in this repository; what's
+documented here is the daemon-side contract those products build against.
 
-1. User types "Map note 36 to copy"
-2. Chat UI sends message to LLM provider
-3. LLM calls `conductor_create_mapping` MCP tool
-4. ToolExecutor creates ConfigPlan (not applied yet)
-5. `chatStore.setPendingPlan(plan)` — sets `pendingPlan` in Svelte store
-6. ChatView passes `pendingPlan` as props to PlanReviewModal
-7. PlanReviewModal shows diff preview
-8. User clicks "Apply"
-9. `chatStore.applyPendingPlan()` calls `llm_apply_plan` Tauri command
-10. ConfigPlan validated (hash, expiration)
-11. Config file updated, pendingPlan cleared
-12. Config hot-reloaded by daemon
+## Where to go next
 
-### MIDI Learn Flow (v4.26.38+)
-
-1. User says "Start MIDI Learn"
-2. LLM calls `conductor_start_midi_learn`
-3. MidiLearnDialog opens automatically in the GUI
-4. User presses pad/button/encoder on controller
-5. Dialog shows captured events with pattern detection (chord, long press, double tap)
-6. User clicks **"Use this"** to select the captured trigger
-7. Trigger data sent as a user message back to the LLM (via `chatStore.sendMessage`)
-8. LLM sees the trigger JSON and continues the conversation (e.g., asks what action to assign)
-9. LLM creates mapping with captured values
-
-If the user **cancels** the dialog, a cancellation message is sent to the LLM so it can offer alternatives.
-
-## Security Model
-
-### API Key Storage
-
-API keys are stored in the system keychain, never in plain text:
-
-- macOS: Keychain Access
-- Windows: Windows Credential Manager
-- Linux: Secret Service (GNOME Keyring)
-
-### Tool Risk Tiers
-
-The risk tier system provides defense-in-depth:
-
-1. **ReadOnly**: No side effects, safe to auto-execute
-2. **Stateful**: Affects runtime state, logged for auditing
-3. **ConfigChange**: Modifies files, requires user approval
-4. **HardwareIO**: Controls hardware (reserved for future)
-5. **Privileged**: System-level operations (reserved)
-
-### TOCTOU Protection
-
-ConfigPlans prevent race conditions:
-
-1. Hash of config captured when plan created
-2. Hash verified before applying
-3. Plans expire after 5 minutes
-4. Prevents accidental overwrites from concurrent edits
-
-## Error Handling
-
-### LLM Errors
-
-```rust
-pub enum LlmError {
-    ApiKeyNotFound(String),
-    AuthenticationFailed(String),
-    RateLimitExceeded(String),
-    ContextLengthExceeded { max: usize, actual: usize },
-    Network(String),
-    Timeout(u64),
-    ContentFiltered(String),
-    // ...
-}
-```
-
-### Plan Errors
-
-```rust
-pub enum PlanError {
-    NotFound(Uuid),
-    Expired(Uuid),
-    ConfigChanged { expected: String, actual: String },
-    ApplyFailed(String),
-}
-```
-
-## Testing
-
-Unit tests are in each module:
-
-```bash
-# Run all LLM integration tests
-cargo test --package conductor-daemon llm
-cargo test --package conductor-gui llm
-```
-
-Key test files:
-- `conductor-daemon/src/daemon/llm/plan.rs` - ConfigPlan tests
-- `conductor-daemon/src/daemon/llm/executor.rs` - ToolExecutor tests
-- `conductor-daemon/src/daemon/mcp_tools.rs` - Tool definition tests
-
-## See Also
-
-- [ADR-007: LLM Integration Architecture](../../docs/adrs/ADR-007-llm-integration-architecture.md)
-- [MCP Server](mcp-server.md) - Server implementation details
-- [Agent Skills](agent-skills.md) - Skill development guide
-- [MCP Tools Reference](../reference/mcp-tools.md) - Tool documentation
+- [llm-reference.md](../llm-reference.md) — the canonical, token-budgeted
+  reference an LLM system prompt should actually load: config schema,
+  triggers, actions, routing graph tools, common patterns.
+- [Downstream consumer contract](consumer-contract.md) — the exact IPC wire
+  types and socket-path contract a client must match.
+- [MCP Tools Reference](../reference/mcp-tools.md) — full tool catalog by tier.
+- [MCP Server Implementation](mcp-server.md) — module layout, adding new
+  tools, peer registration.

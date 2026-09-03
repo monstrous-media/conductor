@@ -1,282 +1,265 @@
 # MCP Server Implementation
 
-This document describes the implementation of Conductor's Model Context Protocol (MCP) server, which enables LLM integration.
+This document describes the implementation of Conductor's Model Context
+Protocol (MCP) server, which lives entirely in `conductor-daemon`.
 
 ## Overview
 
-The MCP server provides a JSON-RPC 2.0 interface over Unix domain sockets. It allows LLMs and external clients to query and control the Conductor daemon.
+The MCP server provides a JSON-RPC 2.0 interface over a Unix domain socket.
+It lets MCP clients (Claude Desktop, Cursor, any MCP-speaking agent) query —
+and, on source builds with `mcp-write` enabled, control — a running daemon.
 
-## Server Architecture
+This is a **separate surface** from the daemon's IPC protocol
+(`daemon::{IpcClient, IpcCommand, ...}`) that downstream GUI clients use. The
+IPC protocol carries the full plan/apply and hardware-confirmation machinery
+via `llm::executor::ToolExecutor`; the MCP socket is a thinner, MCP-spec-compliant
+front end that reuses the same tool catalog and risk-tier table. See
+[LLM Integration](llm-integration.md) for the IPC-side executor.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    MCP Server                           │
-│  ┌─────────────────┐    ┌─────────────────────────┐    │
-│  │  Unix Socket    │───▶│  JSON-RPC Handler       │    │
-│  │  ~/.conductor/  │    │  (method dispatch)      │    │
-│  │  mcp.sock       │◀───│                         │    │
-│  └─────────────────┘    └───────────┬─────────────┘    │
-│                                     │                   │
-│                         ┌───────────▼─────────────┐    │
-│                         │  Tool Definitions       │    │
-│                         │  (mcp_tools.rs)         │    │
-│                         └───────────┬─────────────┘    │
-│                                     │                   │
-│                         ┌───────────▼─────────────┐    │
-│                         │  ToolExecutor           │    │
-│                         │  (risk tier handling)   │    │
-│                         └─────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Socket Location
-
-The MCP socket is created at:
+## Module layout
 
 ```
-~/.conductor/mcp.sock
+conductor-daemon/src/daemon/
+├── mcp/
+│   ├── mod.rs           # McpServer: socket lifecycle, JSON-RPC dispatch,
+│   │                     # peer tier-ceiling enforcement (check_peer_tier_ceiling)
+│   ├── tools_call.rs    # tools/call handling: shared_state special cases,
+│   │                     # mcp-write compiled-tool gating, McpToolExecutor dispatch
+│   └── tests.rs
+├── mcp_tools/
+│   ├── mod.rs             # get_tool_definitions, get_tool_risk_tier,
+│   │                       # is_compiled_tool, tool_unavailable_error
+│   ├── definitions_readonly.rs  # ReadOnly tool catalog (always compiled)
+│   ├── definitions_write.rs     # Write-tier tool catalog (cfg(feature = "mcp-write"))
+│   ├── write_tiers.rs             # Write-tier risk classification (cfg(feature = "llm-executor"))
+│   ├── executor.rs         # McpToolExecutor — stateless dispatch for ReadOnly tools
+│   ├── executor_queries.rs # Query helpers used by executor.rs
+│   └── tests.rs
+├── mcp_types.rs         # Wire types: McpRequest/Response, ToolDefinition,
+│                         # ToolCallResult, and the `ToolRiskTier` re-export
+└── llm/
+    ├── plan.rs           # ConfigChange, ConfigPlan (TOCTOU)
+    └── executor.rs       # ToolExecutor — full risk-tier handling for the IPC path
 ```
 
-On startup, the daemon:
-1. Removes any stale socket file
-2. Creates the directory if needed
-3. Binds to the socket path
-4. Sets permissions (owner-only access)
+`mcp_tools.rs` and `mcp.rs` as single files no longer exist — both were split
+into directory modules once they exceeded a comfortable code-review window.
+`definitions_readonly.rs` / `definitions_write.rs` hold the tool *catalog*
+(name, description, JSON schema); `executor.rs` / `executor_queries.rs` hold
+the `McpToolExecutor` that actually answers ReadOnly `tools/call` requests on
+the MCP socket.
+
+## Cargo feature gates (ADR-045)
+
+```toml
+default = ["mcp"]
+mcp = []                          # ReadOnly tool catalog + MCP socket
+llm-executor = ["audit-db"]       # ToolExecutor, ConfigPlan, undo/redo (IPC path)
+mcp-write = ["mcp", "llm-executor"] # Write-tier tools ALSO advertised on the MCP socket
+audit-db = ["dep:rusqlite"]        # SQLite-backed audit log
+```
+
+These feature names are load-bearing for CI's composition matrix — don't
+rename them. The practical effect:
+
+- A plain `cargo build` (default features) gives you `mcp` only:
+  `mcp_tools::get_tool_definitions()` returns just
+  `definitions_readonly::readonly_tool_definitions()`, and `get_tool_risk_tier`
+  falls through to the `ReadOnly`/`Stateful` classifications in `mcp_tools/mod.rs`
+  (the `write_tiers` module doesn't even compile in).
+- `--features mcp-write` additionally compiles `definitions_write.rs` into the
+  catalog (appended in `get_tool_definitions`) and `write_tiers.rs` into the
+  risk-tier lookup. `tools_call.rs` also stops short-circuiting non-catalog
+  tool names with the "not available in this build" error.
+- `--features llm-executor` alone (without `mcp-write`) compiles the write-tier
+  *risk classification* (`write_tiers.rs`) so the IPC plan/apply path can
+  still classify write tools correctly, but does **not** advertise them on the
+  MCP socket — that's the point of the split (ADR-045 D2): the write machinery
+  and its MCP exposure are independently gated.
+
+At the module level (`daemon/mod.rs`), the gating is explicit:
+`#[cfg(feature = "llm-executor")] pub mod llm;`, `#[cfg(feature = "mcp")] pub
+mod mcp;`, and `#[cfg(any(feature = "mcp", feature = "llm-executor"))] pub mod
+mcp_tools;` — the entire `llm` module (both `plan.rs` and `executor.rs`) is
+absent from the binary unless `llm-executor` is on, and `mcp_tools` compiles
+whenever either side needs the shared catalog.
 
 ## Protocol
 
-### JSON-RPC 2.0
-
-All communication uses JSON-RPC 2.0:
+### JSON-RPC 2.0 over a Unix socket
 
 **Request**:
 ```json
-{
-  "jsonrpc": "2.0",
-  "method": "conductor_get_status",
-  "params": {},
-  "id": 1
-}
+{ "jsonrpc": "2.0", "method": "tools/call", "params": { "name": "conductor_get_status", "arguments": {} }, "id": 1 }
 ```
 
 **Response**:
 ```json
-{
-  "jsonrpc": "2.0",
-  "result": {
-    "running": true,
-    "current_mode": "Default"
-  },
-  "id": 1
-}
+{ "jsonrpc": "2.0", "result": { "content": [{ "type": "text", "text": "{...}" }] }, "id": 1 }
 ```
 
 **Error**:
 ```json
-{
-  "jsonrpc": "2.0",
-  "error": {
-    "code": -32601,
-    "message": "Method not found"
-  },
-  "id": 1
-}
+{ "jsonrpc": "2.0", "error": { "code": -32601, "message": "Method not found: foo" }, "id": 1 }
 ```
 
-### Message Framing
+Supported methods: `initialize`, `initialized` (notification), `tools/list`,
+`tools/call`, `ping`.
 
-Messages are newline-delimited JSON. Each message is a single line terminated by `\n`.
+### Message framing
 
-## Implementation Details
+Messages are newline-delimited JSON; each message is a single line terminated
+by `\n`. Requests are capped at 1MB.
 
-### Server Startup
+## Socket location
 
-Located in `conductor-daemon/src/daemon/mcp.rs`:
+`McpServer::get_mcp_socket_path()` resolves to `<runtime_dir>/conductor/conductor-mcp.sock`,
+falling back through `dirs::runtime_dir()` → `dirs::cache_dir()` →
+`~/.cache`. On startup the daemon removes any stale socket file, creates the
+parent directory, binds, and sets `0600` permissions (owner-only).
 
-```rust
-pub struct McpServer {
-    socket_path: PathBuf,
-    config_manager: Arc<RwLock<ConfigManager>>,
-    // ...
-}
+## Peer registration and tier ceilings
 
-impl McpServer {
-    pub async fn start(&self) -> Result<(), McpError> {
-        // Remove stale socket
-        let _ = std::fs::remove_file(&self.socket_path);
+An MCP client isn't automatically trusted just because it connected to the
+socket. `McpServer` pins each accepted peer's credentials
+(`resolve_peer_tier_ceiling`) and looks up a registered tier ceiling in the
+`McpRegistry` (`conductorctl mcp register`). `check_peer_tier_ceiling` then
+enforces, per `tools/call`:
 
-        // Bind to socket
-        let listener = UnixListener::bind(&self.socket_path)?;
+- An **unregistered** peer is clamped to `ReadOnly` only.
+- A peer registered at a given `AuditRiskTier` (`ReadOnly` / `Stateful` /
+  `ConfigChange` / `HardwareIO`) may call tools at that tier or below.
+- `Privileged` is **never** reachable from the MCP socket, regardless of
+  registration — it's reserved for daemon-internal callers.
+- A pin failure (older Linux kernel without `pidfd_open`, sandboxed macOS,
+  etc.) is treated as "unregistered" rather than failing closed entirely — the
+  peer can still read.
 
-        // Accept connections
-        loop {
-            let (stream, _) = listener.accept().await?;
-            tokio::spawn(self.handle_connection(stream));
-        }
-    }
-}
-```
+This is independent of the `mcp` / `mcp-write` compile-time gate: the feature
+gate controls what's *compiled and advertised*; the registry controls what a
+*specific connected peer* is allowed to invoke among what's advertised.
 
-### Tool Definitions
+## Adding a new tool
 
-Located in `conductor-daemon/src/daemon/mcp_tools.rs`:
+The exact steps depend on the tool's risk tier.
 
-```rust
-pub fn get_tool_definitions() -> Vec<ToolDefinition> {
-    vec![
-        ToolDefinition {
-            name: "conductor_get_config".to_string(),
-            description: "Get the current configuration".to_string(),
-            parameters: json!({}),
-            risk_tier: ToolRiskTier::ReadOnly,
-        },
-        // ... more tools
-    ]
-}
-```
+### 1. Adding a ReadOnly tool
 
-### Risk Tier Handling
-
-Located in `conductor-daemon/src/daemon/llm/executor.rs`:
-
-```rust
-impl ToolExecutor {
-    pub async fn execute(&self, tool_name: &str, params: Value) -> ExecutionResult {
-        let risk_tier = get_tool_risk_tier(tool_name);
-
-        match risk_tier {
-            ToolRiskTier::ReadOnly => {
-                // Execute immediately
-                self.execute_tool(tool_name, params).await
-            }
-            ToolRiskTier::Stateful => {
-                // Log and execute
-                self.log_execution(tool_name, &params);
-                self.execute_tool(tool_name, params).await
-            }
-            ToolRiskTier::ConfigChange => {
-                // Create plan for user approval
-                self.create_plan(tool_name, params).await
-            }
-        }
-    }
-}
-```
-
-## Adding New Tools
-
-### 1. Define the Tool
-
-Add to `mcp_tools.rs`:
+**Define it** in `mcp_tools/definitions_readonly.rs`, appending to the `vec![]`
+returned by `readonly_tool_definitions()`:
 
 ```rust
 ToolDefinition {
     name: "conductor_my_tool".to_string(),
-    description: "Description of what the tool does".to_string(),
-    parameters: json!({
+    description: "One sentence a caller needs to pick this tool over a similar one.".to_string(),
+    input_schema: json!({
         "type": "object",
         "properties": {
             "param1": { "type": "string", "description": "..." }
         },
         "required": ["param1"]
     }),
-    risk_tier: ToolRiskTier::ReadOnly,  // Choose appropriate tier
-}
+},
 ```
 
-### 2. Implement the Handler
-
-Add handler in `mcp.rs`:
+**Classify it** in `mcp_tools/mod.rs`'s `get_tool_risk_tier` match:
 
 ```rust
-async fn handle_my_tool(&self, params: Value) -> Result<Value, McpError> {
-    let param1 = params.get("param1")
-        .and_then(|v| v.as_str())
-        .ok_or(McpError::InvalidParams)?;
-
-    // Implementation
-    Ok(json!({ "result": "..." }))
-}
+"conductor_my_tool" => ToolRiskTier::ReadOnly,
 ```
 
-### 3. Register in Dispatcher
+**Implement the handler.** ReadOnly tools without daemon-state dependencies
+are dispatched inside `McpToolExecutor` (`mcp_tools/executor.rs` /
+`executor_queries.rs`) — add a match arm there. If your tool needs live
+`SharedDaemonStateRefs` (like `conductor_get_connector_metrics` or the
+identity-cache tools), it needs a special-case arm in
+`mcp/tools_call.rs::handle_tools_call` instead — `McpToolExecutor` is
+deliberately stateless and can't reach the live registry.
 
-Add to the method dispatcher:
+### 2. Adding a write-tier tool (Stateful / ArtifactRender / ConfigChange / HardwareIO)
+
+**Define it** in `mcp_tools/definitions_write.rs`, in
+`write_tier_tool_definitions()` — same `ToolDefinition` shape as above.
+
+**Classify it** in `mcp_tools/write_tiers.rs`'s `write_tool_risk_tier` match:
 
 ```rust
-match method {
-    "conductor_my_tool" => self.handle_my_tool(params).await,
-    // ...
-}
+"conductor_my_write_tool" => ToolRiskTier::Stateful, // or ArtifactRender / ConfigChange / HardwareIO
 ```
 
-## Testing
+**Implement the handler** in `llm/executor.rs`'s `ToolExecutor::execute` (or
+the per-tier helper it calls). `ConfigChange` tools should build a
+`ConfigChange` variant in `llm/plan.rs` and return it wrapped in a
+`ConfigPlan`; `HardwareIO` tools route through the confirmation machinery in
+`daemon::hardware_io`.
 
-### Unit Tests
+Because `definitions_write.rs` only compiles under `mcp-write` and
+`write_tiers.rs` only under `llm-executor`, a tool that's meant to be
+reachable over the MCP socket needs both features enabled to build and test
+end to end — `cargo build --features mcp-write` pulls in `llm-executor`
+transitively (see the feature table above).
+
+### 3. Write a test
+
+`mcp_tools/tests.rs` and `mcp/tests.rs` cover the catalog and dispatch paths
+respectively. A useful pattern instead of hardcoding a tool count (which will
+drift every time a tool is added or removed) is to assert on the *shape*:
 
 ```rust
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_tool_definitions() {
-        let tools = get_tool_definitions();
-        assert_eq!(tools.len(), 10);
+#[test]
+fn every_readonly_tool_has_a_risk_tier() {
+    for tool in mcp_tools::get_tool_definitions() {
+        // get_tool_risk_tier never panics and never returns an
+        // unexpected default for a name that's actually in the catalog.
+        let tier = mcp_tools::get_tool_risk_tier(&tool.name);
+        assert_ne!(tier, ToolRiskTier::Privileged, "{} defaulted to fail-closed", tool.name);
     }
-
-    #[tokio::test]
-    async fn test_get_status() {
-        let server = create_test_server();
-        let result = server.handle_get_status(json!({})).await;
-        assert!(result.is_ok());
-    }
 }
 ```
 
-### Integration Tests
+## Rate limiting
 
-```bash
-# Test MCP server manually
-echo '{"jsonrpc":"2.0","method":"conductor_get_status","params":{},"id":1}' | \
-  nc -U ~/.conductor/mcp.sock
-```
+Rate limiting is implemented, not a TODO:
 
-## Shared Device Enumeration
+- **Per-tier tool rate limiting** (`daemon/ratelimit/`, P4-05): a sliding-window
+  `RateLimiter` used by the IPC-side `ToolExecutor`, with a default budget per
+  tier per 60-second window (`ArtifactRender` shares the `Stateful` budget):
+  ReadOnly 100, Stateful/ArtifactRender 30, ConfigChange 10, HardwareIO 5,
+  Privileged 3 — plus a global cap of 200 requests/window across all tiers.
+  Exceeding a tier's budget returns `ExecutionResult::RateLimited` rather than
+  executing.
+- **Per-peer IPC message rate limiting** (`daemon/ipc_rate_limit.rs`, ADR-027
+  §D16/§D12): a separate, orthogonal limiter keyed by `(peer_pid, peer_exe_path)`
+  capping raw message throughput per connection at 100 messages/second,
+  independent of tool tier — this is the defense against a single connection
+  flooding the dispatch loop with any mix of requests.
+- **Concurrent-connection cap** (`ConnectionLimiter` in `mcp/mod.rs`): the MCP
+  socket itself caps concurrent client connections (16) and drops new
+  connections at capacity rather than queueing them.
 
-> **v4.17.0**: MIDI device enumeration is centralized in `conductor-daemon/src/daemon/device_utils.rs`.
+## Security considerations
 
-All MCP tools, LLM executor, and engine manager use `device_utils::enumerate_midi_devices_fresh()` for consistent device enumeration. This module implements the macOS Core MIDI warmup pattern:
+### Socket permissions
 
-1. Create and immediately drop a warmup `MidiInput` (busts OS driver cache)
-2. Sleep 100ms for the OS/driver to recognize hardware changes
-3. Create a fresh `MidiInput` and enumerate ports
+`0600` — owner read/write only, no group or world access.
 
-An async wrapper `enumerate_midi_devices_fresh_async()` is provided for use in async contexts via `tokio::task::spawn_blocking`.
+### Input validation
 
-Previously, three separate implementations existed in `mcp.rs`, `llm/executor.rs`, and `engine_manager.rs`, none of which included the warmup step — causing stale device lists on macOS.
+Tool arguments are validated against each tool's JSON schema plus
+tool-specific range/type checks in the handler before use.
 
-## Security Considerations
+### The `mcp-write` boundary
 
-### Socket Permissions
+Even on a build with `mcp-write` compiled in, exposing write tools on the MCP
+socket is a deliberate, source-builder-only opt-in (ADR-045 D3/D8) — it is
+not part of any official Conductor artifact. If you're building your own
+daemon and want an external MCP client to be able to mutate config or send
+MIDI, compile with `--features mcp-write` and register the peer's tier via
+`conductorctl mcp register`.
 
-The socket is created with restrictive permissions:
-- Owner read/write only (mode 0600)
-- No group or world access
+## Error codes
 
-### Input Validation
-
-All parameters are validated before use:
-- Type checking
-- Range validation
-- Path sanitization (for file operations)
-
-### Rate Limiting
-
-Consider implementing rate limiting for production:
-- Per-connection limits
-- Global request limits
-- Timeout for long-running operations
-
-## Error Codes
+Standard JSON-RPC:
 
 | Code | Meaning |
 |------|---------|
@@ -286,16 +269,8 @@ Consider implementing rate limiting for production:
 | -32602 | Invalid params |
 | -32603 | Internal error |
 
-Custom error codes (application-specific):
-| Code | Meaning |
-|------|---------|
-| -32000 | Config not found |
-| -32001 | Mode not found |
-| -32002 | Device not found |
-| -32003 | Plan expired |
+## See also
 
-## See Also
-
-- [LLM Integration Architecture](llm-integration.md)
-- [MCP Tools Reference](../reference/mcp-tools.md)
+- [MCP Tools Reference](../reference/mcp-tools.md) — the full tool catalog by tier
+- [LLM Integration](llm-integration.md) — the IPC-side plan/apply executor
 - [Agent Skills](agent-skills.md)

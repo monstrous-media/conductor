@@ -1,20 +1,19 @@
 # InputManager Architecture
 
-**Version**: 4.22.0
 **Status**: Stable
-**Module**: `conductor-daemon/src/input_manager.rs`
+**Module**: `conductor-daemon/src/input_manager/` (`mod.rs`, `devices.rs`, `listen.rs`, `rekey.rs`, `rescan.rs`)
 
 ## Overview
 
-The **InputManager** is Conductor's unified input handling system introduced in v3.0. It provides a single, cohesive interface for managing both MIDI and HID (game controller) input devices, producing a unified stream of protocol-agnostic `InputEvent` instances for processing by the mapping engine.
+The **InputManager** is Conductor's unified input handling system. It provides a single, cohesive interface for managing both MIDI and HID (game controller) input devices, producing a unified stream of protocol-agnostic `InputEvent` instances for processing by the mapping engine.
 
 ### Key Features
 
 - **Multi-Protocol Support**: Seamlessly integrates MIDI and HID game controller inputs
 - **Unified Event Stream**: Single `InputEvent` channel for all input types
-- **Multi-Device Support**: Simultaneous multi-port MIDI listening with per-device EventProcessors (v4.20.0)
-- **Hot-Plug Detection**: Automatic 5-second port rescanning detects newly-connected and removed devices (v4.22.0)
-- **Lock-Free Rule Matching**: ArcSwap-based CompiledRuleSet for wait-free reads on the hot path (v4.21.0)
+- **Multi-Device Support**: Simultaneous multi-port MIDI listening with per-device EventProcessors
+- **Hot-Plug Detection**: Automatic 5-second port rescanning detects newly-connected and removed devices
+- **Lock-Free Rule Matching**: ArcSwap-based CompiledRuleSet for wait-free reads on the hot path
 - **Flexible Device Selection**: Choose MIDI-only, gamepad-only, or hybrid (both) modes
 - **ID Range Separation**: Non-overlapping ID ranges prevent conflicts (MIDI: 0-127, HID: 128-255)
 - **Automatic Reconnection**: Inherits robust reconnection logic from device managers
@@ -74,7 +73,7 @@ The **InputManager** is Conductor's unified input handling system introduced in 
                     ┌────────────────────────┐
                     │  CompiledRuleSet       │
                     │  (conductor-core)        │
-                    │  (ArcSwap, v4.21.0)    │
+                    │  (ArcSwap)             │
                     │                        │
                     │  - Wait-free reads     │
                     │  - Per-device indexing  │
@@ -217,7 +216,7 @@ Gamepad → gilrs::Gilrs::next_event() → gilrs::Event → gamepad_events → I
 
 ### gilrs Integration
 
-Conductor v3.0 uses **gilrs v0.11** for HID game controller support:
+Conductor uses **gilrs 0.11** for HID game controller support:
 
 - **SDL2 Compatibility**: Supports SDL_GameController mapping database
 - **Cross-Platform**: Works on macOS, Linux, Windows
@@ -468,10 +467,10 @@ pub struct InputManager {
     midi_manager: Option<MidiDeviceManager>,
     gamepad_manager: Option<GamepadDeviceManager>,
     mode: InputMode,
-    muted_devices: HashSet<DeviceId>,  // v4.20.0
+    muted_devices: HashSet<DeviceId>,
 }
 
-// Lock-free hot path (v4.21.0 — engine_manager.rs)
+// Lock-free hot path (conductor-daemon/src/daemon/engine_manager/)
 rule_set: Arc<ArcSwap<CompiledRuleSet>>,      // Wait-free reads (~1ns)
 current_mode: Arc<ArcSwap<ModeState>>,         // Atomic mode switching
 device_processors: DashMap<DeviceId, EventProcessor>,  // Sharded per-device
@@ -487,8 +486,8 @@ pub struct GamepadDeviceManager {
 
 ### Synchronization Mechanisms
 
-- **Arc<ArcSwap<T>>**: Lock-free atomic swap for rule set and mode state (v4.21.0 hot path)
-- **DashMap<K, V>**: Sharded concurrent HashMap for per-device EventProcessors (v4.20.0)
+- **Arc<ArcSwap<T>>**: Lock-free atomic swap for rule set and mode state (hot path)
+- **DashMap<K, V>**: Sharded concurrent HashMap for per-device EventProcessors
 - **Arc<Mutex<T>>**: Shared mutable state (gamepad ID, name, input_manager)
 - **Arc<AtomicBool>**: Lock-free connection status and stop flags
 - **AtomicU64**: Lock-free rule set version counter
@@ -676,7 +675,7 @@ impl EventProcessor {
     }
 }
 
-// v4.21.0: Lock-free rule matching in engine_manager
+// Lock-free rule matching in engine_manager/
 // Hot path — zero locks acquired:
 let mode = self.current_mode.load();         // ArcSwap (~1ns)
 let rules = self.rule_set.load();            // ArcSwap (~1ns)
@@ -687,9 +686,9 @@ let action = rules.match_event(
 );
 ```
 
-The EventProcessor doesn't care if the event came from MIDI or a gamepad—it processes all `InputEvent` instances identically. In multi-device mode (v4.20.0), each device gets its own `EventProcessor` via `DashMap<DeviceId, EventProcessor>` for independent hold detection and chord buffering.
+The EventProcessor doesn't care if the event came from MIDI or a gamepad—it processes all `InputEvent` instances identically. In multi-device mode, each device gets its own `EventProcessor` via `DashMap<DeviceId, EventProcessor>` for independent hold detection and chord buffering.
 
-The `CompiledRuleSet` (v4.21.0) provides lock-free rule matching with priority ordering: device-specific rules are checked first, then any-device rules, then global rules. Config reloads atomically swap the rule set via `ArcSwap::store()` without blocking in-flight event processing.
+The `CompiledRuleSet` provides lock-free rule matching with priority ordering: device-specific rules are checked first, then any-device rules, then global rules. Config reloads atomically swap the rule set via `ArcSwap::store()` without blocking in-flight event processing.
 
 ## Testing
 
@@ -709,27 +708,26 @@ cargo test -p conductor-daemon test_convert_midi_note_on
 cargo test -p conductor-daemon test_convert_midi_cc
 ```
 
-## Recent Enhancements
+## Notable Capabilities
 
-- **Multi-Device Listening** (v4.20.0): `listen_to_all_ports()` opens all MIDI ports simultaneously with per-device EventProcessors via DashMap
-- **Device Identity** (v4.19.0): `DeviceId`, `DeviceMatcher`, `PortResolver` for binding ports to logical device identities
-- **Lock-Free Rule Engine** (v4.21.0): `ArcSwap<CompiledRuleSet>` replaces RwLock for wait-free reads on the hot path; atomic config reload never blocks event processing
-- **Device Mute/Unmute** (v4.20.0): `set_device_enabled()` for per-device muting
+- **Multi-Device Listening**: `listen_to_all_ports()` opens all MIDI ports simultaneously with per-device EventProcessors via DashMap
+- **Device Identity**: `DeviceId`, `DeviceMatcher`, `PortResolver` for binding ports to logical device identities
+- **Hot-Plug Rescan**: `rescan_ports()` (`input_manager/rescan.rs`) diffs currently open ports against a fresh enumeration every 5 seconds — opening newly connected ports, removing disconnected ones, and re-keying ports whose `[[endpoints]]` binding changed — without a restart
+- **Lock-Free Rule Engine**: `ArcSwap<CompiledRuleSet>` for wait-free reads on the hot path; atomic config reload never blocks event processing
+- **Device Mute/Unmute**: `set_device_enabled()` for per-device muting
 
 ## Future Enhancements
 
 Potential future improvements to the InputManager:
 
-1. **Hot-Plug Detection**: Dynamic device addition/removal without restart (Phase 4)
-2. **GUI Multi-Device** (Phase 4): Per-device UI panels and device selector
-3. **Custom ID Ranges**: Allow users to remap ID ranges via config
-4. **Virtual Devices**: Create virtual MIDI/gamepad devices for testing
+1. **Custom ID Ranges**: Allow users to remap ID ranges via config
+2. **Virtual Devices**: Create virtual MIDI/gamepad devices for testing
 
 ## Related Documentation
 
 - [Gamepad Support Guide](https://getconductor.dev/guides/gamepad-support.html) - User-facing gamepad setup
 - [Architecture Overview](architecture.md) - Overall system architecture
-- [Event Processing Pipeline](architecture.md#event-processing-pipeline) - Event flow details
+- [Event Flow](architecture.md#event-flow) - Event flow details
 - [Device Templates Guide](https://getconductor.dev/guides/device-templates.html) - Pre-configured templates
 - [Configuration Reference](https://getconductor.dev/configuration/overview.html) - Config file syntax
 
