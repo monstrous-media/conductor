@@ -7,7 +7,7 @@ description: >
   synths, OSC bridge, LED return path) rather than per-event mappings.
   Covers `[[endpoints]]` (named I/O endpoints — ADR-035) and `[[routes]]`
   (signal paths between endpoints) introduced by ADR-031.
-license: Apache-2.0
+license: MIT
 compatibility: Requires Conductor daemon running with MCP server enabled
 metadata:
   author: Monstrous Media
@@ -56,7 +56,7 @@ removed. Express mode-dependent passthrough as a mode-scoped route.)
   I/O-authoring tool; `direction = "Output"` / `"Bidirectional"`, `type` =
   Matcher / OscEndpoint / ArtNetEndpoint / MidiVirtualPort). The legacy
   `conductor_create_connector` tool and the `update_connector` / `delete_connector`
-  batch ops were removed in ADR-035 Phase 2 (#1748); updating/deleting an existing
+  batch ops were removed in ADR-035 Phase 2; updating/deleting an existing
   endpoint via MCP is not yet supported (edit `[[endpoints]]` TOML or use the GUI)
 - Creating, updating, and deleting routes via `conductor_batch_changes`
   with `create_route` / `update_route` / `delete_route` operations
@@ -251,18 +251,15 @@ Raw has been removed — use mode-scoped routes.)
   same event (e.g., overlapping note ranges), surface the warning rather
   than silently letting the engine pick one. Route validation should
   emit overlap warnings modeled on `warn_raw_overlaps_specific` (ADR-030
-  P3a precedent, PR #1127).
+  P3a precedent).
 
 ## Discoverability
 
-This skill is the agent-side counterpart to four LLM-discoverability surfaces
-that all reference signal routing (issue #1138 tracks unification):
+This skill is the agent-side counterpart to the other LLM-discoverability
+surfaces that reference signal routing:
 
-1. `conductor-gui/ui/src/lib/stores/chat.js` — system prompt template
-2. `docs/llm-reference.md` — markdown reference
-3. `conductor-daemon/src/daemon/mcp_tools.rs` — daemon-side tool schemas
-4. `conductor-gui/src-tauri/src/llm_commands.rs::get_mcp_tool_definitions` —
-   GUI-side tool schemas
+1. `docs/llm-reference.md` — markdown reference
+2. `conductor-daemon/src/daemon/mcp_tools/` — daemon-side tool schemas
 
 If you find a routing-related concept documented here that contradicts those
 surfaces, the surfaces are stale; flag it for the user rather than working

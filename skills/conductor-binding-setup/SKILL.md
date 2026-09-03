@@ -5,7 +5,7 @@ description: >
   controllers (HID) with Conductor. Use when the user wants to connect a
   device, create a binding, troubleshoot connection issues, or migrate from
   legacy [device] config to the [[bindings]] format.
-license: Apache-2.0
+license: MIT
 compatibility: Requires Conductor daemon running
 metadata:
   author: Monstrous Media
@@ -175,6 +175,6 @@ Common issues:
 
 See [DEVICES.md](references/DEVICES.md) for supported devices.
 
-## UI Mode awareness
+## UI Mode awareness (Conductor Studio GUI)
 
-Device status dots appear in the TitleBar in **both** modes. Refer to "the device dots in the title bar" regardless of `ui_mode`.
+When a Conductor Studio GUI is attached, device status dots appear in its title bar in both modes; refer to "the device dots in the title bar" regardless of `ui_mode`. A headless daemon has no such surface.

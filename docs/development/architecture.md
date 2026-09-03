@@ -498,5 +498,5 @@ For detailed public API design (Phase 2+), see:
 - [Configuration Overview](https://getconductor.dev/configuration/overview.html)
 - [Device Profiles](https://getconductor.dev/configuration/device-profiles.html)
 - [LED Feedback System](https://getconductor.dev/configuration/led-feedback.html)
-- [Contributing Guide](contributing.md)
+- [Contributing Guide](../../CONTRIBUTING.md)
 - [Testing Strategy](testing.md)

@@ -6,7 +6,7 @@ description: >
   faders on their MIDI controller. Handles triggers (Note, VelocityRange,
   LongPress, DoubleTap, NoteChord, EncoderTurn, CC) and actions (Keystroke,
   Launch, Shell, SendMidi, ModeChange, Sequence).
-license: Apache-2.0
+license: MIT
 compatibility: Requires Conductor daemon running with MCP server enabled
 metadata:
   author: Monstrous Media
@@ -149,7 +149,7 @@ conductor_create_mapping(mode="Play",
 
 #### Passthrough / forwarding → `[[routes]]` (ADR-036)
 
-Passthrough is a **route**, not a trigger. A `[[routes]]` entry forwards every MIDI event from a source endpoint to a destination; an optional `filter` narrows which events, and an optional `modes` scope limits it to specific modes. Author routes with the **`conductor_create_route`** tool (not `conductor_create_mapping`).
+Passthrough is a **route**, not a trigger. A `[[routes]]` entry forwards every MIDI event from a source endpoint to a destination; an optional `filter` narrows which events, and an optional `modes` scope limits it to specific modes. Author routes with `conductor_batch_changes` `create_route` operations (not `conductor_create_mapping` — route singleton tools do not exist by design, ADR-031 § 5.4).
 
 > The old `Trigger::Raw` + `MidiForward` mechanism was **removed** (ADR-036). Configs using `{ type: "Raw", … }` are rejected at load — convert legacy configs with `conductorctl migrate-config --routing`. Never author a `Raw` trigger.
 
@@ -206,9 +206,11 @@ Passthrough is a **route**, not a trigger. A `[[routes]]` entry forwards every M
 See [TRIGGERS.md](references/TRIGGERS.md) for complete trigger documentation.
 See [ACTIONS.md](references/ACTIONS.md) for complete action documentation.
 
-## UI Mode awareness
+## UI Mode awareness (Conductor Studio GUI)
 
-Call `conductor_status` first; check the `ui_mode` field.
+This guidance applies when a Conductor Studio GUI is attached. A headless daemon (CLI/MCP-only) may report no `ui_mode` — skip this section in that case.
+
+Call `conductor_get_status` first; check the `ui_mode` field.
 
 - `ui_mode: "llm"` — config plans render inline as purple-bordered artifact cards in the conversation. Refer to them as "the plan card above" or "the proposed change". Do NOT reference "the workspace panel".
 - `ui_mode: "studio"` — config plans render in the center workspace panel. Refer to them as "the diff in the workspace".
@@ -248,12 +250,12 @@ Selection above), never a top-level `Conditional` keyed on `ModeIs` (deprecated,
 ADR-040 §D6). Composites like `And(ModeIs, AppFrontmost)` remain valid.
 
 **Honour the mode lock — don't fight a manual override.** A user can pin the
-active mode (GUI mode tab, `conductorctl mode set --lock`, or the
+active mode (GUI mode tab, `conductorctl mode set` — which locks unless `--no-lock` is passed — or the
 `conductor_set_mode{ lock: true }` MCP tool); while locked, app/window
 auto-switch is **suppressed**. Before suggesting or making a mode change:
 
 - Check `conductor_mode_status` (the mode/lock-specific status tool — distinct
-  from the general `conductor_status` used for `ui_mode` above): `locked`,
+  from the general `conductor_get_status` used for `ui_mode` above): `locked`,
   `lock_origin`, `lock_mode`, `resolution_layer`, `window_permission_degraded`.
 - If `locked` is true, do **not** silently switch modes or tell the user
   auto-switch will kick in. Surface that a lock is held and offer to release it

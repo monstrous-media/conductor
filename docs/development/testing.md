@@ -2252,7 +2252,7 @@ Complete manual testing checklist for game controller support:
 - [MIDI Event Types](../reference/midi-events.md)
 - [Action System](../reference/actions.md)
 - [Game Controller Support](https://getconductor.dev/guides/game-controllers.html)
-- [Contributing Guide](../contributing.md)
+- [Contributing Guide](../../CONTRIBUTING.md)
 
 ## Examples
 

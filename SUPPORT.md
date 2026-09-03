@@ -14,8 +14,9 @@ Before requesting support, please check our comprehensive documentation:
   - Troubleshooting Guide
   - Device Compatibility Matrix
 - **README**: Quick start and overview
-- **CLAUDE.md**: Detailed project instructions and architecture
-- **LED_FEEDBACK.md**: LED system documentation
+- **[docs/](docs/README.md)**: In-repo reference and development docs
+  (config schema, trigger/action types, CLI commands, MCP tools,
+  [LED system](docs/reference/led-system.md))
 
 ### 2. GitHub Discussions (Questions & Ideas)
 
@@ -66,7 +67,7 @@ To help us help you faster, please:
 
 Have this information ready:
 
-- **Conductor Version**: Run `cargo run -p conductor-daemon --bin conductor --release -- --version` or check your binary
+- **Conductor Version**: Run `conductor --version` (or `cargo run -p conductor-daemon --bin conductor -- --version` from a checkout)
 - **Operating System**: macOS version, Linux distro, or Windows version
 - **Architecture**: Apple Silicon (M1/M2/M3) or Intel (x86_64)
 - **MIDI Device**: Manufacturer and model

@@ -7,7 +7,7 @@ description: >
   or CC values for their controls. Supports MIDI controllers and game
   controllers (HID). Detects patterns like LongPress, DoubleTap, and
   Chords automatically.
-license: Apache-2.0
+license: MIT
 compatibility: Requires Conductor daemon with a device connected
 metadata:
   author: Monstrous Media
@@ -139,9 +139,11 @@ Agent: [Uses conductor_stop_midi_learn]
 
 See [PATTERNS.md](references/PATTERNS.md) for advanced pattern detection algorithms.
 
-## UI Mode awareness
+## UI Mode awareness (Conductor Studio GUI)
 
-Call `conductor_status` first; check the `ui_mode` field.
+This guidance applies when a Conductor Studio GUI is attached. A headless daemon (CLI/MCP-only) may report no `ui_mode` — skip this section in that case.
+
+Call `conductor_get_status` first; check the `ui_mode` field.
 
 - `ui_mode: "llm"` — when you call `start_midi_learn`, a 320px events drawer slides in from the right. Tell the user: "Watch the events drawer for your input."
 - `ui_mode: "studio"` — the events panel is already visible on the right. Tell the user: "Watch the event stream panel for your input."

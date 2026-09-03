@@ -140,8 +140,7 @@ app = "/Applications/Visual Studio Code.app"
 
 ### Shell
 
-Execute a shell command. Two schema shapes (ADR-027 D3 §3.1, issue
-#1037):
+Execute a shell command. Two schema shapes (ADR-027 D3 §3.1):
 
 **Schema (legacy, single-string):**
 ```toml

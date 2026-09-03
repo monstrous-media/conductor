@@ -4,7 +4,7 @@ description: >
   Diagnose and resolve common Conductor issues including port detection
   failures, events not triggering, wrong device routing, and LED feedback
   problems. Use when the user reports something isn't working.
-license: Apache-2.0
+license: MIT
 compatibility: Requires Conductor daemon running
 metadata:
   author: Monstrous Media
@@ -192,9 +192,11 @@ If the issue persists after checking all five, ask the user to:
 - Check for OS-level issues (driver updates, permission changes)
 - Try a different USB port or cable
 
-## UI Mode awareness
+## UI Mode awareness (Conductor Studio GUI)
 
-`conductor_status` includes `ui_mode` ("llm" or "studio"). When asking the user to verify state visually:
+This guidance applies when a Conductor Studio GUI is attached. A headless daemon (CLI/MCP-only) may report no `ui_mode` — skip this section in that case.
+
+`conductor_get_status` includes `ui_mode` ("llm" or "studio"). When asking the user to verify state visually:
 
 - `ui_mode: "llm"`: events drawer (right slide-in), context chips above input, conversation header above messages.
 - `ui_mode: "studio"`: workspace panel (center), event stream panel (right), chat panel (left).

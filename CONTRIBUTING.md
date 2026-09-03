@@ -40,7 +40,7 @@ which appends a line like:
 Signed-off-by: Your Name <your.email@example.com>
 ```
 
-The DCO check runs on every pull request; unsigned commits will fail CI. If you forget,
+Pull requests are checked for DCO sign-off; unsigned commits will fail the check. If you forget,
 amend and force-push: `git commit --amend -s && git push -f`.
 
 ## Ways to Contribute
@@ -113,6 +113,10 @@ include tests and documentation, use an MIT-compatible license.
    cargo build --workspace
    cargo test --workspace
    ```
+
+   Common tasks are wrapped in a [justfile](justfile) (`cargo install just`):
+   `just ci` runs the same format/header/lint/test gates as CI, and
+   `just test-compositions` builds the daemon feature matrix.
 
 3. **Run the daemon**
    ```bash
