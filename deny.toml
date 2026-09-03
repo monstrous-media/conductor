@@ -4,10 +4,26 @@
 
 [graph]
 all-features = false
+# Evaluate the graph per shipped target instead of treating every cfg as
+# true: tray-icon is a macOS-only dependency, and without this cargo-deny
+# would still walk its Linux-only unmaintained GTK3 subtree straight from
+# Cargo.lock.
+targets = [
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+]
 
 [advisories]
 version = 2
 yanked = "deny"
+# Unmaintained-crate advisories: flag only DIRECT workspace dependencies.
+# Transitively, tray-icon's Linux backend drags in the archived gtk-rs
+# GTK3 binding tree (RUSTSEC-2024-041x) and proc-macro-error — not
+# fixable from here short of replacing tray-icon (tracked follow-up).
+# Vulnerability/unsound advisories remain denied at full graph depth.
+unmaintained = "workspace"
 # RustSec advisories: deny by default. Add temporary ignores here only with
 # a comment linking the tracking issue (pattern carried from private repo).
 ignore = []

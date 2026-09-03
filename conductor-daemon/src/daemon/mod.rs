@@ -36,6 +36,9 @@ pub mod mcp;
 #[cfg(any(feature = "mcp", feature = "llm-executor"))]
 pub mod mcp_tools;
 pub mod mcp_types;
+// macOS-only: the tray stack (tray-icon) is a macOS target dependency —
+// the Linux daemon is headless (see conductor_menubar.rs).
+#[cfg(target_os = "macos")]
 pub mod menu_bar;
 pub mod midi_watcher; // Persistent CoreMIDI watcher for daemon hot-plug
 #[cfg(any(feature = "mcp", feature = "llm-executor"))]
@@ -80,6 +83,7 @@ pub use mcp_types::{
     ServerInfo, ToolCallParams, ToolCallResult, ToolContent, ToolDefinition, ToolRiskTier,
     ToolsCapability, ToolsListResult,
 };
+#[cfg(target_os = "macos")]
 pub use menu_bar::{IconState, MenuAction, MenuBar, MenuBarError};
 pub use midi_watcher::{MidiWatcherHandle, start_midi_watcher};
 pub use ratelimit::{RateLimitConfig, RateLimitError, RateLimitResult, RateLimiter, TierLimits};

@@ -133,13 +133,6 @@ governor = "0.10"
 lru = "0.18"
 
 # System integration
-# Pinned to 0.23 to match tauri 2.11.2's internal tray-icon (0.23.1) so
-# both resolve muda 0.19.2. A split (this dep at 0.21 → muda 0.17.1 vs
-# tauri's 0.23.1 → muda 0.19.2) links two copies of muda's
-# `MudaMenuItem` ObjC class and breaks the macOS universal LTO build
-# ("__CLASS_MudaMenuItem: symbol multiply defined" → "failed to load
-# bitcode of module muda…rcgu.o").
-tray-icon = "0.23"
 dirs = "6.0"
 
 # Utilities
@@ -169,6 +162,10 @@ rand = { workspace = true, optional = true }
 
 # Platform-specific dependencies for menu bar
 [target.'cfg(target_os = "macos")'.dependencies]
+# macOS-only: the menubar tray helper. Keeping this off Linux keeps the
+# unmaintained GTK3 binding tree (cargo-deny errors) out of the graph —
+# the Linux daemon is headless.
+tray-icon = "0.23"
 cocoa = "0.25"
 objc = "0.2"
 # ADR-027 D1 (3/N): peer trust classification via Security.framework

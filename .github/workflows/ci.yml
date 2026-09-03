@@ -64,11 +64,10 @@ jobs:
       - name: Linux build deps (ALSA, udev for gilrs/evdev)
         run: |
           sudo apt-get update
-          # alsa/udev: MIDI + gilrs. gtk/appindicator/rsvg: the tray-icon
-          # stack behind the menubar helper. xdo: enigo keystroke output.
+          # alsa/udev: MIDI + gilrs. xdo: enigo keystroke output.
+          # (No GTK: the tray stack is a macOS-only target dependency.)
           sudo apt-get install -y --no-install-recommends \
-            libasound2-dev libudev-dev pkg-config \
-            libgtk-3-dev libappindicator3-dev librsvg2-dev libxdo-dev
+            libasound2-dev libudev-dev pkg-config libxdo-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -92,11 +91,10 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          # alsa/udev: MIDI + gilrs. gtk/appindicator/rsvg: the tray-icon
-          # stack behind the menubar helper. xdo: enigo keystroke output.
+          # alsa/udev: MIDI + gilrs. xdo: enigo keystroke output.
+          # (No GTK: the tray stack is a macOS-only target dependency.)
           sudo apt-get install -y --no-install-recommends \
-            libasound2-dev libudev-dev pkg-config \
-            libgtk-3-dev libappindicator3-dev librsvg2-dev libxdo-dev
+            libasound2-dev libudev-dev pkg-config libxdo-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       # Default-features build first (what a plain `cargo build` gives users),
