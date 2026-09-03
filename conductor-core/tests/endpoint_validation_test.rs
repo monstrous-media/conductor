@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-035 Slice 5 — endpoint validation: non-empty-matchers invariant,
 // direction legality, route alias resolution against the endpoint set, and
 // the dropped `direction = Input` connector rejection.

@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! Shell action timeout enforcement — ADR-027 D7 (full) / issue #1166.
 //!
 //! Long-running shell actions historically ran as fire-and-forget

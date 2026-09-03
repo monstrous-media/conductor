@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! #2397: coalesce per-kind `midi_*_suppressed` MonitorEvents.
 //!
 //! From the stuck-notes investigation (epic #2395, symptom (i)): the recursion

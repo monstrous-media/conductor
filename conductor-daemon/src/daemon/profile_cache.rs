@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! Profile cache for fast profile switching (Issue #355 — R770: <50ms target).
 //!
 //! Pre-parses and validates profile configs so that profile switching avoids

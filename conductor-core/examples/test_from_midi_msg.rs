@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // Example demonstrates `MidiEvent::from_midi_msg` by printing what each
 // raw-byte input parses to. `println!` is the point of an example
 // program; the slop-pack `clippy::print_stdout` deny doesn't apply.

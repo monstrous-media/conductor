@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-042 Phase A — Slice A.6b-2: async UDP listener runtime.
 //
 // `spawn_listener` binds a loopback UDP socket for a ListenerEdge and runs a

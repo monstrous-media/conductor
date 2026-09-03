@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-042 Phase A — Slice A.2: EndpointConfig network-security schema +
 // loopback-only validator.
 //

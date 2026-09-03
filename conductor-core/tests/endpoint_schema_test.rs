@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-035 Slice 1 — `[[endpoints]]` schema: hand-written strict `Deserialize`
 // for `EndpointConfig` (wrapper) over the `EndpointKind` payload enum.
 //

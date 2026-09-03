@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-034 §D7/§D9 — `[config]` metadata block tests.
 //
 // Covers the `source` (managed/file) and `user_file_policy`

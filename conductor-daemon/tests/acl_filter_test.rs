@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-042 Phase A — Slice A.3: ACL filter at the listener edge.
 //
 // `AclFilter` wraps a compiled `NetworkAcl` (CIDR allow-list) plus an optional

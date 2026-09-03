@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! Config versioning IPC handlers (`handle_reload`, `handle_validate_config`,
 //! `handle_mark_known_good`, `handle_rollback_config`,
 //! `handle_rollback_config_force`, `handle_config_drift_status`), extracted

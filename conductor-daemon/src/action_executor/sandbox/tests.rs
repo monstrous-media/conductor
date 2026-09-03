@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! ADR-027 §D10b — sandbox module tests.
 //!
 //! Policy/path tests run on every platform. The Seatbelt enforcement tests

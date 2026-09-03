@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // Minimal WASM plugin for testing - no std, no allocator, just raw exports
 
 #![no_std]

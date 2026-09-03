@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-042 Phase A — Slice A.6.1: orphaned-listener detection.
 //
 // A UDP socket is reclaimed by the kernel when its owning process dies, so the

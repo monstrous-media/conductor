@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-034 §D4.B.1 — persistence foundation tests.
 //
 // `persist_atomically` recipe (§D3.1): NamedTempFile → write → fsync(file)

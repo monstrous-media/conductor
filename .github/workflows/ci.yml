@@ -51,6 +51,8 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all --check
+      - name: License headers
+        run: ./scripts/check-spdx.sh
 
   clippy:
     name: clippy

@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-034 §D5 — ConfigRevision newtype tests.
 
 use conductor_core::config::ConfigRevision;

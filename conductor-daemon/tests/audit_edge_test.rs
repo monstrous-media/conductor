@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-042 Phase A — Slice A.5: audit edge at the network listener.
 //
 // `AuditRateLimiter` is the third listener-edge stage (after ACL and rate

@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-034 §D4.A.3.3.A — structural acceptance for the legacy
 // `self.config: Arc<RwLock<Config>>` removal in engine_manager.rs.
 //

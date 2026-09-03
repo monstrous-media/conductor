@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-034 §D1.1 — LiveConfig::mutate() contract tests.
 //
 // Covers: happy path per ConfigOp variant, stale-base CAS at both

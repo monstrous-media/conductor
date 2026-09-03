@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-034 §D10 / §D4.B.2 — singleton enforcement via `flock(2)`.
 //
 // The daemon acquires `flock(LOCK_EX | LOCK_NB)` on

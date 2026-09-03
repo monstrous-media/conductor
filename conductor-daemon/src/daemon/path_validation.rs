@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! ADR-034 §D2.2 — safe-walk path validation for `ReloadFromDisk` /
 //! `ImportConfig`.
 //!

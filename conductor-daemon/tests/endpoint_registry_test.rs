@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-035 Slice 6 — `EndpointRegistry::from_config(&[EndpointConfig])` single-source.
 //
 // The runtime registry no longer lowers `[[bindings]]` itself. Lowering now

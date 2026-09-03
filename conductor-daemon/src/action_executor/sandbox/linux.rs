@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! ADR-027 §D10b — Linux Landlock confinement (kernel 5.13+).
 //!
 //! We restrict **filesystem writes** to the declared subtrees plus the

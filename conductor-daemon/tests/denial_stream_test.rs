@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! ADR-027 D13a — audit denial observability (#1167).
 //!
 //! Implementation-spec test-matrix case 1J:

@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! ADR-027 §D10b — macOS Seatbelt confinement via the `sandbox_init(3)` C API.
 //!
 //! We generate an SBPL profile from the [`SandboxPolicy`] and apply it in the

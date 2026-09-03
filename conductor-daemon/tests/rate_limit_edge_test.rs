@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-042 Phase A — Slice A.4: rate-limit edge at the network listener.
 //
 // `RateLimitEdge` is the second stage of the listener edge (after the ACL

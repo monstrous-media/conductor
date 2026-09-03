@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-042 Phase A — Slice A.6a: ListenerManager + ordered listener edge.
 //
 // ListenerManager builds one ListenerEdge per enabled Input/Bidirectional

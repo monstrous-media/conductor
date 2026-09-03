@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! ADR-027 §D10b — OS-level sandboxing for `Shell` actions.
 //!
 //! Shell actions would otherwise run with the daemon's full filesystem and

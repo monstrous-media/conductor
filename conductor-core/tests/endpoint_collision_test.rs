@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-035 — normalize_to_endpoints duplicate-alias hard-fail +
 // canonical_endpoint_digest (spec §4.3).
 //

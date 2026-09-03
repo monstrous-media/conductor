@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 // ADR-034 §D4.A.3.3.B.1 — structural acceptance for the legacy
 // `Arc<RwLock<Option<Config>>>` (mcp.rs) and `Arc<RwLock<Config>>`
 // (executor.rs) removal.

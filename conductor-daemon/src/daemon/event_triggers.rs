@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 /// Event trigger engine (R915-R917)
 ///
 /// Evaluates trigger conditions against the monitor event stream and fires

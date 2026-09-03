@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! Integration tests for ADR-027 D7 (full) — shell timeout enforcement (#1166).
 //!
 //! Asserts that `spawn_with_timeout`:
