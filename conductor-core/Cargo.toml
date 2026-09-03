@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Conductor core multi-protocol input mapping engine (UI-independent)"
 
 [lib]
@@ -71,7 +72,7 @@ alsa = { workspace = true, optional = true }
 libc = "0.2"
 
 [dev-dependencies]
-conductor-daemon = { path = "../conductor-daemon" }  # For integration tests
+conductor-daemon = { version = "0.1.0", path = "../conductor-daemon" }  # For integration tests
 proptest.workspace = true
 rstest.workspace = true
 criterion = { version = "0.8", features = ["html_reports"] }

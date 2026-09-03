@@ -1,0 +1,14 @@
+# Gitleaks config for the Security workflow's secret scan.
+# Extends the default ruleset; entries here are reviewed false positives.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed false positives"
+paths = [
+  # Keystroke-action unit tests: fixture strings like `keys: "invalidkey123"`
+  # trip the generic-api-key entropy rule. The file contains only synthetic
+  # keystroke sequences, never credentials.
+  '''tests/actions_unit_tests\.rs''',
+]

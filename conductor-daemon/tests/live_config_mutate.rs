@@ -10,6 +10,11 @@
 // state_generation = 1 (KI-A2), overflow panic policy (KI-A4),
 // re-entrancy invariant doc.
 
+// This suite drives LiveConfig through its test-only compiler-injection
+// seam (`with_compiler`), which only exists with the `test-helpers`
+// feature — a default-features build must skip it.
+#![cfg(feature = "test-helpers")]
+
 use conductor_core::Config;
 use conductor_core::config::Provenance;
 use conductor_core::rule_set::CompiledRuleSet;

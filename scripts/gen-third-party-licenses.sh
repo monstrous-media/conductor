@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
 # Regenerate NOTICE and THIRD_PARTY_LICENSES.md from the current Cargo.lock
-# (#1488). Lists every third-party crate in the workspace's *distributed*
+# Lists every third-party crate in the workspace's *distributed*
 # dependency graph (normal + build deps, dev-deps excluded) with its license,
 # via `cargo license`.
 #
-# These files are GENERATED — do not hand-edit. Run this after any dependency
-# change. CI verifies they are current (see .github/workflows/ci.yml,
-# `license-inventory` job) and fails if they drift from Cargo.lock.
+# These files are GENERATED — do not hand-edit. Run this (`just licenses`)
+# after any dependency change. There is no CI drift gate yet — adding a
+# regenerate-and-diff job is tracked follow-up work.
 #
 # Output is deterministic (sorted, no timestamps) so `git diff --exit-code`
 # is a reliable staleness check.

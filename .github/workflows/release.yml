@@ -223,15 +223,19 @@ jobs:
         if: runner.os == 'macOS' && steps.apple-secrets.outputs.has_identity == 'true'
         run: |
           set -euo pipefail
-          # Extract ONLY the CONDUCTOR_TEAM_IDS array body. A bare grep for
+          # Extract ONLY the CONDUCTOR_TEAM_IDS array. A bare grep for
           # /"[0-9A-Z]{10}"/ over the whole file also matches the "FAKETEAMID"
           # fixture in the negative test, which would let a wrongly-signed
-          # binary pass this gate.
+          # binary pass this gate. The declaration line itself is included so
+          # a rustfmt-collapsed single-line array still parses, and `//`
+          # comments are stripped so a commented-out (retired) Team ID can
+          # never satisfy the gate.
           ALLOWED=$(awk '
-            /const CONDUCTOR_TEAM_IDS/ { inblock = 1; next }
-            inblock && /\];/           { exit }
+            /const CONDUCTOR_TEAM_IDS/ { inblock = 1 }
             inblock                    { print }
+            inblock && /\];/           { exit }
           ' conductor-daemon/src/security/peer_pin.rs \
+            | sed 's|//.*||' \
             | grep -oE '"[0-9A-Z]{10}"' | tr -d '"')
 
           if [ -z "$ALLOWED" ]; then

@@ -28,6 +28,11 @@
 //!   the existing mutate-flow suite is the regression net for the
 //!   refactor's correctness.
 
+// This suite drives LiveConfig through its test-only compiler-injection
+// seams (`with_compiler`, `install_test_snapshot`), which only exist with
+// the `test-helpers` feature — a default-features build must skip it.
+#![cfg(feature = "test-helpers")]
+
 use conductor_core::Config;
 use conductor_core::config::Provenance;
 use conductor_core::rule_set::CompiledRuleSet;

@@ -16,6 +16,11 @@
 // `live.toml` untouched. Verified by the `*_persists_to_*` tests
 // below.
 
+// This suite drives LiveConfig/AuditOutbox through their test-only seams
+// (`set_audit_outbox_for_test`, `set_count_for_test`), which only exist
+// with the `test-helpers` feature — a default-features build must skip it.
+#![cfg(feature = "test-helpers")]
+
 use conductor_core::Config;
 use conductor_core::config::Provenance;
 use conductor_core::rule_set::CompiledRuleSet;

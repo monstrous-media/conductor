@@ -88,7 +88,7 @@ conductor-core = { version = "0.1.0", path = "conductor-core" }
 
 [dev-dependencies]
 # For integration tests that use ActionExecutor and PluginManager
-conductor-daemon = { path = "conductor-daemon" }
+conductor-daemon = { version = "0.1.0", path = "conductor-daemon" }
 proptest.workspace = true
 rstest.workspace = true
 chrono.workspace = true
@@ -120,10 +120,11 @@ ed25519-dalek = { version = "2.1", features = ["rand_core"] }  # Plugin signing
 hex = "0.4"  # Hex encoding for signatures
 
 # WASM plugin runtime (sandboxed plugin execution)
-# Upgraded 26.0 → 45.0: clears 18 ignored RustSec advisories,
-# incl. RUSTSEC-2026-0149 (CVSS 7.5 path_open sandbox bypass).
-wasmtime = "45.0"
-wasmtime-wasi = "45.0"
+# 45 → 46.0.3 clears RUSTSEC-2026-0222 + RUSTSEC-2026-0269 (no patched
+# 45.x exists). The earlier 26 → 45 jump cleared 18 advisories incl.
+# RUSTSEC-2026-0149 (CVSS 7.5 path_open sandbox bypass).
+wasmtime = "46.0.3"
+wasmtime-wasi = "46.0.3"
 
 # Platform-specific MIDI output (optional, for virtual port creation)
 coremidi = "0.9"  # macOS virtual MIDI ports (0.9 not available on crates.io)

@@ -96,14 +96,30 @@ jobs:
       # Dry-run everything BEFORE publishing anything. crates.io publishes are
       # irreversible (yank hides, never deletes), so a half-published set is the
       # worst outcome — catch packaging errors while they are still free.
+      #
+      # Bootstrap caveat: packaging capture/daemon strips the path from their
+      # `conductor-core = { version, path }` dep and resolves it from crates.io.
+      # Before the very first conductor-core publish nothing exists there, so
+      # their dry-runs cannot resolve — skip them (with a notice) until
+      # conductor-core@VERSION is on the index; conductor-core itself has no
+      # path deps and always dry-runs.
       - name: Dry-run package all crates
         run: |
           set -euo pipefail
-          for c in conductor-core conductor-capture conductor-daemon; do
-            echo "::group::dry-run $c"
-            cargo publish --dry-run --package "$c" --locked
-            echo "::endgroup::"
-          done
+          VER=$(cargo pkgid -p conductor-core | sed 's/.*[@#]//')
+          echo "::group::dry-run conductor-core"
+          cargo publish --dry-run --package conductor-core --locked
+          echo "::endgroup::"
+          if curl -sf -H "User-Agent: monstrous-conductor-ci" \
+               "https://crates.io/api/v1/crates/conductor-core/$VER" >/dev/null; then
+            for c in conductor-capture conductor-daemon; do
+              echo "::group::dry-run $c"
+              cargo publish --dry-run --package "$c" --locked
+              echo "::endgroup::"
+            done
+          else
+            echo "::notice::conductor-core@$VER not on crates.io yet (first release bootstrap) — skipping dependent dry-runs; the real publishes below still verify each crate"
+          fi
 
       - name: Publish
         if: startsWith(github.ref, 'refs/tags/v') && github.event.inputs.dry_run != 'true'
@@ -121,7 +137,9 @@ jobs:
             if cargo publish --package "$c" --locked; then
               echo "published $c"
             else
-              VER=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+              # The crate's OWN version (not the root manifest's) — they can
+              # differ, and the idempotency check must ask about the right one.
+              VER=$(cargo pkgid -p "$c" | sed 's/.*[@#]//')
               if curl -sf -H "User-Agent: monstrous-conductor-ci" \
                    "https://crates.io/api/v1/crates/$c/$VER" >/dev/null; then
                 echo "::warning::$c@$VER already on crates.io — continuing"

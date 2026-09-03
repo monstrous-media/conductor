@@ -71,9 +71,10 @@ audit:
 licenses:
     ./scripts/gen-third-party-licenses.sh
 
-# Verify the built daemon binary contains only OSS-tier features
-check-oss-binary:
-    ./scripts/check-oss-binary.sh
+# Verify a built daemon binary contains only OSS-tier features
+# e.g. just check-oss-binary target/release/conductor
+check-oss-binary BIN="target/release/conductor":
+    ./scripts/check-oss-binary.sh {{BIN}}
 
 # Update dependencies
 update:

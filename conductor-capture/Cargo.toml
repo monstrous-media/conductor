@@ -1,11 +1,12 @@
 [package]
 name = "conductor-capture"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 authors = ["Monstrous Media <package-monster@monstrous.media>"]
 description = "Input pattern capture tool for Conductor - record MIDI and gamepad input with privacy controls"
-license = "MIT"
-repository = "https://github.com/monstrous-media/conductor"
+license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "conductor-capture"

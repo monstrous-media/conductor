@@ -9,7 +9,8 @@ set -euo pipefail
 
 fail=0
 while IFS= read -r f; do
-  if ! head -2 "$f" | grep -q 'SPDX-License-Identifier: MIT'; then
+  if ! head -2 "$f" | grep -q 'SPDX-License-Identifier: MIT' \
+     || ! head -2 "$f" | grep -q 'Copyright'; then
     echo "missing SPDX header: $f"
     fail=1
   fi

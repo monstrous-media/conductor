@@ -64,12 +64,18 @@ jobs:
       - name: Linux build deps (ALSA, udev for gilrs/evdev)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
+          # alsa/udev: MIDI + gilrs. gtk/appindicator/rsvg: the tray-icon
+          # stack behind the menubar helper. xdo: enigo keystroke output.
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libudev-dev pkg-config \
+            libgtk-3-dev libappindicator3-dev librsvg2-dev libxdo-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --workspace --all-targets -- -D warnings
+      # --all-features so core's plugin/plugin-wasm/plugin-signing code is
+      # linted too — the compositions matrix below only varies daemon features.
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
     name: test (${{ matrix.os }})
@@ -86,11 +92,18 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
+          # alsa/udev: MIDI + gilrs. gtk/appindicator/rsvg: the tray-icon
+          # stack behind the menubar helper. xdo: enigo keystroke output.
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libudev-dev pkg-config \
+            libgtk-3-dev libappindicator3-dev librsvg2-dev libxdo-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # Default-features build first (what a plain `cargo build` gives users),
+      # then the full-features test suite — core's plugin runtimes and the
+      # daemon's write/executor tiers are only compiled with their features on.
       - run: cargo build --workspace
-      - run: cargo test --workspace
+      - run: cargo test --workspace --all-features
 
   # ADR-045 D3 — official daemon compositions, built PACKAGE-SCOPED
   # (never --workspace: feature unification must not leak paid features

@@ -115,7 +115,7 @@ Results:
 - [ ] No new compiler warnings
 - [ ] Commit messages follow conventional format
 - [ ] Branch is up-to-date with main
-- [ ] ADR currency: if this PR adds/supersedes an ADR or changes a deprecated element, updated the ADR's frontmatter (`status`/`supersedes`/`superseded_by`) and/or `docs/adrs/deprecations.toml`, then ran `just adr-index` (enforced by the `ADR currency` CI gate)
+- [ ] ADR references: if this PR changes behavior anchored to an ADR, updated the affected entry in `docs/architecture/adrs.md`
 
 ## Related Issues
 

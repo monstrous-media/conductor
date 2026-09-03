@@ -15,7 +15,10 @@
 //! run `cargo test --all-features`, same as the live_config suite).
 
 // ADR-045 D1: drives the LLM ToolExecutor; llm-executor builds only.
-#![cfg(feature = "llm-executor")]
+// test-helpers is additionally required: this suite builds its daemon
+// state through `SharedDaemonStateRefs::for_routing_tools_test`, a
+// seam that only exists with that feature.
+#![cfg(all(feature = "llm-executor", feature = "test-helpers"))]
 
 use std::collections::VecDeque;
 use std::sync::Arc;

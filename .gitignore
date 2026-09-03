@@ -56,3 +56,9 @@ conductor.code-workspace
 # Isolated cargo target dir for epic-loop/agent builds (keeps them from
 # invalidating rust-analyzer's artifacts and vice versa; see epic-loop#141).
 target-epic-loop/
+
+# Editor settings and stray logs must never ride into a public commit
+.vscode/
+.idea/
+*.log
+**/*.rs.bk
