@@ -4,7 +4,6 @@
 //! TDD tests for ADR-009 Phase 3: CompiledRuleSet + RuleCompiler
 //!
 //! Tests the lock-free rule engine types (rule_set.rs) and compilation (rule_compiler.rs).
-//! Issue: #123
 
 use conductor_core::actions::{Action, KeyCode};
 use conductor_core::config::types::Config;
@@ -21,7 +20,7 @@ fn compile_config(toml: &str, version: u64) -> CompiledRuleSet {
 
 /// Returns the single Unicode character that a `Keystroke` action would type
 /// (e.g. `keys = "a"` → `Some('a')`), or `None` for any other action shape.
-/// #1556: priority/first-match tests use this to assert WHICH candidate rule
+/// Priority/first-match tests use this to assert WHICH candidate rule
 /// won, not merely that *some* action matched — a rule engine that returned the
 /// wrong same-trigger rule would otherwise pass.
 fn keystroke_char(action: &Action) -> Option<char> {
@@ -731,8 +730,7 @@ keys = "z"
     // both match it. The priority contract — mode rules checked before global
     // rules — means the MODE action must win. Asserting identity (not just
     // `is_some`) is what actually exercises that contract; with the prior
-    // distinct-trigger-only config a global-first engine would also have passed
-    // (#1555).
+    // distinct-trigger-only config a global-first engine would also have passed.
     let mode_event = ProcessedEvent::PadPressed {
         note: 36,
         velocity: 100,
@@ -1274,7 +1272,7 @@ keys = "h"
     assert!(rules.match_event(&note51, 0, Some("mikro")).is_some());
 }
 
-// ========== find_mode_index tests (v4.25.0 - ADR-009 Gap 1) ==========
+// ========== find_mode_index tests (ADR-009 Gap 1) ==========
 
 #[test]
 fn test_find_mode_index_exists() {
@@ -1329,7 +1327,7 @@ name = "Default"
     assert_eq!(rules.find_mode_index("DEFAULT"), None);
 }
 
-// ========== match_event_with_provenance tests (v4.26.0 - ADR-009 Gap K) ==========
+// ========== match_event_with_provenance tests (ADR-009 Gap K) ==========
 
 #[test]
 fn test_provenance_returns_envelope_with_mode_name() {

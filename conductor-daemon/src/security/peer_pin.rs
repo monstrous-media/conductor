@@ -758,7 +758,7 @@ fn still_pinned_macos(conn_fd: &OwnedFd, expected: &AuditToken) -> bool {
     }
 }
 
-/// #1125 — extracted signing info, abstracted behind a lookup trait
+/// Extracted signing info, abstracted behind a lookup trait
 /// so tests can drive `verify_conductor_team_id_with` with a mock
 /// that asserts the flags argument and returns a controlled
 /// `teamid`. Only the fields the verifier actually consults are
@@ -773,11 +773,11 @@ struct SigningInfo {
     team_id: Option<String>,
 }
 
-/// #1125 — seam between `verify_conductor_team_id` and the SecCode
+/// Seam between `verify_conductor_team_id` and the SecCode
 /// FFI. Production wires through to `SecCodeCopyGuestWithAttributes`
 /// followed by `SecCodeCopySigningInformation`; tests inject a mock
 /// that asserts the `flags` argument is `SEC_CS_SIGNING_INFORMATION`
-/// (the v5.6.0-alpha regression captured in #1122 was passing `0`,
+/// (a past regression was passing `0`,
 /// which silently omitted `teamid` from the returned dict — every
 /// Apple-Team-ID-signed binary then classified as `Untrusted`).
 ///
@@ -791,7 +791,7 @@ trait SigningInfoLookup {
     /// `SecCodeCopySigningInformation`. Production callers MUST pass
     /// `SEC_CS_SIGNING_INFORMATION = 0x2` — anything else produces a
     /// signing dict that omits `teamid`, which is the regression
-    /// path #1125 exists to lock down.
+    /// path this trait exists to lock down.
     ///
     /// Returns `None` if the lookup fails for any reason
     /// (non-zero `OSStatus`, null pointer, dict without `teamid`).
@@ -825,7 +825,7 @@ struct RealSecCodeLookup;
 /// dev-build` ad-hoc-codesigned binaries do **not** carry a
 /// Team ID and therefore correctly demote to `Untrusted` here).
 ///
-/// #1125: thin wrapper around `verify_conductor_team_id_with`,
+/// Thin wrapper around `verify_conductor_team_id_with`,
 /// which takes a `SigningInfoLookup` so tests can exercise the
 /// positive Team-ID-match path with a controlled mock.
 #[cfg(target_os = "macos")]
@@ -833,12 +833,12 @@ fn verify_conductor_team_id(audit_token: &AuditToken) -> bool {
     verify_conductor_team_id_with(audit_token, &RealSecCodeLookup)
 }
 
-/// #1125 — testable core of `verify_conductor_team_id`. The
+/// Testable core of `verify_conductor_team_id`. The
 /// comparison logic lives here so it can be exercised with a mock
 /// `SigningInfoLookup` that asserts the flags arg matches
 /// `SEC_CS_SIGNING_INFORMATION`. Always forwards
 /// `SEC_CS_SIGNING_INFORMATION` to the lookup — DO NOT replace
-/// with `0` (that's the v5.6.0-alpha regression #1122 captured).
+/// with `0` (a past regression did exactly that).
 #[cfg(target_os = "macos")]
 fn verify_conductor_team_id_with<L: SigningInfoLookup>(
     audit_token: &AuditToken,
@@ -1320,16 +1320,16 @@ mod tests {
         assert_eq!(trust, crate::security::TrustLevel::Untrusted);
     }
 
-    /// #1125: positive Team-ID-match test. Exercises
+    /// Positive Team-ID-match test. Exercises
     /// `verify_conductor_team_id_with` against a mock
     /// `SigningInfoLookup` that (a) ASSERTS the caller passes
-    /// `SEC_CS_SIGNING_INFORMATION = 0x2` (catching the #1122
+    /// `SEC_CS_SIGNING_INFORMATION = 0x2` (catching that
     /// regression class directly — passing `0` would silently omit
     /// `teamid` from the returned dict in production), and (b)
     /// returns a `SigningInfo` whose `team_id` matches
-    /// `CONDUCTOR_TEAM_IDS`. Pre-#1125 no test in the Phase 1A suite
-    /// exercised this path — the v5.6.0-alpha → v5.6.1-alpha
-    /// install-test pause was the only signal that ever fired.
+    /// `CONDUCTOR_TEAM_IDS`. Previously no test in the Phase 1A suite
+    /// exercised this path — an install-test pause between releases
+    /// was the only signal that ever fired.
     #[cfg(target_os = "macos")]
     #[test]
     fn verify_conductor_team_id_returns_true_for_matching_team_id() {
@@ -1362,7 +1362,7 @@ mod tests {
         );
     }
 
-    /// #1125 negative coverage. The lookup returns a `SigningInfo`
+    /// Negative coverage. The lookup returns a `SigningInfo`
     /// whose `team_id` is a non-matching string (e.g. a different
     /// Apple Team ID, like a third-party developer's). Verifier
     /// MUST return false.
@@ -1418,7 +1418,7 @@ mod tests {
         );
     }
 
-    /// #1125 negative coverage. The lookup succeeds but the signing
+    /// Negative coverage. The lookup succeeds but the signing
     /// dict carries no `teamid` key (e.g. ad-hoc-signed dev builds
     /// — by design, `make dev-build` produces binaries without a
     /// Team ID). Verifier MUST return false.
@@ -1435,7 +1435,7 @@ mod tests {
         assert!(!verify_conductor_team_id_with(&token, &MockLookup));
     }
 
-    /// #1125 negative coverage. The lookup itself fails (e.g.
+    /// Negative coverage. The lookup itself fails (e.g.
     /// `SecCodeCopyGuestWithAttributes` returned non-zero — process
     /// already exited, permission denied, etc.). Verifier MUST
     /// return false.

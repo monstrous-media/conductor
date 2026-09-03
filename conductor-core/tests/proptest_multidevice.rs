@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Property tests for multi-device support (v4.24.0 - ADR-009 Phase 6)
+//! Property tests for multi-device support (ADR-009 Phase 6)
 //!
 //! Uses proptest to verify invariants of device matching, filtering, and resolution.
 
@@ -83,7 +83,7 @@ fn build_determinism_config(device_alias: &str, note: u8) -> Config {
 
 proptest! {
     /// A device-filtered mapping matches events from the configured device and
-    /// REJECTS the same event from any other device (#1489). This pins the real
+    /// REJECTS the same event from any other device. This pins the real
     /// multi-device filter SEMANTICS — not merely that two compilations agree on
     /// a result. Determinism is retained as a secondary invariant.
     #[test]
@@ -118,7 +118,7 @@ proptest! {
 
         // Note-sensitivity: the same configured device but a DIFFERENT note must
         // NOT match. This makes the generated `note` causally drive the outcome
-        // (the match isn't merely "device filter passes for any note") (#1489).
+        // (the match isn't merely "device filter passes for any note").
         let wrong_note = if note == 0 { 1 } else { note - 1 };
         let wrong_event = conductor_core::events::ProcessedEvent::PadPressed {
             note: wrong_note,
@@ -134,7 +134,7 @@ proptest! {
         );
 
         // Determinism: a second independent compilation yields the same decision
-        // for BOTH directions — match and reject (Copilot, #1489).
+        // for BOTH directions — match and reject.
         let from_configured_2 = rule_set_2.match_event(&event, 0, Some("pads")).is_some();
         let from_other_2 = rule_set_2.match_event(&event, 0, Some("other-device")).is_some();
         prop_assert_eq!(from_configured, from_configured_2);
@@ -174,7 +174,7 @@ proptest! {
         let _ = matcher.matches(&port_name);
     }
 
-    /// Each port resolves to the device whose name matcher matches it (#1489):
+    /// Each port resolves to the device whose name matcher matches it:
     /// `Port i` binds to `device-i` (matcher `name_contains("Port i")`) for
     /// `i < num_identities`, and is `Unbound` otherwise. This pins the real
     /// resolution SEMANTICS — which port maps to which device — not merely that
@@ -185,7 +185,7 @@ proptest! {
     fn prop_resolver_binds_each_port_to_its_matching_device(
         // Bounded to single-digit names on purpose: `name_contains("Port 1")`
         // would cross-match "Port 10"/"Port 11" if this were widened past 9,
-        // breaking the 1:1 mapping the assertions below rely on (Copilot, #1489).
+        // breaking the 1:1 mapping the assertions below rely on.
         num_ports in 1usize..5,
         num_identities in 1usize..4,
     ) {
@@ -257,7 +257,7 @@ proptest! {
 
         // Determinism: a repeated resolve produces identical bindings. Compares
         // `BindingResult` directly via its derived `PartialEq` (not a `Debug`
-        // string surrogate) (Council, #1489).
+        // string surrogate).
         prop_assert_eq!(&result_1, &result_2);
     }
 }

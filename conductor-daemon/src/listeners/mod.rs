@@ -4,8 +4,8 @@
 //! ADR-042 Phase A — network-listener edge.
 //!
 //! The listener edge is the chain a UDP packet traverses before it can reach
-//! the mapping engine: ACL filter (Slice A.3) → rate limiter (A.4) → audit
-//! (A.5), wired into the listener/engine in A.6. Phase A binds loopback only.
+//! the mapping engine: ACL filter → rate limiter → audit,
+//! wired into the listener/engine. Phase A binds loopback only.
 
 pub mod acl_filter;
 pub mod audit_edge;
@@ -29,7 +29,7 @@ use std::net::IpAddr;
 /// per-sender rate-limit buckets (A.4), and the audit suppression map (A.5) —
 /// MUST normalize first, or a dual-stack socket that delivers the same IPv4
 /// peer as both `a.b.c.d` and `::ffff:a.b.c.d` would get two distinct keys and
-/// bypass per-sender limiting / dedup (Copilot review on #1953).
+/// bypass per-sender limiting / dedup.
 pub(crate) fn normalize_mapped_ip(addr: IpAddr) -> IpAddr {
     match addr {
         IpAddr::V6(v6) => v6.to_ipv4_mapped().map(IpAddr::V4).unwrap_or(addr),

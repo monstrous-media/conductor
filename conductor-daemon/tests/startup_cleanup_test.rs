@@ -10,7 +10,7 @@
 // ListenerOrphanedAtStartup (detection only — the listener is skipped, the
 // holder is never force-killed).
 //
-// Acceptance (issue #1898, spec §5 A.6.1):
+// Acceptance (spec §5 A.6.1):
 //   cargo test --package conductor-daemon --test startup_cleanup_test
 
 use std::net::UdpSocket;

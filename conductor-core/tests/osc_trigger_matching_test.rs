@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-039-A Slice 2 (#2325): typed OSC triggers through the compiled rule
+//! ADR-039-A: typed OSC triggers through the compiled rule
 //! engine — config TOML → `rule_compiler::compile` → `CompiledRuleSet::
 //! match_event_with_provenance` against `ProcessedEvent::OscReceived`.
 //!

@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 //! ADR-042 Phase B-early — OS keychain abstraction for the network-approval
-//! HMAC key (Slice B.1).
+//! HMAC key.
 //!
 //! Phase A binds loopback only and uses no secret storage; Phase B-early is the
 //! first phase to bind a non-loopback socket, gating it behind an HMAC-signed
-//! approval registry (Slice B.3). The HMAC key lives in the OS keychain — this
+//! approval registry. The HMAC key lives in the OS keychain — this
 //! module is the storage abstraction. [`select_keychain`] is reached only in
 //! Phase B (never Phase A).
 //!
@@ -60,7 +60,7 @@ impl HmacKey {
         Ok(Self { bytes })
     }
 
-    /// The raw key bytes (for HMAC computation in Slice B.3).
+    /// The raw key bytes (for HMAC computation).
     pub fn as_bytes(&self) -> &[u8; HMAC_KEY_LEN] {
         &self.bytes
     }
@@ -95,7 +95,7 @@ impl fmt::Debug for HmacKey {
 // ---------------------------------------------------------------------------
 
 /// Non-secret metadata about the stored key, for rotation-cadence checks
-/// (Slice B.7) and operator visibility.
+/// and operator visibility.
 #[derive(Debug, Clone)]
 pub struct KeyMetadata {
     /// Key fingerprint (see [`HmacKey::fingerprint`]).

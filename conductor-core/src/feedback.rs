@@ -272,7 +272,7 @@ impl PadFeedback for MidiFeedback {
         let Some(note) = generic_pad_to_note(pad) else {
             return Ok(());
         };
-        // #1464: flash on, then off after the duration (was note-on only, so
+        // Flash on, then off after the duration (was note-on only, so
         // the LED stayed lit and the requested duration was ignored).
         self.flash_pad(note, on_vel, channel, duration_ms)?;
         Ok(())
@@ -513,7 +513,7 @@ impl PadFeedback for LaunchpadFeedback {
             LightingScheme::Reactive => Ok(()),
             LightingScheme::Custom(steps) => {
                 for step in steps {
-                    // #1460: route each step through set_pad_color so a
+                    // Route each step through set_pad_color so a
                     // configured `custom_mappings` entry for this pad is
                     // honored. The previous manual `pad_to_note` conversion
                     // bypassed custom mappings, driving the built-in Launchpad
@@ -692,7 +692,7 @@ impl PadFeedback for ApcFeedback {
             LightingScheme::Reactive => Ok(()),
             LightingScheme::Custom(steps) => {
                 for step in steps {
-                    // #1460: route through set_pad_color so a configured
+                    // Route through set_pad_color so a configured
                     // `custom_mappings` entry for this pad is honored instead
                     // of the built-in APC CC layout (the manual `pad_to_cc`
                     // conversion bypassed custom mappings).
@@ -706,7 +706,7 @@ impl PadFeedback for ApcFeedback {
 }
 
 // ────────────────────────────────────────────────────────────────
-// HID LED Feedback — Issue #367 (config-driven)
+// HID LED Feedback (config-driven)
 // ────────────────────────────────────────────────────────────────
 
 /// Generic HID LED feedback using a resolved config profile.
@@ -984,7 +984,7 @@ pub fn create_feedback_device(
 ) -> Box<dyn PadFeedback> {
     let name_lower = device_name.to_lowercase();
 
-    // Config-driven HID feedback takes priority (Issue #367).
+    // Config-driven HID feedback takes priority.
     // Two failure modes:
     // - `connect()` fails → return disconnected `HidLedFeedback` (retryable;
     //   the device is expected and the caller can retry via `connect()`).
@@ -1071,7 +1071,7 @@ pub struct FeedbackManager {
     reactive_state: HashMap<u8, (Instant, u8)>, // (pad -> (press_time, velocity))
     flash_state: HashMap<u8, Instant>,          // pad -> flash_end_time
     current_mode: u8,
-    /// Configurable fade duration (Issue #332, R727). Default 1000ms.
+    /// Configurable fade duration. Default 1000ms.
     fade_duration_ms: u64,
 }
 
@@ -1090,7 +1090,7 @@ impl FeedbackManager {
         }
     }
 
-    /// Create with a custom fade duration (Issue #332, R727).
+    /// Create with a custom fade duration.
     pub fn with_fade_ms(device: Box<dyn PadFeedback>, fade_ms: u64) -> Self {
         Self {
             device,
@@ -1108,7 +1108,7 @@ impl FeedbackManager {
     /// and triggers velocity-based LED feedback.
     pub fn on_pad_press(&mut self, pad: u8, velocity: u8) -> Result<(), Box<dyn Error>> {
         // Only track reactive fade-out state (and show velocity feedback) while
-        // actually in Reactive mode (#1459). Inserting unconditionally let
+        // actually in Reactive mode. Inserting unconditionally let
         // presses made during Static/Rainbow/etc. inflate `active_pads()` and
         // linger in `reactive_state`; since switching *into* Reactive does not
         // clear state, a later `update()` would then process those stale
@@ -1281,7 +1281,7 @@ mod tests {
     };
     use crate::mikro_leds::RGB;
 
-    /// #1460: build a Launchpad feedback whose pad 0 is custom-mapped to a
+    /// Build a Launchpad feedback whose pad 0 is custom-mapped to a
     /// non-default note, channel 1.
     fn launchpad_with_pad0_mapped_to_note(note: u8, velocity: u8) -> LaunchpadFeedback {
         let config = MidiLedConfig {
@@ -1580,9 +1580,9 @@ mod tests {
         assert_eq!(mgr.fade_duration_ms(), 1000);
     }
 
-    // ── #1460: Custom lighting schemes honor custom_mappings ─────
+    // ── Custom lighting schemes honor custom_mappings ─────
 
-    /// #1460 regression. A `LightingScheme::Custom` step for a custom-mapped
+    /// Regression test: a `LightingScheme::Custom` step for a custom-mapped
     /// pad must drive the configured LED target (the mapping's `led_on`), not
     /// the built-in Launchpad note layout (`pad_to_note`).
     #[test]
@@ -1646,7 +1646,7 @@ mod tests {
         );
     }
 
-    /// #1464 regression. `MidiFeedback::flash_pad` must turn the LED back OFF
+    /// Regression test: `MidiFeedback::flash_pad` must turn the LED back OFF
     /// after the flash — previously it only sent note-on (ignoring the
     /// duration), so the pad stayed lit.
     #[test]

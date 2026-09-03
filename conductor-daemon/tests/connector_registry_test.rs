@@ -3,10 +3,10 @@
 
 //! ADR-031 Phase 1 § 3.4 — `ConnectorRegistry` runtime construction + lookup.
 //!
-//! Runtime side of ADR-031 P1 (#1141): the registry indexes everything by
+//! Runtime side of ADR-031 P1: the registry indexes everything by
 //! alias and supports lookup + port-binding lifecycle.
 //!
-//! ADR-035 Slice 6 (#1743): the registry NO LONGER lowers `[[bindings]]`
+//! ADR-035 Slice 6: the registry NO LONGER lowers `[[bindings]]`
 //! itself — lowering moved into `conductor_core::config::loader`
 //! (`normalize_to_endpoints`). `from_config` now takes the already-unified
 //! `&[EndpointConfig]`. ADR-035 also REMOVED the legacy `DeviceIdentityConfig`
@@ -149,7 +149,7 @@ fn bind_port_on_unknown_alias_is_silent_noop() {
 
 #[test]
 fn disconnect_clears_bound_port_and_marks_disconnected() {
-    // ADR-031 #1141 — `resolve_output` is documented as "returns None
+    // ADR-031 — `resolve_output` is documented as "returns None
     // when not connected"; disconnect must clear BOTH `bound_port` and
     // `connected` so that contract holds. This is also the lifecycle
     // hook the daemon will use on hot-plug + config-reload teardown
@@ -259,7 +259,7 @@ fn from_config_carries_matchers_for_legacy_style_endpoint() {
 
 #[test]
 fn iter_returns_all_entries_in_arbitrary_order() {
-    // ADR-031 P1B / Copilot review on PR #1156: `iter()` walks the
+    // ADR-031 P1B / Copilot review: `iter()` walks the
     // underlying HashMap, so order is intentionally unspecified.
     // Callers that need stable ordering (e.g. the
     // `conductor_get_resolved_routing_graph` MCP handler) must sort the result —
@@ -290,7 +290,7 @@ fn from_config_preserves_all_protocol_variants_for_endpoints() {
     // registry verbatim (via `EndpointConfig::effective_protocol`). Covering
     // only Hid + the default left Osc/ArtNet regressions (e.g. an explicit Osc
     // endpoint silently mapping to Midi) undetected by this integration
-    // entrypoint — clawpatch #1559.
+    // entrypoint.
     let cases = [
         ("midi-alias", ConnectorProtocol::Midi),
         ("hid-alias", ConnectorProtocol::Hid),

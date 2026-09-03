@@ -1,17 +1,12 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Integration tests for ADR-031 P3 § 5.6 named tests + #1143 AC #5
+//! Integration tests for ADR-031 P3 § 5.6 named tests
 //! (the keyboard-split decomposition integration test).
 //!
-//! - Introduced in slice 15 (PR #1272) — gaps **I** + **J** from
-//!   the 2026-05-16 mid-flight audit on #1143. Landed 5 of the 6
-//!   spec § 5.6 named tests.
-//! - Extended in slice 16 (PR #1275) — gap **A**. Added the 6th
-//!   test (`test_mcp_list_routing_graph`) alongside the new
-//!   `conductor_get_routing_graph` MCP tool.
-//!
-//! All 6 spec § 5.6 named tests now present.
+//! All 6 spec § 5.6 named tests are present, including
+//! `test_mcp_list_routing_graph` alongside the
+//! `conductor_get_routing_graph` MCP tool.
 //!
 //! # Dispatch path
 //!
@@ -23,7 +18,7 @@
 //!   in-process executor the GUI chat panel uses to author config
 //!   changes (and the one that actually handles
 //!   `conductor_batch_changes` per `executor.rs:2373`).
-//! - Read-only topology tests (slice 16) use
+//! - Read-only topology tests use
 //!   `conductor_daemon::daemon::mcp_tools::McpToolExecutor` directly,
 //!   passing the synthetic config as the `Option<&Config>` parameter.
 //!   Same pattern as the existing in-crate test
@@ -37,15 +32,13 @@
 //! There is a separate, pre-existing limitation: the daemon-socket
 //! dispatch covers ReadOnly + some Stateful tools but does NOT
 //! dispatch any ConfigChange tool (`conductor_create_mapping`,
-//! `conductor_batch_changes`, etc.) — the tools/list advertises them
-//! (since slice 12 / gap F for `conductor_batch_changes`), but the
-//! `tools/call` handler returns "Unknown tool" if invoked. That is
-//! gap **K** in the #1143 audit table, tracked separately at #1274.
+//! `conductor_batch_changes`, etc.) — the tools/list advertises them,
+//! but the `tools/call` handler returns "Unknown tool" if invoked.
 //! Until that gap is closed, mutation tests here use the GUI-path
 //! `ToolExecutor` — the only place where the spec § 5.6 mutation
 //! behaviours actually execute today.
 
-// ADR-045 D1 (#2492): drives the LLM ToolExecutor mutation path; llm-executor builds only.
+// ADR-045 D1: drives the LLM ToolExecutor mutation path; llm-executor builds only.
 #![cfg(feature = "llm-executor")]
 
 use std::sync::Arc;
@@ -110,7 +103,7 @@ fn output_endpoint(alias: &str) -> EndpointConfig {
 /// An Input endpoint — needed so a route's `from` alias resolves to a declared
 /// source. ADR-035 Rule 1a (`validate_routes`) ERRORs on a route whose `from`
 /// is not a declared `[[endpoints]]` entry, so any fixture that routes *from* a
-/// source must declare it (#2161).
+/// source must declare it.
 fn input_endpoint(alias: &str) -> EndpointConfig {
     EndpointConfig {
         alias: alias.to_string(),
@@ -171,9 +164,8 @@ async fn test_mcp_create_route() {
                     assert_eq!(from, "mikro");
                     assert_eq!(to, "absynth");
                     // Round-trip content check, not just `is_some`.
-                    // (Council review on PR #1275 flagged the prior
-                    // `.is_some()` form as missing content verification:
-                    // a regression that defaulted the inner fields
+                    // (The prior `.is_some()` form flagged as missing content
+                    // verification: a regression that defaulted the inner fields
                     // would still pass.)
                     let filter = filter
                         .as_ref()
@@ -231,9 +223,9 @@ async fn test_mcp_create_route() {
 ///   2. `plan.apply` rejects the post-mutation config (via the
 ///      `validate_config` gate inside `apply_atomic`) and returns
 ///      `PlanError::ValidationFailed` naming both offending aliases.
-///      The caller's config is left untouched (#2115 / clawpatch #2103).
+///      The caller's config is left untouched.
 ///
-/// Council review on PR #1275 flagged the prior version as bypassing
+/// A review flagged the prior version as bypassing
 /// the executor path; this version exercises both layers explicitly.
 #[tokio::test]
 async fn test_mcp_reject_route_to_nonexistent() {
@@ -277,7 +269,7 @@ async fn test_mcp_reject_route_to_nonexistent() {
     // Layer 2: APPLY the generated plan to the config (true E2E flow
     // — not a manually-constructed parallel config).
     //
-    // #2115 (clawpatch #2103): `ConfigPlan::apply` now enforces the same
+    // `ConfigPlan::apply` now enforces the same
     // post-mutation `validate_config` gate as `apply_atomic` instead of
     // bypassing it. The bogus-alias route is therefore rejected AT apply
     // time — the unsafe config never reaches the caller — rather than
@@ -285,7 +277,7 @@ async fn test_mcp_reject_route_to_nonexistent() {
     // `validate_config` pass. The atomic gate also leaves the caller's
     // config untouched on rejection.
     //
-    // (Council review on PR #1275 round-4 flagged the prior shape —
+    // (A review flagged the prior shape —
     // parallel manually-constructed config — as breaking the
     // integration test's end-to-end validity. Apply the plan we
     // actually got back from the executor so the test exercises the
@@ -319,19 +311,19 @@ async fn test_mcp_reject_route_to_nonexistent() {
     );
 }
 
-/// Spec § 5.6 row 4 + #1143 AC #5 (the keyboard-split decomposition
+/// Spec § 5.6 row 4 (the keyboard-split decomposition
 /// integration test). One `conductor_batch_changes` call carrying 2×
 /// `create_route` (keyboard → synth on lower half, keyboard → drums on
 /// upper half) must produce ONE atomic plan with 2 route changes.
 ///
-/// ADR-035 Phase 2 #1748: the original test also batched a
+/// ADR-035 Phase 2: the original test also batched a
 /// `create_connector` op for the synth's output port — that batch op was
 /// removed alongside the legacy connector tools (endpoints are authored
 /// via the singleton `conductor_create_endpoint`). This test now pins the
 /// multi-route atomic-batch behaviour, which is unchanged.
 #[tokio::test]
 async fn test_mcp_batch_multi_route_setup() {
-    // NOTE (#2161): unlike `test_mcp_list_routing_graph`, this fixture
+    // NOTE: unlike `test_mcp_list_routing_graph`, this fixture
     // INTENTIONALLY leaves `keyboard`/`absynth`/`drums` undeclared. It pins the
     // executor's plan-AUTHORING contract, which by design does NOT eagerly
     // validate aliases — ADR-035 Rule 1a only runs at apply time (proven by
@@ -373,12 +365,11 @@ async fn test_mcp_batch_multi_route_setup() {
                 plan.changes
             );
             // Both routes — order preserved, BOTH destinations must
-            // appear. (Council review on PR #1272 flagged the
-            // per-iteration `to == "absynth" || to == "drums"` loop as
-            // vacuous: a regression where the LLM authored two routes
-            // to "absynth" and dropped "drums" would still pass.)
+            // appear. (The per-iteration `to == "absynth" || to == "drums"`
+            // loop was flagged as vacuous: a regression where the LLM authored
+            // two routes to "absynth" and dropped "drums" would still pass.)
             //
-            // #2133: the destinations alone do NOT verify the *split* — the
+            // The destinations alone do NOT verify the *split* — the
             // split IS the per-route `note_range` filter (lower half → synth,
             // upper half → drums). The previous assertion matched
             // `CreateRoute { from, to, .. }`, discarding `filter`, so a
@@ -420,12 +411,12 @@ async fn test_mcp_batch_multi_route_setup() {
 }
 
 /// Spec § 5.6 row 5: `test_mcp_list_routing_graph` — the combined
-/// `conductor_get_routing_graph` topology view (slice 16 / gap A)
+/// `conductor_get_routing_graph` topology view
 /// returns the active config's endpoints + routes in one round-trip.
 ///
 /// Dispatched via `McpToolExecutor` (daemon-socket path) — this is one
 /// of the few ReadOnly routing tools that actually dispatches there
-/// (most ConfigChange tools are blocked on gap K = #1274). The test
+/// (most ConfigChange tools are still blocked at this socket). The test
 /// pins:
 ///   - `endpoints` array (ADR-035) carries every declared endpoint with
 ///     full fields (alias / direction / protocol / flattened type tag).
@@ -439,7 +430,7 @@ async fn test_mcp_batch_multi_route_setup() {
 async fn test_mcp_list_routing_graph() {
     let mut config = make_config();
     // The shared route source: both routes below are `from: keyboard`, so it
-    // must be a declared Input endpoint (#2161).
+    // must be a declared Input endpoint.
     config.endpoints.push(input_endpoint("keyboard"));
     config.endpoints.push(EndpointConfig {
         description: Some("Absynth output".to_string()),
@@ -465,13 +456,13 @@ async fn test_mcp_list_routing_graph() {
         modes: Vec::new(),
     });
 
-    // Regression guard (#2161): every route in the routing-graph fixture must
+    // Regression guard: every route in the routing-graph fixture must
     // source/sink a *declared* endpoint. Both routes here are `from: keyboard`,
     // so "keyboard" must be a declared endpoint — otherwise ADR-035 Rule 1a
     // (`validate_routes`) rejects the route's `from`/`to` as an unknown alias
     // and the graph is being exercised against a config real config-loading
-    // would never accept. Scoped to the route-reference errors (the #2161
-    // finding) rather than full `is_valid()`, so an unrelated fixture nit can't
+    // would never accept. Scoped to the route-reference errors rather than
+    // full `is_valid()`, so an unrelated fixture nit can't
     // mask a regression of *this* bug. Fails until "keyboard" is declared above.
     let report = conductor_core::config::validation::validate_config(&config);
     let undeclared_route_refs: Vec<_> = report
@@ -503,8 +494,8 @@ async fn test_mcp_list_routing_graph() {
 
     // `is_error: None` and `is_error: Some(false)` both mean success;
     // `unwrap_or(false)` collapses to a single boolean for the
-    // assertion (avoids the vacuous-OR pattern the file's own
-    // policy in slice 15's Council review called out).
+    // assertion (avoids the vacuous-OR pattern this file's own
+    // policy calls out).
     assert!(
         !result.is_error.unwrap_or(false),
         "tool must return success; got is_error={:?}",
@@ -528,7 +519,7 @@ async fn test_mcp_list_routing_graph() {
     // `config.endpoints` under the `endpoints` key): both aliases must be
     // present, in any order, AND every entry must round-trip alias + direction
     // + protocol + the flattened endpoint `type` tag (the comment above
-    // promises this; pin it. Council review on PR #1275 flagged the
+    // promises this; pin it — a review flagged the
     // comment-vs-assertion gap).
     let connector_entries = payload["endpoints"]
         .as_array()
@@ -571,7 +562,7 @@ async fn test_mcp_list_routing_graph() {
         );
     }
 
-    // Direction VALUES must round-trip, not just be present (#2161): the
+    // Direction VALUES must round-trip, not just be present: the
     // route source `keyboard` is an Input endpoint and the two sinks are
     // Outputs. Asserting the actual direction guards a regression that
     // includes `keyboard` in the graph but mislabels its direction — which
@@ -603,9 +594,8 @@ async fn test_mcp_list_routing_graph() {
     );
     // Collect (from, to) pairs first so any panic carries the full
     // serialized route on the iterator's error line rather than a
-    // confusing closure-panic. (Council review on PR #1275 flagged
-    // the prior `assert_eq!` inside `filter_map` as obscuring test-
-    // failure semantics.)
+    // confusing closure-panic. (The prior `assert_eq!` inside `filter_map`
+    // was flagged as obscuring test-failure semantics.)
     let route_pairs: Vec<(String, String)> = routes
         .iter()
         .map(|r| {
@@ -655,7 +645,7 @@ async fn test_mcp_list_routing_graph() {
     // The note must mention BOTH 'RouteEngine' (what's missing) AND
     // 'SharedDaemonStateRefs' (where it needs to land) so the LLM /
     // user understands the precise architectural gap. Splitting from
-    // the prior `||` form per Council's slice-15 policy (vacuous-OR
+    // the prior `||` form per this file's own policy (vacuous-OR
     // assertions hide regressions that drop one of the named terms).
     assert!(
         note.contains("RouteEngine"),

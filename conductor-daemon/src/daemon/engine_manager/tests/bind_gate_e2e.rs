@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase B-early — Slice B.8-early end-to-end bind-gate test (#1899).
+//! ADR-042 Phase B-early — end-to-end bind-gate test.
 //!
 //! The Phase B-early MERGE GATE: drives the full lifecycle through the real
 //! `EngineManager` bind path with an injected mock keychain (a fixed key — never

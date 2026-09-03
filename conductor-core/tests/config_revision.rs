@@ -75,7 +75,7 @@ fn deserialise_rejects_uppercase_hex() {
 
 #[test]
 fn deserialise_does_not_panic_on_64_byte_multibyte_string() {
-    // Critical DoS regression test (Council R1 Gemini findings):
+    // Critical DoS regression test:
     // A 64-byte string with multi-byte UTF-8 chars has fewer than 64
     // chars. The old implementation sliced by byte index which panics
     // on non-char boundaries. Must return Err, never panic.

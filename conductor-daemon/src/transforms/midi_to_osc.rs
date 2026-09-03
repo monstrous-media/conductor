@@ -1,12 +1,12 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! MIDI → OSC transform (ADR-031 § 7.1 / #1145 P5 slice 1).
+//! MIDI → OSC transform (ADR-031 § 7.1).
 //!
 //! Translates raw MIDI bytes into encoded OSC packets based on a
 //! `SignalTransform::MidiToOsc` config. Pure function — no I/O. The
-//! caller (slice 3's stage-9 cross-protocol dispatch) wires the
-//! resulting bytes to an OSC sender (slice 2's registry-managed
+//! caller (the stage-9 cross-protocol dispatch) wires the
+//! resulting bytes to an OSC sender (the registry-managed
 //! `UdpSocket`).
 //!
 //! ## Supported MIDI inputs
@@ -54,7 +54,7 @@ use rosc::{OscMessage, OscPacket, OscType};
 ///   inputs, but we don't `unwrap()` because it's a system boundary)
 ///
 /// The pure-function shape (`config + bytes → Option<bytes>`) mirrors
-/// `MidiTransform::apply` so slice 3's stage-9 dispatch can branch on
+/// `MidiTransform::apply` so the stage-9 dispatch can branch on
 /// transform variant uniformly.
 pub fn apply(transform: &SignalTransform, midi_bytes: &[u8]) -> Option<Vec<u8>> {
     let SignalTransform::MidiToOsc {

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Condition evaluation for conditional actions (v2.2)
+//! Condition evaluation for conditional actions
 //!
 //! This module implements runtime evaluation of conditions for the Conditional action type.
 //! Supports time-based, app-based, mode-based, and logical operators.
@@ -147,7 +147,7 @@ pub fn evaluate_condition(condition: &Condition, context: Option<&ConditionConte
 /// Returns `false` when: no store in context, no PC ever observed on
 /// that tuple, or the observed PC differs.
 ///
-/// # Allocation note (PR #844 review)
+/// # Allocation note
 ///
 /// Each call builds a `StateKey::ProgramChange` with an owned `String`
 /// for `device`, which allocates. Condition evaluation only runs when

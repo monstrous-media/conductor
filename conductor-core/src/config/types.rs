@@ -35,16 +35,16 @@ pub struct Config {
     /// Advanced settings for event processing
     #[serde(default)]
     pub advanced_settings: AdvancedSettings,
-    /// Last selected mode name in the GUI (v4.10.9 - persists across app restarts)
+    /// Last selected mode name in the GUI (persists across app restarts)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_selected_mode: Option<String>,
-    /// Default startup mode (v4.26.70 - daemon starts in this mode instead of index 0)
+    /// Default startup mode (daemon starts in this mode instead of index 0)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_mode: Option<String>,
-    /// LED feedback configuration (Issue #324)
+    /// LED feedback configuration
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub led: Option<LedConfig>,
-    /// Event console configuration (Issue #325)
+    /// Event console configuration
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub event_console: Option<EventConsoleConfig>,
     /// Per-app mode auto-switching (ADR-040 D3/D5). Symmetric to
@@ -54,13 +54,13 @@ pub struct Config {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub per_app_modes: Option<PerAppModes>,
     /// Unified I/O endpoints (ADR-035). Preferred over `bindings`/`connectors`,
-    /// which are lowered into this set at load (Slices 2–4). Authored entries
+    /// which are lowered into this set at load. Authored entries
     /// go through the strict hand-written [`EndpointConfig`] deserializer.
     #[serde(default)]
     pub endpoints: Vec<EndpointConfig>,
 
-    /// Signal routes between connectors (v4.28.0 - ADR-031 D2 / Phase 2).
-    /// Routes operate below the mapping engine (stage 9 of the post-#1118
+    /// Signal routes between connectors (ADR-031 D2 / Phase 2).
+    /// Routes operate below the mapping engine (stage 9 of the
     /// 8-stage matcher) — unmatched events flow through routes if one
     /// exists for the source connector/binding. Mode-independent;
     /// fan-out by default. See ADR-031 spec § 4.1.
@@ -211,8 +211,8 @@ pub enum ConfigSource {
     #[default]
     Managed,
     /// Legacy pre-ADR-034 behaviour: external `user.toml` edits
-    /// auto-reload. Deprecated; emits a per-reload warning and is removed
-    /// in v6.0 (§D4.E).
+    /// auto-reload. Deprecated; emits a per-reload warning and will be
+    /// removed in a future release (§D4.E).
     File,
 }
 
@@ -321,7 +321,7 @@ impl Config {
     ///
     /// This is the single source of truth for startup-mode resolution, shared
     /// by the daemon's engine manager and the mode-management integration tests
-    /// (#1567) so both observe the same behaviour rather than a re-implemented
+    /// so both observe the same behaviour rather than a re-implemented
     /// copy. Returns `0` when `modes` is empty (the daemon then runs with global
     /// mappings only).
     pub fn resolve_startup_mode(&self) -> usize {
@@ -348,7 +348,7 @@ impl Config {
     /// success or a human-facing error listing the available modes.
     ///
     /// This is the canonical "switch mode" validation shared by the MCP
-    /// `switch_mode` tool and the mode-management integration tests (#1567), so
+    /// `switch_mode` tool and the mode-management integration tests, so
     /// the error contract (`"Mode not found: <name>. Available modes: <list>"`)
     /// lives in one place.
     pub fn resolve_mode_switch(&self, mode_name: &str) -> Result<usize, String> {
@@ -367,7 +367,7 @@ impl Config {
     }
 }
 
-/// LED configuration section (Issue #324)
+/// LED configuration section
 ///
 /// Controls LED feedback behavior for supported hardware devices.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -387,16 +387,16 @@ pub struct LedConfig {
     /// Per-mode color overrides
     #[serde(default)]
     pub mode_colors: std::collections::BTreeMap<String, RgbColor>,
-    /// MIDI LED configuration (Issue #330 — R673-R681)
+    /// MIDI LED configuration
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub midi: Option<MidiLedConfig>,
-    /// HID LED configuration (Issue #367 — config-driven device profiles)
+    /// HID LED configuration (config-driven device profiles)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hid: Option<HidLedConfig>,
-    /// Velocity-to-color mapping (Issue #332 — R632-R635)
+    /// Velocity-to-color mapping
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub velocity_colors: Option<VelocityColorMap>,
-    /// Default fade time in milliseconds for reactive LED feedback (Issue #332, R727)
+    /// Default fade time in milliseconds for reactive LED feedback
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_fade_ms: Option<u64>,
 }
@@ -417,7 +417,7 @@ impl Default for LedConfig {
     }
 }
 
-/// MIDI LED configuration (Issue #330 — R673-R681)
+/// MIDI LED configuration
 ///
 /// Configures how MIDI messages control device LEDs. Supports velocity-based
 /// color mapping, custom per-pad overrides, and device-specific protocols.
@@ -543,10 +543,10 @@ pub struct MidiLedCustomMapping {
 }
 
 // ────────────────────────────────────────────────────────────────
-// HID LED Configuration — Issue #367
+// HID LED Configuration
 // ────────────────────────────────────────────────────────────────
 
-/// HID LED configuration (Issue #367 — config-driven device profiles)
+/// HID LED configuration (config-driven device profiles)
 ///
 /// Configures HID-based LED control for devices like NI Maschine Mikro MK3.
 /// Fields use `Option<T>` so profile merging can distinguish "user set this"
@@ -834,10 +834,10 @@ fn mikro_mk3_pad_layout() -> Vec<u8> {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Velocity-to-Color Mapping — Issue #332
+// Velocity-to-Color Mapping
 // ────────────────────────────────────────────────────────────────
 
-/// Velocity-to-color mapping (Issue #332 — R632-R635)
+/// Velocity-to-color mapping
 ///
 /// Maps velocity ranges to colors for LED feedback.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -883,7 +883,7 @@ impl VelocityColorMap {
     }
 }
 
-/// A velocity range with associated color (Issue #332)
+/// A velocity range with associated color
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VelocityRange {
     pub min: u8,
@@ -908,7 +908,7 @@ fn default_scheme() -> String {
     "reactive".to_string()
 }
 
-/// RGB color for LED configuration (Issue #324)
+/// RGB color for LED configuration
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct RgbColor {
     pub r: u8,
@@ -963,15 +963,15 @@ pub struct NetworkSecurityConfig {
     pub network_acl: Vec<String>,
 
     /// Optional narrower allow-list of individual sender IPs (checked in
-    /// addition to `network_acl` at the listener edge — Slice A.3).
+    /// addition to `network_acl` at the listener edge).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sender_acl: Vec<String>,
 
-    /// Total inbound packet budget (token-bucket, Slice A.4). `None` = default.
+    /// Total inbound packet budget (token-bucket). `None` = default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_limit_total: Option<u32>,
 
-    /// Per-sender inbound packet budget (checked before the total — Slice A.4).
+    /// Per-sender inbound packet budget (checked before the total).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_limit_per_sender: Option<u32>,
 
@@ -981,7 +981,7 @@ pub struct NetworkSecurityConfig {
 
     /// D17 action-class gate: when `false` (default), network-origin triggers
     /// from this listener — **including loopback OSC/Art-Net** — may NOT
-    /// dispatch `Shell`/`Launch`/`Keystroke`. Active in Phase A (Slice A.6.6).
+    /// dispatch `Shell`/`Launch`/`Keystroke`. Active in Phase A.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub allow_sensitive_actions: bool,
 
@@ -1016,7 +1016,7 @@ fn default_strict_replay_window() -> usize {
 
 /// Protocol-specific endpoint identification (ADR-031 § 3.1 / ADR-035 §4.1).
 ///
-/// Promoted from the former nested `EndpointConfig` enum (ADR-035 Slice 1):
+/// Promoted from the former nested `EndpointConfig` enum (ADR-035):
 /// the `EndpointConfig` name now belongs to the unified `[[endpoints]]`
 /// wrapper struct below; this enum is the type-specific payload (`kind`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1027,8 +1027,8 @@ pub enum EndpointKind {
     Matcher {
         /// Symmetric matchers — used in both directions, or as the sole
         /// direction. Empty is permitted only when an asymmetric
-        /// `input_matchers`/`output_matchers` is populated (validated in
-        /// Slice 5 via the non-empty invariant).
+        /// `input_matchers`/`output_matchers` is populated (validated via
+        /// the non-empty invariant).
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         matchers: Vec<DeviceMatcher>,
         /// Asymmetric override for a Bidirectional endpoint whose input
@@ -1116,7 +1116,7 @@ impl EndpointKind {
     /// The `EndpointKind::Matcher` non-empty invariant (ADR-035 §4.1, R3):
     /// a `Matcher` must carry at least one matcher across the three lists.
     /// Returns `true` when the invariant holds (vacuously `true` for
-    /// non-`Matcher` kinds). The validator (Slice 5) turns a `false` here
+    /// non-`Matcher` kinds). The validator turns a `false` here
     /// into a clear load-time "endpoint has no matchers" error.
     pub fn has_any_matcher(&self) -> bool {
         match self {
@@ -1180,7 +1180,7 @@ impl EndpointKind {
 /// explicit `direction` + `type` discriminator.
 ///
 /// Authored under `[[endpoints]]`; legacy blocks are lowered into this shape
-/// in memory (ADR-035 Slices 2–4), never parsed through this struct's strict
+/// in memory (ADR-035), never parsed through this struct's strict
 /// deserializer directly (which requires `direction`).
 ///
 /// **Deserialization is hand-written** (see the `Deserialize` impl below):
@@ -1245,14 +1245,14 @@ impl<'de> Deserialize<'de> for EndpointConfig {
         // lets us reject stray/typo'd keys with a contextual error. See the
         // repo's `toml::from_str::<Value>` gotcha note.
         //
-        // #2064: the GUI's `save_config` round-trips config through serde_json,
+        // The GUI's `save_config` round-trips config through serde_json,
         // and TOML has no `null` — so a plain `toml::Value::deserialize` rejects
         // ANY JSON `null` outright ("invalid type: null, expected any valid TOML
         // value"), even for an optional field the GUI legitimately sends as null.
         // Deserialize each top-level field as `Option<toml::Value>` (a JSON null
         // → `None`) and hand the map — nulls included — to the strict parser,
         // which treats a null as absent for value extraction but still rejects a
-        // null on an unknown/typo'd key (Council #2179: null is not a strictness
+        // null on an unknown/typo'd key (null is not a strictness
         // escape hatch). The config-load (TOML) path has no nulls, so every entry
         // is `Some(_)` and behaviour there is byte-for-byte unchanged.
         let raw: std::collections::BTreeMap<String, Option<toml::Value>> =
@@ -1269,11 +1269,11 @@ fn endpoint_from_toml_value(
     mut table: std::collections::BTreeMap<String, Option<toml::Value>>,
 ) -> Result<EndpointConfig, String> {
     // `table` maps field name → `Some(value)` for a present field, or `None` for
-    // a field the caller sent as JSON `null` (#2064). A null is treated as
+    // a field the caller sent as JSON `null`. A null is treated as
     // absent for value extraction (`take_opt` → `None`; `take` → missing-field
     // error), but the KEY stays in the map until consumed, so the strict
     // leftover-key check below still rejects a null on an unknown/typo'd field
-    // (Council #2179 — null must not bypass strictness). The TOML config-load
+    // (null must not bypass strictness). The TOML config-load
     // path produces no nulls, so every entry is `Some(_)` and behaviour is
     // unchanged. (A non-table endpoint errors earlier, when the caller
     // deserializes into the map.)
@@ -1291,7 +1291,7 @@ fn endpoint_from_toml_value(
         key: &str,
     ) -> Result<Option<T>, String> {
         match t.remove(key) {
-            // Absent OR explicit null → `None` (the #2064 tolerance).
+            // Absent OR explicit null → `None`.
             None | Some(None) => Ok(None),
             Some(Some(v)) => v
                 .try_into()
@@ -1360,7 +1360,7 @@ fn endpoint_from_toml_value(
     // `protocol =`, or a stray `host` on `MidiVirtualPort`, errors here
     // instead of being silently dropped. A leftover key whose value was
     // `null` is rejected too (it stayed in the map), so JSON null can't be a
-    // strictness escape hatch on an unknown field (Council #2179).
+    // strictness escape hatch on an unknown field.
     if let Some(unknown) = table.keys().next() {
         return Err(format!(
             "unknown field `{unknown}` for endpoint type \"{type_tag}\" (alias \"{alias}\")"
@@ -1407,11 +1407,11 @@ pub struct ConnectorConfig {
     #[serde(default = "default_true")]
     pub enabled: bool,
 
-    /// Per-connector MIDI channel scope (#751 / ADR-031 § 3.1).
+    /// Per-connector MIDI channel scope (ADR-031 § 3.1).
     /// Empty = match all channels. Values are 0-indexed (0-15).
     /// Events on channels not in this list are dropped at the connector
     /// boundary. Channels are only meaningful for `protocol = "Midi"`;
-    /// the validator warns when set on non-MIDI protocols (#746).
+    /// the validator warns when set on non-MIDI protocols.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub channels: Vec<u8>,
 }
@@ -1420,7 +1420,7 @@ pub struct ConnectorConfig {
 // Signal Routing Graph — ADR-031 D2 / Phase 2 (Routes)
 // ────────────────────────────────────────────────────────
 
-/// A signal path from one connector/binding to another (v4.28.0 - ADR-031 D2).
+/// A signal path from one connector/binding to another (ADR-031 D2).
 ///
 /// Routes operate below the mapping engine — signals flow through routes
 /// unless intercepted by a trigger/action mapping. ADR-036 unifies routes
@@ -1472,11 +1472,11 @@ pub struct SignalFilter {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub channels: Vec<u8>,
     /// MIDI CC range to include `[min, max]` (inclusive).
-    /// Validator MUST reject `min > max` (per spec § 4.1 post-#1139
-    /// update — same pattern as `CcValueInRange` rejection at config
-    /// load). Otherwise the filter would silently match nothing and a
-    /// route would never fire — exact failure mode #1118 but harder to
-    /// diagnose because no trigger is involved.
+    /// Validator MUST reject `min > max` (per spec § 4.1 — same pattern
+    /// as `CcValueInRange` rejection at config load). Otherwise the
+    /// filter would silently match nothing and a route would never
+    /// fire — the same failure mode, but harder to diagnose because no
+    /// trigger is involved.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cc_range: Option<(u8, u8)>,
     /// MIDI note range to include `[min, max]` (inclusive). Same
@@ -1494,7 +1494,7 @@ pub struct SignalFilter {
 #[serde(tag = "type")]
 pub enum SignalTransform {
     /// MIDI → MIDI transform (reuses existing `MidiTransform` from
-    /// ADR-009 Gap 2 / v4.25.0 — channel/CC/note remap, velocity
+    /// ADR-009 Gap 2 — channel/CC/note remap, velocity
     /// scale/offset, value invert, value curve).
     Midi(crate::transform::MidiTransform),
 
@@ -1525,7 +1525,6 @@ pub enum SignalTransform {
     /// string-typed table keys — so we serialise/deserialise via the
     /// `u8_string_map` helper which emits decimal-string keys
     /// (e.g. `7u8` → `"7"`) and parses them back via `u8::from_str`.
-    /// See #1356 for the bug-discovery context.
     MidiToArtNet {
         #[serde(with = "crate::config::u8_string_map")]
         cc_to_dmx: std::collections::HashMap<u8, u16>,
@@ -1542,7 +1541,7 @@ pub enum SignalTransform {
         trigger_to_channel: std::collections::HashMap<String, u16>,
     },
 
-    /// OSC → Art-Net (ADR-039-A Slice 1b, #2324): extract the DMX channel from
+    /// OSC → Art-Net (ADR-039-A): extract the DMX channel from
     /// the OSC **address** via a template carrying a single `{dmx}` placeholder
     /// (same fallible-extraction convention as `OscToMidi`'s `{cc}`/`{note}` —
     /// the capture is attacker-controlled, so it is parsed fallibly and
@@ -1556,7 +1555,7 @@ pub enum SignalTransform {
         address_to_dmx: String,
     },
 
-    /// HID → MIDI (ADR-039-B, #1762): map a gamepad trigger name to a MIDI
+    /// HID → MIDI (ADR-039-B): map a gamepad trigger name to a MIDI
     /// Control Change. The trigger's 7-bit value (button velocity / axis 0-127)
     /// becomes the CC value verbatim; emitted on `channel` (0-indexed 0-15).
     /// Keys are canonical gamepad trigger names (`south`, `left_stick_x`, …);
@@ -1568,7 +1567,7 @@ pub enum SignalTransform {
         channel: u8,
     },
 
-    /// HID → OSC (ADR-039-B, #1762): map a gamepad trigger name to an OSC
+    /// HID → OSC (ADR-039-B): map a gamepad trigger name to an OSC
     /// address; the trigger's 7-bit value (button velocity / axis 0-127) is the
     /// single OSC argument — a normalized `Float` 0.0-1.0 when `value_to_float`
     /// (the OSC convention), else a raw `Int`. Mirrors `MidiToOsc`'s
@@ -1586,7 +1585,7 @@ pub(crate) fn default_true() -> bool {
     true
 }
 
-/// Event console configuration (Issue #325 — R925, R926-R928)
+/// Event console configuration (R925, R926-R928)
 ///
 /// Controls event monitoring buffer and capture toggles.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -1697,7 +1696,7 @@ fn default_buffer_size() -> usize {
     1000
 }
 
-/// Listen mode for multi-device architecture (v4.19.0 - ADR-009)
+/// Listen mode for multi-device architecture (ADR-009)
 ///
 /// Default is `All` — opens every available MIDI port so that unconfigured
 /// hardware is immediately visible in the GUI Devices page. Users who want
@@ -1740,7 +1739,7 @@ pub struct AdvancedSettings {
     /// active (default: 150ms). Independent of [`Self::chord_timeout_ms`] — the
     /// default is wider so chords register readily while mapping, but a user may
     /// set it to any value (smaller or larger). Was a hardcoded `150` in the
-    /// daemon's Learn path; promoted to config (#2386) so the daemon is the
+    /// daemon's Learn path; promoted to config so the daemon is the
     /// single source of truth for the value the Settings panel displays.
     #[serde(default = "default_chord_learn_timeout_ms")]
     pub chord_learn_timeout_ms: u64,
@@ -1751,25 +1750,25 @@ pub struct AdvancedSettings {
     #[serde(default = "default_hold_threshold_ms")]
     pub hold_threshold_ms: u64,
     /// Short→Medium press classification boundary in milliseconds (default:
-    /// 200ms) — the "Medium Press Threshold" setting (#2385). A press shorter
+    /// 200ms) — the "Medium Press Threshold" setting. A press shorter
     /// than this is `ShortPress`; at/above it (and below the Long boundary) it
     /// is `MediumPress`. Distinct from `hold_threshold_ms` (the `HoldDetected`
     /// while-held event the "Long Press Threshold" slider drives).
     #[serde(default = "default_short_press_ms")]
     pub short_press_ms: u64,
-    /// Listen mode for multi-device (v4.19.0 - ADR-009). Default: All
+    /// Listen mode for multi-device (ADR-009). Default: All
     #[serde(default)]
     pub listen_mode: ListenMode,
-    /// Port names to ignore when listening (v4.19.0 - ADR-009)
+    /// Port names to ignore when listening (ADR-009)
     #[serde(default)]
     pub ignore_ports: Vec<String>,
-    /// Maximum number of MIDI ports to open simultaneously (v4.19.0 - ADR-009). Default: 32
+    /// Maximum number of MIDI ports to open simultaneously (ADR-009). Default: 32
     #[serde(default = "default_max_midi_ports")]
     pub max_midi_ports: usize,
-    /// Default per-device event rate limit in events/sec (v4.26.0 - ADR-009 D9). Default: 10000
+    /// Default per-device event rate limit in events/sec (ADR-009 D9). Default: 10000
     #[serde(default = "default_max_events_per_sec")]
     pub max_events_per_sec: u32,
-    /// Input mode: MidiOnly, GamepadOnly, or Both (v4.27.0). Default: Both
+    /// Input mode: MidiOnly, GamepadOnly, or Both. Default: Both
     #[serde(default)]
     pub input_mode: InputMode,
     /// Dead zone for analog sticks as a fraction (0.0-1.0). Default: 0.1 (10%)
@@ -1810,7 +1809,7 @@ pub struct AdvancedSettings {
     /// to reject any config that invokes an interpreter (including via
     /// `env`/`sudo`/`nice`/`nohup` wrappers — the policy applies to the
     /// effective binary after wrapper-chain resolution per ADR-027 D3
-    /// §3.2, issue #1037).
+    /// §3.2).
     ///
     /// [`InterpreterFamily`]: crate::security::InterpreterFamily
     #[serde(default)]
@@ -1822,8 +1821,7 @@ pub struct AdvancedSettings {
     /// `MidiRecursionGuard`, which fingerprints exact bytes) — it
     /// suppresses any MIDI input that arrives shortly after output,
     /// blocking the cross-note cascade case where mapping A sends
-    /// note 63 and mapping B is triggered by note 63 looping back
-    /// (issue #555, carried over from epic #1149).
+    /// note 63 and mapping B is triggered by note 63 looping back.
     ///
     /// Set `true` to opt in to cascades — useful for setups that
     /// deliberately chain mappings through MIDI routing. Only the
@@ -1860,8 +1858,8 @@ pub struct AdvancedSettings {
     /// [`MAX_TRACE_BUFFER_SIZE`] (1_000_000) — see `validation.rs`.
     #[serde(default = "default_trace_buffer_size")]
     pub trace_buffer_size: usize,
-    /// Poll interval (ms) for focused-window-title detection (ADR-040 §4.3,
-    /// Slice 6). Decoupled from the frontmost-app poll. Default 500ms; values
+    /// Poll interval (ms) for focused-window-title detection (ADR-040 §4.3).
+    /// Decoupled from the frontmost-app poll. Default 500ms; values
     /// below the safe floor [`MIN_WINDOW_TITLE_POLL_MS`] (100ms) are clamped up
     /// at the poller to avoid hammering the Accessibility API. Only consulted
     /// when `[per_app_modes].window_rules` are present (lazy — no title poller,
@@ -1882,7 +1880,7 @@ pub const MIN_WINDOW_TITLE_POLL_MS: u64 = 100;
 pub const MAX_TRACE_BUFFER_SIZE: usize = 1_000_000;
 
 /// Policy applied to Shell actions whose resolved binary is a known
-/// interpreter family (ADR-027 D3 §3.2, issue #1037 Phase 2).
+/// interpreter family (ADR-027 D3 §3.2, Phase 2).
 ///
 /// `#[non_exhaustive]` so future policy granularity (e.g. per-family
 /// allowlists, plan-and-confirm requirement) can be added additively.
@@ -1935,7 +1933,7 @@ fn default_chord_timeout_ms() -> u64 {
     50
 }
 
-/// #2386: default MIDI Learn chord window — the historical hardcoded value, now
+/// Default MIDI Learn chord window — the historical hardcoded value, now
 /// a config default so Learn and normal windows are both daemon-owned.
 fn default_chord_learn_timeout_ms() -> u64 {
     150
@@ -1953,7 +1951,7 @@ fn default_hold_threshold_ms() -> u64 {
     2000
 }
 
-/// #2385: default Short→Medium press boundary — the historical
+/// Default Short→Medium press boundary — the historical
 /// `event_processor::SHORT_PRESS_MS` constant, now a config default.
 fn default_short_press_ms() -> u64 {
     200
@@ -1975,7 +1973,7 @@ fn default_max_events_per_sec() -> u32 {
     10_000
 }
 
-/// MIDI cascade-suppression TTL in milliseconds (issue #555). 100ms
+/// MIDI cascade-suppression TTL in milliseconds. 100ms
 /// matches the existing per-message echo guard's window, giving the
 /// blanket and fingerprint paths a single intuitive timing knob.
 fn default_cascade_ttl_ms() -> u64 {
@@ -2003,7 +2001,7 @@ fn default_probe_on_connect() -> bool {
     true
 }
 
-/// Input mode selection for device management (v3.0)
+/// Input mode selection for device management
 ///
 /// Determines which input protocols are active.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
@@ -2071,7 +2069,7 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
-/// MIDI message type filter for `Trigger::Raw` (v4.27.0 - ADR-030 D3)
+/// MIDI message type filter for `Trigger::Raw` (ADR-030 D3)
 ///
 /// Restricts which MIDI message types a Raw trigger matches. When the
 /// filter list is empty, all MIDI message types match.
@@ -2090,7 +2088,7 @@ pub enum MidiMessageType {
     Aftertouch,
     PitchBend,
     ChannelPressure,
-    /// Polyphonic aftertouch (#575). Distinct from `Aftertouch`
+    /// Polyphonic aftertouch. Distinct from `Aftertouch`
     /// (channel-wide) because Raw filters / overlap detection
     /// must be able to discriminate per-note pressure from
     /// channel-pressure events.
@@ -2121,7 +2119,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter: only match events from this device alias (v4.19.0 - ADR-009)
+        /// Device filter: only match events from this device alias (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2140,7 +2138,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2156,7 +2154,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2172,7 +2170,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2188,7 +2186,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2205,7 +2203,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2219,12 +2217,12 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
 
-    /// Polyphonic aftertouch (per-note pressure) — #575.
+    /// Polyphonic aftertouch (per-note pressure).
     ///
     /// Distinct from `Aftertouch` (channel-wide). Matches MIDI
     /// status `0xA0` events on a SPECIFIC note. Native to MPE
@@ -2241,7 +2239,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), `None` = any.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009).
+        /// Device filter (ADR-009).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2257,7 +2255,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2273,7 +2271,7 @@ pub enum Trigger {
         /// MIDI channel filter (0-indexed: 0-15), None = match any channel
         #[serde(default, skip_serializing_if = "Option::is_none")]
         channel: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2295,7 +2293,7 @@ pub enum Trigger {
         device: Option<String>,
     },
 
-    // ===== Gamepad Triggers (v3.0) =====
+    // ===== Gamepad Triggers =====
     /// Gamepad button press
     ///
     /// Triggers when a gamepad button is pressed. Button IDs use the range 128-255
@@ -2319,7 +2317,7 @@ pub enum Trigger {
         button: u8,
         /// Minimum velocity to trigger (0-127), None = any velocity
         velocity_min: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2341,7 +2339,7 @@ pub enum Trigger {
         buttons: Vec<u8>,
         /// Time window in milliseconds for detecting simultaneous presses (default 50ms)
         timeout_ms: Option<u64>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2366,7 +2364,7 @@ pub enum Trigger {
         axis: u8,
         /// Direction filter: "Clockwise" (right/up), "CounterClockwise" (left/down), or None for either
         direction: Option<String>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
@@ -2389,12 +2387,12 @@ pub enum Trigger {
         trigger: u8,
         /// Minimum pull value to trigger (0-127), None = any value
         threshold: Option<u8>,
-        /// Device filter (v4.19.0 - ADR-009)
+        /// Device filter (ADR-009)
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<String>,
     },
 
-    /// OSC message with an exact address match (ADR-039-A Slice 2, #2325).
+    /// OSC message with an exact address match (ADR-039-A).
     ///
     /// Matches an inbound OSC message whose address equals `address` exactly.
     /// OSC-origin events carry a network-listener taint: sensitive actions
@@ -2417,7 +2415,7 @@ pub enum Trigger {
         device: Option<String>,
     },
 
-    /// OSC address pattern trigger (ADR-039-A Slice 2, #2325).
+    /// OSC address pattern trigger (ADR-039-A).
     ///
     /// Native OSC 1.0 wildcards — `?` (one char), `*` (within a `/` part),
     /// `[a-z]`/`[!…]` (char class), `{a,b}` (alternation) — NOT regex.
@@ -2437,7 +2435,7 @@ pub enum Trigger {
         device: Option<String>,
     },
 
-    /// OSC argument range trigger (ADR-039-A Slice 2, #2325).
+    /// OSC argument range trigger (ADR-039-A).
     ///
     /// Matches any inbound OSC message whose argument at `arg_index` is
     /// numeric (Int or Float) and within `min..=max`. Combine with a
@@ -2458,7 +2456,7 @@ pub enum Trigger {
 }
 
 impl Trigger {
-    /// Get the device filter from any trigger variant (v4.19.0 - ADR-009)
+    /// Get the device filter from any trigger variant (ADR-009)
     pub fn device(&self) -> Option<&String> {
         match self {
             Trigger::Note { device, .. }
@@ -2482,7 +2480,7 @@ impl Trigger {
         }
     }
 
-    /// Set the device filter on any trigger variant (#745 alias cascading).
+    /// Set the device filter on any trigger variant (used for alias cascading).
     pub fn set_device(&mut self, new_device: Option<String>) {
         match self {
             Trigger::Note { device, .. }
@@ -2532,7 +2530,7 @@ impl Trigger {
         }
     }
 
-    /// #847: returns `true` iff `self`'s match set is a (non-strict) superset
+    /// Returns `true` iff `self`'s match set is a (non-strict) superset
     /// of `other`'s — i.e., every event that fires `other` also fires `self`.
     /// Used by the validator to detect shadowed mappings: if mapping A appears
     /// before mapping B in the same mode and `A.trigger.shadows(&B.trigger)`,
@@ -2543,9 +2541,9 @@ impl Trigger {
     /// PolyAftertouch). Cross-type pairs and unanalyzed variants
     /// (LongPress, DoubleTap, NoteChord, EncoderTurn, PitchBend,
     /// ProgramChange, Gamepad*, Raw) return `false` rather than risk a
-    /// false-positive warning. The follow-ups in #847 (subset analysis for
-    /// remaining variants) can extend this method without changing the
-    /// validator wiring.
+    /// false-positive warning. Follow-up subset analysis for the remaining
+    /// variants can extend this method without changing the validator
+    /// wiring.
     pub fn shadows(&self, other: &Trigger) -> bool {
         // device_match: self's filter is broader iff it accepts everything
         // (None) or matches the same alias other requires.
@@ -2695,7 +2693,7 @@ pub enum ActionConfig {
     ///
     /// Runs an arbitrary shell command. Be cautious with untrusted config files.
     ///
-    /// Two schema shapes (issue #1037, ADR-027 D3 §3.1):
+    /// Two schema shapes (ADR-027 D3 §3.1):
     ///
     /// - **Legacy single-string** (`command = "echo hello world"`, `args` omitted):
     ///   the executor whitespace-splits `command` into argv at run time.
@@ -2739,7 +2737,7 @@ pub enum ActionConfig {
         /// path runs against `command`.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         args: Option<Vec<String>>,
-        /// Per-action timeout in milliseconds (ADR-027 D7 / issue #1166).
+        /// Per-action timeout in milliseconds (ADR-027 D7).
         /// `None` falls back to `DEFAULT_SHELL_TIMEOUT_MS` (30s). The
         /// validator clamps to [1000, 300000] to keep the watchdog
         /// useful (sub-second timeouts kill kid-script shells, multi-
@@ -2814,7 +2812,7 @@ pub enum ActionConfig {
         delay_ms: Option<u64>,
     },
 
-    /// Conditional action execution (v2.2)
+    /// Conditional action execution
     ///
     /// Executes different actions based on a condition.
     /// Supports time-based, app-based, mode-based conditions and logical operators.
@@ -2880,7 +2878,7 @@ pub enum ActionConfig {
         default: Option<Box<ActionConfig>>,
     },
 
-    /// Send MIDI message (v2.1)
+    /// Send MIDI message
     ///
     /// Sends a MIDI message to a virtual or physical output port.
     /// Supports Note, CC, Program Change, Pitch Bend, and Aftertouch messages.
@@ -2914,7 +2912,7 @@ pub enum ActionConfig {
         pressure: Option<u8>,
     },
 
-    /// Forward MIDI data to an output port with optional transform (v4.25.0 - ADR-009 Gap 2)
+    /// Forward MIDI data to an output port with optional transform (ADR-009 Gap 2)
     ///
     /// Passes raw MIDI bytes from the triggering event through an optional
     /// transform and sends them to the named output port.
@@ -2927,7 +2925,7 @@ pub enum ActionConfig {
     },
 
     /// Forward a gamepad (HID) event to a cross-protocol output endpoint
-    /// (ADR-039-B, #1762 step 4b).
+    /// (ADR-039-B).
     ///
     /// The mapping-triggered analogue of a HID route: where a route forwards
     /// a gamepad input endpoint unconditionally, `HidForward` fires only when
@@ -2955,7 +2953,7 @@ pub enum ActionConfig {
     },
 
     /// Forward an inbound OSC message to an OSC **output** endpoint
-    /// (ADR-039-A Slice 3, #2326).
+    /// (ADR-039-A).
     ///
     /// The mapping-triggered analogue of an OSC route: fires only when its
     /// mapping's typed OSC trigger matches, then re-sends the *triggering*
@@ -2971,7 +2969,7 @@ pub enum ActionConfig {
     /// `HidForward` V1 restricts its transform.
     ///
     /// Not a sensitive action class (ADR-042 D17): it emits an OSC packet,
-    /// not a host effect. It still rides the Slice-2 network-origin taint —
+    /// not a host effect. It still rides the network-origin taint —
     /// an OSC-origin `OscForward` is fine; the taint gates sensitive actions,
     /// not packet forwarding.
     OscForward {
@@ -2982,7 +2980,7 @@ pub enum ActionConfig {
         transform: Option<SignalTransform>,
     },
 
-    /// Send an OSC message over UDP (v4.26.0 - ADR-009 Gap H)
+    /// Send an OSC message over UDP (ADR-009 Gap H)
     ///
     /// # Examples
     /// ```toml
@@ -3007,7 +3005,7 @@ pub enum ActionConfig {
         args: Vec<crate::actions::OscArg>,
     },
 
-    /// Execute a plugin action (v4.35)
+    /// Execute a plugin action
     ///
     /// Runs a WASM plugin by name with optional parameters.
     /// The plugin must be installed and enabled in the plugin manager.
@@ -3033,10 +3031,10 @@ pub enum ActionConfig {
     /// substitution) and completes with no signal side-effect. Pair with
     /// `let_through = true` to observe an event without consuming it.
     ///
-    /// **Slice 1 behaviour:** the daemon executor only debug-logs the raw
+    /// **Current behaviour:** the daemon executor only debug-logs the raw
     /// template. The substitution and event-stream / trace emission described
-    /// above land in Slice 4 — until then, `Tap` is side-effect-free beyond the
-    /// debug log.
+    /// above are not yet implemented — until then, `Tap` is side-effect-free
+    /// beyond the debug log.
     ///
     /// # Examples
     /// ```toml
@@ -3046,7 +3044,7 @@ pub enum ActionConfig {
     /// ```
     Tap {
         /// Template emitted on each match. Supports `{value}`, `{note}`, `{cc}`,
-        /// and `{velocity}` substitution (resolved by the Tap executor in Slice 4).
+        /// and `{velocity}` substitution (not yet resolved by the Tap executor).
         message: String,
     },
 }
@@ -3142,7 +3140,7 @@ mod string_keyed_pc_map {
                     }
                     let pc = parsed as u8;
                     let value: Box<ActionConfig> = access.next_value()?;
-                    // Reject normalized-duplicate keys (#1438). `1` and `01` are
+                    // Reject normalized-duplicate keys. `1` and `01` are
                     // DISTINCT TOML keys (so TOML's own duplicate-key check
                     // doesn't fire) but both normalize to PC 1. A plain
                     // `insert` would silently drop one authored branch and leave
@@ -3218,7 +3216,7 @@ modifiers = ["cmd"]
     /// populated by serde when omitted from a config document.
     #[test]
     fn test_advanced_settings_chord_learn_timeout_ms() {
-        // #2386: Learn-mode chord window is its own config field (default 150ms,
+        // Learn-mode chord window is its own config field (default 150ms,
         // the historical hardcoded daemon value) so the daemon is the single
         // source of truth — not a UI `chord_timeout_ms × 3` fiction.
         assert_eq!(AdvancedSettings::default().chord_learn_timeout_ms, 150);
@@ -3242,7 +3240,7 @@ modifiers = ["cmd"]
         assert_eq!(parsed.trace_buffer_size, 256);
     }
 
-    /// Issue #555: cascade-suppression defaults — `allow_cascade = false`
+    /// Cascade-suppression defaults — `allow_cascade = false`
     /// so cross-note feedback is blocked out of the box; users opt in
     /// when they deliberately chain mappings via MIDI routing. The TTL
     /// matches the existing per-message echo guard (100ms).
@@ -3468,7 +3466,7 @@ plugin = "my-plugin"
         }
     }
 
-    // ========== MidiForward Config Tests (v4.25.0 - ADR-009 Gap 2) ==========
+    // ========== MidiForward Config Tests (ADR-009 Gap 2) ==========
 
     #[test]
     fn test_midi_forward_config_parse() {
@@ -3563,7 +3561,7 @@ invert_value = false
         }
     }
 
-    // ========== OscSend Config Tests (v4.26.0 - ADR-009 Gap H) ==========
+    // ========== OscSend Config Tests (ADR-009 Gap H) ==========
 
     #[test]
     fn test_osc_send_config_parse() {
@@ -3681,7 +3679,7 @@ args = [
         }
     }
 
-    // ========== LED Config Tests (Issue #324) ==========
+    // ========== LED Config Tests ==========
 
     #[test]
     fn test_led_config_parse() {
@@ -3821,7 +3819,7 @@ name = "Default"
         assert_eq!(colors.rgb_to_velocity(1, 0, 0), colors.red);
     }
 
-    // ========== MIDI LED Config Tests (Issue #330) ==========
+    // ========== MIDI LED Config Tests ==========
 
     #[test]
     fn test_midi_led_config_defaults() {
@@ -4034,7 +4032,7 @@ mappings = []
         assert!(config.event_console.is_none());
     }
 
-    // ========== HID LED Config Tests — Issue #367 ==========
+    // ========== HID LED Config Tests ==========
 
     #[test]
     fn test_hid_led_config_all_fields_none_by_default() {
@@ -4268,7 +4266,7 @@ brightness = 80
         assert_eq!(layout[15], 3);
     }
 
-    // ========== Velocity Color Map Tests — Issue #332 ==========
+    // ========== Velocity Color Map Tests ==========
 
     #[test]
     fn test_velocity_color_map_default_three_ranges() {

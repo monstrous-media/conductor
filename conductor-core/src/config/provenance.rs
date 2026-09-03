@@ -14,7 +14,7 @@
 //! dimensions in a flat enum (R3 had this) made audit queries weaker.
 //!
 //! `PeerIdentity::Linux::exe_path` is **audit display only** — never
-//! an authorisation input (R5-M8 fix per Opus R6 review). Authorization
+//! an authorisation input. Authorization
 //! decisions use platform-specific peer-trust mechanisms (macOS Team ID
 //! via `SecCode`; Linux peer credentials via `SO_PEERCRED`).
 

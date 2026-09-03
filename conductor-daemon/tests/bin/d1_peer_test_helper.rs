@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Test helper for ADR-027 D1 (2/N) `still_pinned()` lifecycle.
+//! Test helper for ADR-027 D1 `still_pinned()` lifecycle.
 //!
 //! Connects to the unix socket whose path is passed as `argv[1]`,
 //! writes a single byte so the parent's `accept()` returns with a

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1317: `conductorctl mcp revoke --exe-path <PATH>` does not
+//! `conductorctl mcp revoke --exe-path <PATH>` does not
 //! canonicalize the supplied path, but `mcp register` does. Revoking
 //! the SAME logical binary via a different path representation
 //! (symlink, `..`, etc.) silently no-ops and leaves the permission
@@ -24,7 +24,7 @@
 //! Post-fix: revoke canonicalizes the symlink, matches the stored
 //! canonical entry, removes it.
 //!
-//! #1430: #1317's canonicalize-or-die meant a DELETED/moved registered
+//! The prior canonicalize-or-die behavior meant a DELETED/moved registered
 //! binary could never be revoked (canonicalize errors on a missing
 //! file), so the stale grant survived. `mcp_revoke_removes_entry_for_deleted_binary`
 //! pins the fix: canonicalization is now best-effort and revocation
@@ -105,7 +105,7 @@ fn run_conductorctl(tempdir: &std::path::Path, args: &[&str]) -> std::process::O
         .unwrap_or_else(|e| panic!("run conductorctl {args:?}: {e}"))
 }
 
-/// THE regression test for #1317. Register via canonical path,
+/// THE regression test. Register via canonical path,
 /// revoke via symlink to that same canonical path, assert the entry
 /// is gone.
 #[test]
@@ -224,7 +224,7 @@ fn mcp_revoke_canonicalizes_symlinked_exe_path() {
     );
 }
 
-/// THE regression test for #1430. Register a binary, DELETE it, then
+/// THE regression test. Register a binary, DELETE it, then
 /// revoke by its (now non-existent) absolute path. Pre-fix
 /// `handle_mcp_revoke` canonicalized unconditionally, so revoking a
 /// deleted binary failed (`canonicalize` errors on a missing file) and
@@ -273,7 +273,7 @@ fn mcp_revoke_removes_entry_for_deleted_binary() {
         "registry must have one entry after register; got:\n{after_register}"
     );
 
-    // Delete the binary — this is the whole point of #1430.
+    // Delete the binary — this is the whole point of the test.
     std::fs::remove_file(&canonical_real).expect("delete the registered binary");
     assert!(
         !canonical_real.exists(),

@@ -91,7 +91,7 @@ fn test_action_from_keystroke_config_multiple_keys() {
 fn test_action_from_keystroke_config_special_keys() {
     // (input string, exact parsed KeyCode). Asserting the value — not just the
     // vector length — catches a regression that maps e.g. "space" to the wrong
-    // key while still producing a 1-element vec (#1490).
+    // key while still producing a 1-element vec.
     let test_cases = vec![
         ("space", KeyCode::Space),
         ("return", KeyCode::Return),
@@ -154,7 +154,7 @@ fn test_action_from_keystroke_config_invalid_key() {
 fn test_action_from_keystroke_config_modifier_variants() {
     // (alias, exact parsed ModifierKey). Asserting the value proves the aliases
     // collapse to the right key (cmd/command/meta → Command, alt/option →
-    // Option, …) rather than merely that one modifier parsed (#1490).
+    // Option, …) rather than merely that one modifier parsed.
     let modifier_variants = vec![
         ("cmd", ModifierKey::Command),
         ("command", ModifierKey::Command),
@@ -221,7 +221,7 @@ fn test_action_from_keystroke_config_mixed_case() {
     match action {
         Action::Keystroke { keys, modifiers } => {
             // Mixed case must still parse to the correct VALUES, not just the
-            // right counts (#1490).
+            // right counts.
             assert_eq!(keys, vec![KeyCode::Space, KeyCode::Return, KeyCode::Tab]);
             assert_eq!(modifiers, vec![ModifierKey::Command, ModifierKey::Shift]);
         }
@@ -1114,7 +1114,7 @@ fn test_invalid_function_key() {
 
 #[test]
 fn test_arrow_keys() {
-    // Each arrow string must parse to its specific arrow KeyCode (#1490).
+    // Each arrow string must parse to its specific arrow KeyCode.
     let arrows = vec![
         ("up", KeyCode::UpArrow),
         ("down", KeyCode::DownArrow),
@@ -1174,7 +1174,7 @@ fn test_execute_text_action_safe() {
     let mut executor = ActionExecutor::default();
     let action = Action::Text(" ".to_string()); // Single space - minimal side effect
 
-    // #1491: don't discard the result. In a controlled/headed env this types a
+    // Don't discard the result. In a controlled/headed env this types a
     // space and succeeds; in a headless env enigo init fails with OsAutomation.
     // Any other error variant is a real regression.
     match executor.execute(action, None) {
@@ -1192,7 +1192,7 @@ fn test_execute_delay_action() {
     let mut executor = ActionExecutor::default();
     let action = Action::Delay(1); // 1ms delay - no side effects
 
-    // #1491: a delay has no environment dependency and must always succeed —
+    // A delay has no environment dependency and must always succeed —
     // assert it rather than discarding the result.
     executor
         .execute(action, None)
@@ -1207,7 +1207,7 @@ fn test_execute_sequence_action() {
     let mut executor = ActionExecutor::default();
     let action = Action::Sequence(vec![Action::Delay(1), Action::Delay(1)]);
 
-    // #1491: a sequence of delays is environment-independent and must succeed.
+    // A sequence of delays is environment-independent and must succeed.
     executor
         .execute(action, None)
         .expect("Sequence of delays should always succeed");
@@ -1224,7 +1224,7 @@ fn test_execute_launch_action_safe() {
     // no-op, while on Linux `Command::new("/dev/null").spawn()` cannot exec it.
     let action = Action::Launch("/dev/null".to_string());
 
-    // #1491: don't discard the result. Launching /dev/null either succeeds
+    // Don't discard the result. Launching /dev/null either succeeds
     // (macOS `open` no-op) or fails with a Launch error (Linux can't exec it,
     // or `open` exits non-zero); any other variant is a regression.
     match executor.execute(action, None) {
@@ -1249,7 +1249,7 @@ fn test_execute_shell_action_safe() {
         timeout_ms: None,
     };
 
-    // #1491: `true` exits 0, so this must succeed — assert it instead of
+    // `true` exits 0, so this must succeed — assert it instead of
     // discarding the result.
     executor
         .execute(action, None)
@@ -1268,7 +1268,7 @@ fn test_execute_keystroke_action_safe() {
         modifiers: vec![],
     };
 
-    // #1491: succeeds in a controlled env; headless enigo init yields
+    // Succeeds in a controlled env; headless enigo init yields
     // OsAutomation. Any other error variant is a regression.
     match executor.execute(action, None) {
         Ok(_) => {}
@@ -1289,7 +1289,7 @@ fn test_execute_keystroke_with_modifiers_safe() {
         modifiers: vec![],
     };
 
-    // #1491: succeeds in a controlled env; headless enigo init yields
+    // Succeeds in a controlled env; headless enigo init yields
     // OsAutomation. Any other error variant is a regression.
     match executor.execute(action, None) {
         Ok(_) => {}
@@ -1313,7 +1313,7 @@ fn test_execute_mouse_click_without_position() {
 
     // WARNING: This will click wherever the mouse currently is
     // Only run in controlled test environment
-    // #1491: succeeds in a controlled env; headless enigo init yields
+    // Succeeds in a controlled env; headless enigo init yields
     // OsAutomation. Any other error variant is a regression.
     match executor.execute(action, None) {
         Ok(_) => {}
@@ -1337,7 +1337,7 @@ fn test_execute_mouse_click_with_position() {
 
     // WARNING: This will click at (0, 0)
     // Only run in controlled test environment
-    // #1491: succeeds in a controlled env; headless enigo init yields
+    // Succeeds in a controlled env; headless enigo init yields
     // OsAutomation. Any other error variant is a regression.
     match executor.execute(action, None) {
         Ok(_) => {}
@@ -1346,7 +1346,7 @@ fn test_execute_mouse_click_with_position() {
     }
 }
 
-/// #1491 negative case. Deterministic and environment-independent (no display,
+/// Negative case. Deterministic and environment-independent (no display,
 /// no spawned process), so this is NOT `#[ignore]`d — it runs in CI as an
 /// always-on guard that executor failures surface as `Err` rather than being
 /// silently swallowed. An empty shell command is rejected before spawn.

@@ -206,8 +206,7 @@ fn published_at_backwards_rejected() {
 #[test]
 fn published_at_required_when_previously_seen() {
     // A later doc that OMITS published_at is rejected — otherwise an attacker
-    // drops the temporal guard by leaving it out while advancing the sequence
-    // (Council R3).
+    // drops the temporal guard by leaving it out while advancing the sequence.
     let key = signing_key(7);
     let p = r#"{"version":"1","sequence_number":6,"plugins":[],"categories":[]}"#.to_string();
     let raw = envelope(&key, &p, KEY_ID);
@@ -226,7 +225,7 @@ fn published_at_required_when_previously_seen() {
 fn published_at_required_even_on_first_fetch() {
     // published_at is mandatory ALWAYS — a first document that omits it is
     // rejected, so the temporal guard can never be permanently disabled by a
-    // document that simply never carries the field (Council R4).
+    // document that simply never carries the field.
     let key = signing_key(7);
     let p = r#"{"version":"1","sequence_number":1,"plugins":[],"categories":[]}"#.to_string();
     let raw = envelope(&key, &p, KEY_ID);
@@ -269,8 +268,7 @@ fn first_fetch_accepts_positive_sequence_then_rejects_replay() {
 #[test]
 fn zero_sequence_rejected() {
     // sequence_number is 1-indexed: an explicit `0` is rejected (it must be
-    // present and >= 1, so it can't slip through the cache `>=` check; Council
-    // R1 + #2049).
+    // present and >= 1, so it can't slip through the cache `>=` check).
     let key = signing_key(7);
     let raw = envelope(&key, &payload(0, "2026-05-27T00:00:00Z"), KEY_ID);
     let err = verify_signed_registry(
@@ -286,7 +284,7 @@ fn zero_sequence_rejected() {
 #[test]
 fn absent_sequence_rejected_on_both_paths() {
     // A document OMITTING sequence_number must be rejected (not defaulted to 0)
-    // on BOTH the fetch and cache paths (Council #2049).
+    // on BOTH the fetch and cache paths.
     let key = signing_key(7);
     let p = r#"{"version":"1","published_at":"2026-05-27T00:00:00Z","plugins":[],"categories":[]}"#;
     let raw = envelope(&key, p, KEY_ID);
@@ -308,7 +306,7 @@ fn absent_sequence_rejected_on_both_paths() {
     assert_eq!(cache_err, RegistryTrustError::MissingSequenceNumber);
 }
 
-// ───────────── decide_fetch / decide_cache — anti-downgrade (Council R1) ─────────────
+// ───────────── decide_fetch / decide_cache — anti-downgrade ─────────────
 
 #[test]
 fn decide_fetch_with_pin_verifies() {
@@ -692,7 +690,7 @@ fn cache_integrity_accepts_rotated_document() {
 fn manifest_absent_rejected_after_rotation() {
     // After a rotation has been accepted (last_chain_head_seq Some), a
     // manifest-absent document is rejected — otherwise it would verify against
-    // the rotated-away root key, a downgrade past the rotation (Copilot #2049).
+    // the rotated-away root key, a downgrade past the rotation.
     let root = signing_key(7);
     let raw = envelope(&root, &payload(9, "2026-06-09T00:00:00Z"), KEY_ID); // no manifest
     let state = RegistryTrustState {
@@ -727,7 +725,7 @@ fn manifest_absent_ok_before_any_rotation() {
     assert_eq!(v.new_state.last_chain_head_seq, None);
 }
 
-// ───── cache path enforces anti-rollback (Council #2049, parity with fetch) ─────
+// ───── cache path enforces anti-rollback (parity with fetch) ─────
 
 #[test]
 fn cache_rejects_older_than_state() {
@@ -788,7 +786,7 @@ fn cache_rejects_manifest_absent_after_rotation() {
 #[test]
 fn malformed_persisted_published_at_does_not_brick_fetch() {
     // A corrupted/tampered state.last_published_at must NOT fail every fetch
-    // (DoS via poisoned state, Council #2049 R3): the stored value is compared
+    // (DoS via poisoned state): the stored value is compared
     // tolerantly; sequence_number remains the primary monotonic guard. The
     // INCOMING published_at is still strictly validated.
     let key = signing_key(7);

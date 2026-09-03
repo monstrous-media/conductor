@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! `EngineManager::handle_ipc_request` IPC command dispatcher (plus the
-//! test-only audit-logger injector), extracted from `engine_manager::mod`
-//! (refactor #2073).
+//! test-only audit-logger injector), extracted from `engine_manager::mod`.
 
 use super::*;
 
@@ -11,26 +10,26 @@ impl EngineManager {
     /// Handle IPC request
     ///
     /// `caller_ctx` carries the ADR-027 D1-pinned peer identity from
-    /// the IPC accept loop. PR-B threads it down to
+    /// the IPC accept loop, threaded down to
     /// `tool_executor.execute` so the gate can consult the trust
     /// band before dispatching MCP tools. Other request types ignore
-    /// it for now — PR-C / PR-D will widen consumption.
+    /// it for now — that consumption will widen over time.
     pub(crate) async fn handle_ipc_request(
         &mut self,
         request: crate::daemon::types::IpcRequest,
         caller_ctx: Option<crate::security::CallerContext>,
     ) -> IpcResponse {
         let id = request.id.clone();
-        // #2071: own a copy of the request id up front for the post-commit
+        // Own a copy of the request id up front for the post-commit
         // backstop's error path below. `id` is moved into the per-command
         // handlers, and the `match request.command` borrows (unit variants)
         // rather than moves `request`, but binding `req_id` here makes the
         // backstop's ownership obviously sound without relying on that
-        // subtlety (Council clarity).
+        // subtlety.
         let req_id = request.id.clone();
 
         // ADR-034 §D4.2 / D4.B.3.B — AwaitingConfig IPC accept-list:
-        // REMOVED as dead code (#1323).
+        // REMOVED as dead code.
         //
         // The `AwaitingConfig` idle mode (start the IPC server with no
         // live config and accept only a bootstrap accept-list) was never
@@ -56,7 +55,7 @@ impl EngineManager {
             IpcCommand::QueryAudit => self.handle_query_audit(&request, id),
             #[cfg(feature = "audit-db")]
             IpcCommand::SubscribeAudit => self.handle_subscribe_audit(id),
-            // ADR-045 D1 (#2492): compositions without the SQLite audit DB
+            // ADR-045 D1: compositions without the SQLite audit DB
             // answer audit queries with a clean error, not a hang-up.
             #[cfg(not(feature = "audit-db"))]
             IpcCommand::QueryAudit | IpcCommand::SubscribeAudit => {
@@ -90,7 +89,7 @@ impl EngineManager {
             IpcCommand::RejectPlan => self.handle_reject_plan(&request, id).await,
             #[cfg(feature = "llm-executor")]
             IpcCommand::ListPendingPlans => self.handle_list_pending_plans(id).await,
-            // ADR-045 D1 (#2492): the plan/apply write machinery ships in
+            // ADR-045 D1: the plan/apply write machinery ships in
             // `llm-executor` compositions (the Studio bundle); the OSS
             // daemon answers with a clean error naming the tier.
             #[cfg(not(feature = "llm-executor"))]
@@ -144,7 +143,7 @@ impl EngineManager {
             IpcCommand::OverwriteConfigFile => self.handle_overwrite_config_file(id).await,
         };
 
-        // #2071 / ADR-043 Q2 — structural post-commit rebuild backstop.
+        // ADR-043 Q2 — structural post-commit rebuild backstop.
         //
         // Every committing handler above commits through the `LiveConfig`
         // mutate seam; the runtime rebuild (registry, bindings, output map,

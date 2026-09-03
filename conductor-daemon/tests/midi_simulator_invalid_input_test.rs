@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1433: the interactive `midi_simulator` must REJECT malformed numeric input
+//! The interactive `midi_simulator` must REJECT malformed numeric input
 //! for `long`, `double`, `chord`, and `encoder` rather than silently defaulting
 //! (long/double/encoder) or dropping invalid tokens (chord) — otherwise it
 //! emits events for different controls than the operator typed, which is
@@ -107,10 +107,10 @@ fn valid_long_press_still_emits_events() {
     );
 }
 
-// #2130: numeric-but-out-of-range MIDI data bytes (128–255) used to be accepted
+// Numeric-but-out-of-range MIDI data bytes (128–255) used to be accepted
 // and silently masked to 7 bits by the simulator (`note 200` → note 72). They
 // must now be rejected with the 0–127 range message and emit nothing — the same
-// black-box contract as the #1433 non-numeric rejections above.
+// black-box contract as the non-numeric rejections above.
 
 #[test]
 fn note_rejects_out_of_range_value_and_emits_nothing() {

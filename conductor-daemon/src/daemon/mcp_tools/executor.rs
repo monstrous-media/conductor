@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! `McpToolExecutor` — construction + the `execute` dispatch.
-//! Split out of `mcp_tools.rs` in #2601; the bulky per-tool query
+//! Split out of `mcp_tools.rs`; the bulky per-tool query
 //! builders live in `executor_queries.rs` (second `impl` block).
 
 use super::GUI_ONLY_TOOL_ERROR;
@@ -59,8 +59,8 @@ impl McpToolExecutor {
                 stats.record_gamepad();
             } else if *is_encoder {
                 // Encoder: high event density on few CCs (>10 hits, <=4 unique
-                // CCs) with relative-code values (#1451: classification now
-                // requires relative-value evidence, not just hit density).
+                // CCs) with relative-code values (classification requires
+                // relative-value evidence, not just hit density).
                 for i in 0..12 {
                     stats.record_cc(0, if i % 2 == 0 { 1 } else { 127 });
                 }
@@ -235,7 +235,7 @@ impl Default for McpToolExecutor {
     }
 }
 
-// Topology analysis helpers (ADR-016 Chunk 1C - #565)
+// Topology analysis helpers (ADR-016)
 
 /// Classify a trigger into (type_name, optional_channel).
 pub(super) fn classify_trigger(trigger: &Trigger) -> (&'static str, Option<u8>) {
@@ -363,7 +363,7 @@ fn collect_routing(
             }));
         }
         ActionConfig::HidForward { target, transform } => {
-            // ADR-039-B #1762 step 4b: gamepad event → MIDI output (HidToMidi).
+            // ADR-039-B: gamepad event → MIDI output (HidToMidi).
             let channel = match transform {
                 conductor_core::config::types::SignalTransform::HidToMidi { channel, .. } => {
                     Some(*channel)

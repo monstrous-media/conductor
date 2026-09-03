@@ -66,7 +66,7 @@ pub struct PluginRegistryEntry {
     /// Minimum required conductor version (semver string).
     ///
     /// Accepts the legacy field name `min_midimon_version` via `serde(alias)`
-    /// so unmigrated registry data (pre-rename in PR #946) still
+    /// so unmigrated registry data (from before the field rename) still
     /// deserializes. Once the live registry at `conductor-plugin-registry`
     /// has been migrated to emit `min_conductor_version`, the alias can be
     /// removed — but until then it's load-bearing for the GUI plugins view.
@@ -75,7 +75,7 @@ pub struct PluginRegistryEntry {
     pub signed: bool,
     pub verified: bool,
 
-    /// Enriched capability metadata for GUI display (#1074).
+    /// Enriched capability metadata for GUI display.
     ///
     /// Populated server-side after deserialise (see
     /// `enrich_registry_capabilities()`). Not part of the registry.json wire
@@ -134,7 +134,7 @@ impl PluginRegistryClient {
         self
     }
 
-    /// Build an HTTP client with automatic redirects DISABLED. Council D17 P0:
+    /// Build an HTTP client with automatic redirects DISABLED. ADR-027 D17:
     /// a 301/302 to an off-allowlist or internal host would bypass the egress
     /// check that ran against the original URL, so redirects must not be
     /// followed transparently.
@@ -216,7 +216,7 @@ impl PluginRegistryClient {
         // DNS-rebinding / internal-IP defense for every host. Resolution failure
         // yields an empty set, which `check_resolved_ips` handles per mode
         // (Strict fails CLOSED — we cannot verify the host is not internal, and
-        // reqwest may resolve it when our lookup didn't; Council #1912).
+        // reqwest may resolve it when our lookup didn't).
         let port = parsed.port_or_known_default().unwrap_or(443);
         let ips: Vec<IpAddr> = match tokio::net::lookup_host((host.as_str(), port)).await {
             Ok(addrs) => addrs.map(|a| a.ip()).collect(),
@@ -293,7 +293,7 @@ impl PluginRegistryClient {
     /// trust decision is gated on whether a registry key is **pinned**, NOT on
     /// the document's shape — otherwise a network attacker could strip the
     /// signature envelope and force the unsigned path (signature-stripping
-    /// downgrade; Council R1). With a key pinned, the signature + monotonic
+    /// downgrade). With a key pinned, the signature + monotonic
     /// rollback guards are enforced and a stripped/bare document is rejected.
     /// While the Phase-1 pinned key is empty there is no trust anchor, so the
     /// document is accepted unverified with a migration warning.
@@ -366,7 +366,7 @@ impl PluginRegistryClient {
 
     /// Path of the persisted registry trust state (rollback high-water mark).
     /// Kept SEPARATE from the plugin trust store (`trusted_keys.json`) so
-    /// registry trust evolves independently (ADR-027 D10d-source / Council R1).
+    /// registry trust evolves independently (ADR-027 D10d-source).
     #[cfg(feature = "plugin-signing")]
     fn registry_state_path(&self) -> PathBuf {
         self.cache_dir.join("registry_state.json")
@@ -503,10 +503,10 @@ impl PluginRegistryClient {
 
     /// Install plugin from registry
     ///
-    /// Layout matches what `PluginDiscovery::scan()` expects (#948):
+    /// Layout matches what `PluginDiscovery::scan()` expects:
     /// `<plugins_dir>/<plugin_id>/` containing both the binary
     /// (`libconductor_<id>_plugin.<ext>`) and a generated `plugin.toml`
-    /// manifest. Pre-#948 this wrote a flat binary directly into
+    /// manifest. Previously this wrote a flat binary directly into
     /// `plugins_dir`, which the discovery scan silently ignored.
     pub async fn install_plugin(
         &self,
@@ -642,7 +642,7 @@ async fn refuse_symlink_at(path: &Path) -> Result<(), Box<dyn std::error::Error>
 }
 
 // ============================================================================
-// Pure helpers for plugin install layout (#948)
+// Pure helpers for plugin install layout
 // ============================================================================
 //
 // These compute paths and build the manifest from a registry entry. Extracted
@@ -666,12 +666,11 @@ async fn refuse_symlink_at(path: &Path) -> Result<(), Box<dyn std::error::Error>
 /// - empty ids
 /// - any character outside `[A-Za-z0-9_-]`
 /// - ids longer than [`crate::plugin_id::MAX_PLUGIN_ID_LEN`] (128 bytes)
-///   (PR #1029 review fix: previous docs only mentioned the
-///   character-set rule; the length cap moved into the shared
-///   validator in round-4 so the install path now also enforces
-///   it. Updating these docs to match.)
+///   (previous docs only mentioned the character-set rule; the
+///   length cap moved into the shared validator, so the install
+///   path now also enforces it. Updating these docs to match.)
 pub fn validate_plugin_id(plugin_id: &str) -> std::io::Result<()> {
-    // PR #1029 round-2: delegate to the shared
+    // Delegate to the shared
     // `crate::plugin_id::validate_plugin_id` so install (here)
     // and runtime (`plugin::wasm_runtime::is_safe_plugin_id`)
     // can never diverge on the character set OR length cap.
@@ -709,7 +708,7 @@ pub fn plugin_binary_filename(plugin_id: &str, ext: &str) -> std::io::Result<Str
 }
 
 /// Populate `capabilities_enriched` on every plugin entry by mapping
-/// each raw capability string through `enrich_capability` (#1074).
+/// each raw capability string through `enrich_capability`.
 ///
 /// Idempotent: re-enriching an already-enriched entry overwrites
 /// with the same data, so this is safe to call after `fetch_registry`
@@ -733,7 +732,7 @@ pub fn enrich_registry_capabilities(registry: &mut PluginRegistry) {
 /// Mapping rules (case-insensitive lookup, `storage` → Filesystem,
 /// `system_control` / `systemcontrol` → SystemControl) live in the
 /// shared `Capability::from_registry_str` so the registry-side bool
-/// fan-out and the GUI-side `enrich_capability` (#1074) can never
+/// fan-out and the GUI-side `enrich_capability` can never
 /// diverge. Unknown strings are silently dropped — this is forward-
 /// compatible for future capabilities the registry may declare
 /// before this client knows about them.
@@ -792,7 +791,7 @@ pub fn manifest_from_registry_entry(
 mod tests {
     use super::*;
 
-    /// Regression: PR #946 hard-renamed the `min_midimon_version` JSON field to
+    /// Regression: the `min_midimon_version` JSON field was hard-renamed to
     /// `min_conductor_version`, which broke deserialization against the live
     /// registry data at `conductor-plugin-registry/main/registry.json` (still
     /// emits the old field name). User-visible failure: "Failed to fetch
@@ -927,7 +926,7 @@ mod tests {
     }
 
     // ========================================================================
-    // #948: subdirectory + manifest install layout
+    // Subdirectory + manifest install layout
     // ========================================================================
 
     fn make_test_entry(id: &str) -> PluginRegistryEntry {
@@ -986,7 +985,7 @@ mod tests {
     }
 
     // ========================================================================
-    // Path-traversal protection (Copilot review on PR #950)
+    // Path-traversal protection
     // ========================================================================
 
     #[test]
@@ -1008,7 +1007,7 @@ mod tests {
 
     #[test]
     fn test_validate_plugin_id_rejects_overlong_via_facade() {
-        // PR #1029 round-7 review (2026-05-02): the 128-byte
+        // The 128-byte
         // limit lives in `crate::plugin_id` and was previously
         // covered only by tests there. This regression test
         // pins the limit at the `plugin_registry` facade —
@@ -1203,10 +1202,9 @@ mod tests {
 
     /// Round-trip integration test: build the install layout the same way
     /// `install_plugin` does (subdirectory + binary + manifest), then verify
-    /// `PluginDiscovery::scan()` finds it. This is the regression test for
-    /// #948 — pre-fix, the flat-file install produced a layout discovery
-    /// silently ignored.
-    /// Atomic manifest write contract (Copilot review on PR #950, comment 3157097707).
+    /// `PluginDiscovery::scan()` finds it. This is the regression test: pre-fix,
+    /// the flat-file install produced a layout discovery silently ignored.
+    /// Atomic manifest write contract.
     ///
     /// `install_plugin` now writes the manifest via
     /// `config::preferences::atomic_write_toml` (temp file + rename + fsync)
@@ -1318,7 +1316,7 @@ mod tests {
             names
         );
 
-        // Pre-#948 sanity: a flat binary without a subdirectory + manifest
+        // Sanity check: a flat binary without a subdirectory + manifest
         // is silently ignored by discovery. Adding a stray flat file here
         // shouldn't be picked up.
         std::fs::write(

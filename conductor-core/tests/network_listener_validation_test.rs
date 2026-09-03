@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-// ADR-042 Phase A — Slice A.2: EndpointConfig network-security schema +
+// ADR-042 Phase A — EndpointConfig network-security schema +
 // loopback-only validator.
 //
 // Phase A is loopback-only: an OSC/Art-Net *listener* (Input/Bidirectional)
@@ -11,7 +11,7 @@
 // configs are forward-compatible. Output endpoints (which *send* to a remote
 // host) are unaffected — a lighting rig at 10.0.0.5 is normal.
 //
-// Acceptance (issue #1898, spec §5 A.2): `cargo test --package conductor-core`.
+// Acceptance (spec §5 A.2): `cargo test --package conductor-core`.
 
 use conductor_core::Config;
 use conductor_core::config::types::{EndpointConfig, EndpointKind};

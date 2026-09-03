@@ -1,11 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-037 Slice 4 — rule-compiler simplification (10-stage → 4-stage).
+//! ADR-037 — rule-compiler simplification (10-stage → 4-stage).
 //!
-//! After Slice 3 lowers `Trigger::Raw` to routes at config load, the
+//! After an earlier change lowers `Trigger::Raw` to routes at config load, the
 //! compiled rule set never contains Raw rules, so the matcher's two Raw
-//! sub-buckets per scope are dead. This slice removes them, collapsing
+//! sub-buckets per scope are dead. This removes them, collapsing
 //! the per-event walk from 8 sub-bucket checks to 4:
 //!
 //!   Stage 1 (Mode Context):  mode.specific_device[dev] → mode.specific_any
@@ -19,7 +19,7 @@
 //! documented bucket order").
 //!
 //! Spec: `docs/routing-unification/ADR-036-037-implementation-spec.md`
-//! § 5 Slice 4. Closes #1662.
+//! § 5.
 
 use conductor_core::config::types::Config;
 use conductor_core::event_processor::{ProcessedEvent, VelocityLevel};
@@ -167,7 +167,7 @@ fn no_match_when_no_bucket_has_the_note() {
     );
 }
 
-// ── Regression proof (spec §5 Slice 4) ─────────────────────────────
+// ── Regression proof (spec §5) ─────────────────────────────
 //
 // Oracle: independently compute the expected bucket for a Note event over
 // a config built from random per-bucket membership flags, then assert the
@@ -269,7 +269,7 @@ proptest! {
     }
 }
 
-// ── Slice 5 (ADR-037 D2): set-theory specificity ordering ──────────
+// ── ADR-037 D2: set-theory specificity ordering ──────────
 
 use conductor_core::rule_set::TriggerConstraints;
 
@@ -404,7 +404,7 @@ action = { type = "Keystroke", keys = "b" }
 
 #[test]
 fn program_change_specific_pc_wins_over_wildcard_declared_first() {
-    // #2132: a wildcard ProgramChange rule (`pc` unset = any program) declared
+    // A wildcard ProgramChange rule (`pc` unset = any program) declared
     // FIRST must not shadow a program-specific rule (`pc = 5`). The specific
     // rule fixes the `program` dimension (a strict superset), so it must sort
     // ahead of the wildcard and win for an event on that program — exactly as
@@ -497,7 +497,7 @@ action = { type = "Keystroke", keys = "b" }
 fn structurally_identical_rules_in_same_bucket_are_a_validation_error() {
     // Two structurally identical triggers in the same sub-bucket: the
     // second can never fire (first-match-wins on identical match sets).
-    // ADR-037 D2 (promoted to error per Council R2).
+    // ADR-037 D2 (promoted to a hard error).
     let cfg: Config = toml::from_str(
         r#"
 [[bindings]]

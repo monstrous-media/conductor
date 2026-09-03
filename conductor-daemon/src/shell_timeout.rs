@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Shell action timeout enforcement — ADR-027 D7 (full) / issue #1166.
+//! Shell action timeout enforcement — ADR-027 D7.
 //!
 //! Long-running shell actions historically ran as fire-and-forget
 //! children. A misbehaved action could pin a process slot indefinitely
@@ -23,7 +23,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 /// Default timeout when an action carries no explicit `timeout_ms`.
-/// Hardcoded at 30s for the initial #1166 cut; a per-action override
+/// Hardcoded at 30s for the initial cut; a per-action override
 /// rides on the `timeout_ms` schema field shipped alongside.
 pub const DEFAULT_SHELL_TIMEOUT_MS: u64 = 30_000;
 
@@ -32,7 +32,7 @@ pub const DEFAULT_SHELL_TIMEOUT_MS: u64 = 30_000;
 /// runaway child doesn't pin the daemon for a perceptible delay.
 pub const SHELL_TIMEOUT_GRACE_MS: u64 = 5_000;
 
-/// ADR-027 D7 / issue #1178 — bounded stdout/stderr capture cap.
+/// ADR-027 D7 — bounded stdout/stderr capture cap.
 /// Each stream is captured up to this many bytes; reader threads
 /// continue draining past the cap so the child doesn't block on a
 /// full pipe (the OS pipe buffer is typically 64 KB; a deny here
@@ -59,7 +59,7 @@ pub enum WatcherOutcome {
     WaitError(io::Error),
 }
 
-/// #1178 — captured stdout/stderr from the child, bounded at
+/// Captured stdout/stderr from the child, bounded at
 /// `CAPTURE_CAP_BYTES` per stream. If the child emitted more than
 /// the cap, the corresponding `*_truncated` flag is `true` and the
 /// `Vec<u8>` holds only the leading `CAPTURE_CAP_BYTES` bytes; the
@@ -112,7 +112,7 @@ pub fn spawn_with_timeout(
         command.process_group(0);
     }
 
-    // #1178 — wire stdout/stderr as pipes so the watcher thread can
+    // Wire stdout/stderr as pipes so the watcher thread can
     // capture (bounded at CAPTURE_CAP_BYTES). Without this, the
     // child inherits the daemon's stdio and capture would have
     // nowhere to read from.
@@ -132,7 +132,7 @@ pub fn spawn_with_timeout(
     Ok(SpawnResult { pid, watcher })
 }
 
-/// #1178 — drain a child's pipe end into a capped buffer. Returns
+/// Drain a child's pipe end into a capped buffer. Returns
 /// the captured prefix plus a `truncated` flag. After the cap is
 /// reached, subsequent reads are discarded so the pipe keeps
 /// flowing and the child doesn't block on a write-side stall.
@@ -204,9 +204,9 @@ fn run_watcher<O: Read + Send + 'static, E: Read + Send + 'static>(
         stderr_truncated,
     };
 
-    // #1178 — surface captured output via tracing so operators have
+    // Surface captured output via tracing so operators have
     // a record alongside the lifecycle outcome. The audit-log
-    // integration item in #1178 is deferred: the underlying
+    // integration item is deferred: the underlying
     // Shell-action audit entry doesn't exist yet (none of the
     // current audit-log API surface covers configured-mapping
     // shell actions — only LLM-tool invocations). Filed as
@@ -261,7 +261,7 @@ fn run_watcher_lifecycle(
             Ok(Some(_)) => return WatcherOutcome::KilledOnTimeout,
             Ok(None) => std::thread::sleep(POLL_INTERVAL),
             Err(e) => {
-                // Council #1174 review: don't short-circuit out of
+                // Don't short-circuit out of
                 // the grace loop on a transient `try_wait` error.
                 // ECHILD means the child is already reaped (safe),
                 // anything else likely means SIGKILL escalation is
@@ -299,7 +299,7 @@ fn pgid_target(pid: u32) -> i32 {
 
 #[cfg(unix)]
 fn send_term(_child: &mut Child, pid: u32) {
-    // Council #1174 review: `libc::kill` returns -1 on ESRCH if the
+    // `libc::kill` returns -1 on ESRCH if the
     // process group is already gone. The subsequent `try_wait` /
     // `wait` correctly handles that case, so the return is
     // intentionally discarded — make it explicit so future

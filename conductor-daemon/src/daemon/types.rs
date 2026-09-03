@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::oneshot;
 
-/// Event filter for real-time monitoring (Issue #325)
+/// Event filter for real-time monitoring
 ///
 /// Reusable filter that can be applied to `MonitorEvent` streams.
 /// Used by both CLI (`conductorctl events`) and GUI (LiveEventConsole).
@@ -92,7 +92,7 @@ impl EventFilter {
     }
 }
 
-/// Event statistics for monitoring dashboard (Issue #325)
+/// Event statistics for monitoring dashboard
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EventStats {
     /// Total events received
@@ -110,7 +110,7 @@ pub struct EventStats {
     pub error_count: u64,
 }
 
-/// Event for real-time event monitoring (Issue #326)
+/// Event for real-time event monitoring
 ///
 /// A simplified, serializable event type for CLI monitoring.
 /// Captures MIDI and gamepad events with device attribution.
@@ -157,7 +157,7 @@ pub struct MonitorEvent {
     /// Gamepad axis ID
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub axis: Option<u8>,
-    /// Raw analog value from HID input, before MIDI quantisation (#599).
+    /// Raw analog value from HID input, before MIDI quantisation.
     /// "gamepad_axis": -1.0 to +1.0 (center 0.0).
     /// "gamepad_trigger": 0.0 to 1.0 (released 0.0).
     /// `None` for all other event types.
@@ -166,7 +166,7 @@ pub struct MonitorEvent {
     /// Human-readable detail/message (action results, errors, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
-    /// Structured payload for typed events (e.g., mapping_fired) (ADR-014, #493)
+    /// Structured payload for typed events (e.g., mapping_fired) (ADR-014)
     ///
     /// When present, contains the full structured data for the event type.
     /// Consumers should prefer this over parsing `detail` as JSON.
@@ -178,7 +178,7 @@ pub struct MonitorEvent {
     /// Resident memory in bytes at event time (R920: track_memory)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory_bytes: Option<u64>,
-    /// Canonical MIDI 1.0 wire bytes for raw channel-voice events (#840), e.g.
+    /// Canonical MIDI 1.0 wire bytes for raw channel-voice events, e.g.
     /// `[0xB0, 0x07, 0x4E]` for CC 7 = 78 on channel 1. Reconstructed from the
     /// parsed fields (the original `InputEvent` no longer carries the source
     /// bytes by the time it reaches monitoring), so it is byte-identical to the
@@ -188,8 +188,8 @@ pub struct MonitorEvent {
     /// carried no channel.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw_bytes: Option<Vec<u8>>,
-    /// Monotonic emission sequence number stamped at `push_monitor_event` time
-    /// (#2410). Gives a total order across every event type and both Tauri
+    /// Monotonic emission sequence number stamped at `push_monitor_event` time.
+    /// Gives a total order across every event type and both Tauri
     /// channels (`midi-events` + `mapping-fired`) so the GUI can render true
     /// daemon-emission order regardless of cross-channel delivery timing.
     /// `#[serde(default)]` keeps old payloads and the many
@@ -198,7 +198,7 @@ pub struct MonitorEvent {
     pub seq: u64,
 }
 
-/// Validate a plugin name from IPC input (Issue #328)
+/// Validate a plugin name from IPC input
 ///
 /// Plugin names must be non-empty and contain only alphanumeric chars, hyphens, underscores, and dots.
 /// This prevents directory traversal and other injection attacks.
@@ -224,7 +224,7 @@ pub(crate) fn validate_plugin_name(name: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Validate a profile config path (Phase 1 - Issue #323)
+/// Validate a profile config path (Phase 1)
 ///
 /// This function validates that the path is:
 /// - Absolute
@@ -245,7 +245,7 @@ pub(crate) fn validate_profile_path(path_str: &str) -> Result<PathBuf, String> {
         return Err("Profile config path is not a file".into());
     }
     // Must be .toml — case-insensitive ASCII, matching the startup path's
-    // `active_profile_config_path` contract (#1294). A profile named e.g.
+    // `active_profile_config_path` contract. A profile named e.g.
     // `studio.TOML` resolves correctly at boot but was previously rejected here
     // at runtime (IPC / MCP / app-detection profile switch), an api-contract
     // mismatch.
@@ -259,11 +259,11 @@ pub(crate) fn validate_profile_path(path_str: &str) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
-/// Active profile information (Phase 1 - Issue #323)
+/// Active profile information (Phase 1)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveProfileInfo {
     /// The GUI's profile id (`profile-<timestamp>`), when the switch carried
-    /// one (#2564 D5, additive). `None` for the built-in Default and for
+    /// one (additive). `None` for the built-in Default and for
     /// legacy callers that only send name + path.
     #[serde(default)]
     pub id: Option<String>,
@@ -277,7 +277,7 @@ pub enum LifecycleState {
     /// Initial state, loading configuration and connecting to devices
     Init,
 
-    /// ADR-034 §D4.2 / D4.B.3 — **RESERVED, not reachable today (#1323).**
+    /// ADR-034 §D4.2 / D4.B.3 — **RESERVED, not reachable today.**
     ///
     /// Was intended as a startup idle mode: when no live config is found
     /// (neither `live.toml` nor `live.toml.known_good` parsed), the daemon
@@ -305,7 +305,7 @@ pub enum LifecycleState {
     /// Device disconnected, attempting to reconnect
     Degraded,
 
-    /// ADR-034 §D8.2 / D4.C.1 (#1308) — audit outbox has hit 8+
+    /// ADR-034 §D8.2 / D4.C.1 — audit outbox has hit 8+
     /// consecutive flush failures and broken its hash chain.
     /// ConfigChange mutations reject with
     /// `IpcErrorCode::AuditUnavailable = 5004` until the operator
@@ -350,7 +350,7 @@ impl LifecycleState {
         matches!(
             (self, new_state),
             (Self::Init, Self::Starting)
-                // D4.B.3 — RESERVED (#1323): the AwaitingConfig idle mode
+                // D4.B.3 — RESERVED: the AwaitingConfig idle mode
                 // was never wired, so these edges are unreachable today.
                 // Retained so the mode can be reinstated without a
                 // transition-table change. (Would-be routing: startup load
@@ -360,18 +360,18 @@ impl LifecycleState {
                 | (Self::AwaitingConfig, Self::Starting)
                 | (Self::AwaitingConfig, Self::Stopping)
                 | (Self::Starting, Self::Running)
-                | (Self::Starting, Self::Degraded) // v4.10.11: Allow Starting → Degraded when device connection fails
-                | (Self::Starting, Self::Stopping) // v4.10.11: Allow Starting → Stopping for clean shutdown during startup
+                | (Self::Starting, Self::Degraded) // Allow Starting → Degraded when device connection fails
+                | (Self::Starting, Self::Stopping) // Allow Starting → Stopping for clean shutdown during startup
                 | (Self::Running, Self::Reloading)
                 | (Self::Running, Self::Degraded)
                 | (Self::Running, Self::Stopping)
                 | (Self::Reloading, Self::Running)
                 | (Self::Reloading, Self::Degraded)
-                | (Self::Reloading, Self::Reconnecting) // v4.22.0: Device lost during config reload
-                | (Self::Reloading, Self::Stopping) // v4.22.0: Clean shutdown during config reload
+                | (Self::Reloading, Self::Reconnecting) // Device lost during config reload
+                | (Self::Reloading, Self::Stopping) // Clean shutdown during config reload
                 | (Self::Degraded, Self::Reconnecting)
                 | (Self::Degraded, Self::Stopping)
-                // D4.C.1 (#1308): audit outbox lifecycle. Running
+                // D4.C.1: audit outbox lifecycle. Running
                 // demotes to AuditDegraded on 8+ consecutive flush
                 // failures; resumes back to Running after operator
                 // runs `conductorctl audit resume`. Always allowed
@@ -381,7 +381,7 @@ impl LifecycleState {
                 | (Self::AuditDegraded, Self::Stopping)
                 | (Self::Reconnecting, Self::Running)
                 | (Self::Reconnecting, Self::Degraded)
-                | (Self::Reconnecting, Self::Stopping) // v4.22.0: Clean shutdown during reconnect
+                | (Self::Reconnecting, Self::Stopping) // Clean shutdown during reconnect
                 | (Self::Stopping, Self::Stopped)
         )
     }
@@ -425,10 +425,10 @@ pub enum DaemonCommand {
         ///
         /// The engine-manager handler hands this to
         /// `tool_executor.execute` so `gate::enforce` can consult
-        /// the trust band before dispatching. PR-B today skips
-        /// the gate when this is `None`; PR-D's flag flip will
+        /// the trust band before dispatching. The gate is currently skipped
+        /// when this is `None`; a planned flag flip will
         /// distinguish (1) (deny as Untrusted) from (3) (allow as
-        /// internal-trusted) — see the `TODO(PR-D, gate-bypass
+        /// internal-trusted) — see the `TODO(gate-bypass
         /// on None)` comment in `executor.rs::execute`.
         caller_ctx: Option<crate::security::CallerContext>,
         response_tx: oneshot::Sender<IpcResponse>,
@@ -443,7 +443,7 @@ pub enum DaemonCommand {
     /// Device reconnected
     DeviceReconnected,
 
-    /// Mode change requested (Phase 2 - Issue #321)
+    /// Mode change requested (Phase 2)
     ModeChange { mode: String },
 
     /// ADR-040 Slice 5 (§4.5/§4.7) — resolve the active mode from a frontmost
@@ -481,12 +481,12 @@ pub enum DaemonCommand {
         response_tx: tokio::sync::oneshot::Sender<serde_json::Value>,
     },
 
-    /// Switch to a named profile's config (Phase 2 - Issue #353)
+    /// Switch to a named profile's config (Phase 2)
     /// Includes a oneshot sender for synchronous result feedback to the caller.
     ProfileSwitch {
         profile_name: String,
         config_path: String,
-        /// #2564 D5 (additive): the GUI's profile id, when the caller has one,
+        /// The GUI's profile id (additive), when the caller has one,
         /// so the daemon can persist/report the identity the GUI keys by.
         profile_id: Option<String>,
         /// When provided, sends back Ok(profile_name) on success or Err(message) on failure.
@@ -499,10 +499,10 @@ pub enum DaemonCommand {
         response_tx: tokio::sync::oneshot::Sender<Option<ActiveProfileInfo>>,
     },
 
-    /// Refresh app detector mappings from profiles manifest (Phase 2 - Issue #353)
+    /// Refresh app detector mappings from profiles manifest (Phase 2)
     RefreshAppMappings,
 
-    /// Gamepad reconnected (v3.0)
+    /// Gamepad reconnected
     ReconnectGamepad,
 
     /// Device reconnection failed after max attempts
@@ -514,24 +514,24 @@ pub enum DaemonCommand {
     /// Graceful shutdown requested
     Shutdown,
 
-    /// Timer tick for hold detection across all devices (v4.20.0 - ADR-009 Phase 2, D12)
+    /// Timer tick for hold detection across all devices (ADR-009 Phase 2, D12)
     TimerTick,
 
-    /// Enable/disable a specific device (v4.20.0 - ADR-009 Phase 2, D8)
+    /// Enable/disable a specific device (ADR-009 Phase 2, D8)
     SetDeviceEnabled { device_id: String, enabled: bool },
 
-    /// Periodic port rescan for hot-plug detection (v4.22.0 - ADR-009 Phase 4).
-    /// #2390: the run-loop handles this by SPAWNING the slow CoreMIDI
+    /// Periodic port rescan for hot-plug detection (ADR-009 Phase 4).
+    /// The run-loop handles this by SPAWNING the slow CoreMIDI
     /// enumeration off-loop and re-delivering [`Self::HotPlugApply`] — it no
     /// longer enumerates inline (which parked the event loop ~500ms every 5s).
     HotPlugCheck,
 
-    /// #2390: apply a hot-plug rescan with the port list ALREADY enumerated off
+    /// Apply a hot-plug rescan with the port list ALREADY enumerated off
     /// the run-loop (by the task `HotPlugCheck` spawns). Keeping the slow
     /// enumeration off the event loop, the run-loop does only the cheap
     /// diff/open with these ports.
     ///
-    /// #2392: `gamepad_available` carries the result of the (fixed ~500ms when
+    /// `gamepad_available` carries the result of the (fixed ~500ms when
     /// no controller) gilrs `list_gamepads` probe, which the spawning task ALSO
     /// runs off-loop. The previous code probed inline in `process_hot_plug_apply`
     /// and parked the run-loop ~535ms every 5s whenever a gamepad endpoint was
@@ -586,7 +586,7 @@ pub enum IpcCommand {
     SetDevice,
     GetDevice,
 
-    // MIDI Learn (v4.2)
+    // MIDI Learn
     StartMidiLearn,
     StopMidiLearn,
     GetMidiLearnEvents,
@@ -601,7 +601,7 @@ pub enum IpcCommand {
     /// Execute an MCP tool directly
     ExecuteMcpTool,
 
-    // Multi-device management (v4.20.0 - ADR-009 Phase 2)
+    // Multi-device management (ADR-009 Phase 2)
     /// Enable or disable a specific device by device_id
     SetDeviceEnabled,
 
@@ -612,29 +612,29 @@ pub enum IpcCommand {
     // gate needed.
     GetProbeHistory,
 
-    // ADR-029 Phase 4 (#990) — query the daemon's macOS Input Monitoring
+    // ADR-029 Phase 4 — query the daemon's macOS Input Monitoring
     // TCC grant state. The GUI uses this on first launch (and from the
     // HidDeviceList warning surface) to drive the onboarding sheet that
     // points the user at System Settings if the daemon's grant is
     // missing. Read-only. On non-macOS, returns "not_applicable".
     CheckPermissions,
 
-    // Profile management (Phase 1 - Issue #323, Phase 2 - Issue #353)
+    // Profile management (Phase 1, Phase 2)
     /// Switch to a named profile's config
     SwitchProfile,
     /// Get the currently active profile
     GetActiveProfile,
-    /// Refresh app-profile mappings from manifest (Phase 2 - Issue #353)
+    /// Refresh app-profile mappings from manifest (Phase 2)
     RefreshAppMappings,
 
-    // Config versioning (v4.26.77)
+    // Config versioning
     /// Rollback config to last known-good version. Routed through
     /// `live_config.mutate(ConfigOp::Rollback)` post-D4.B.4 — CAS
     /// checked; rejected during AwaitingConfig (see
     /// `allowed_during_awaiting_config`).
     RollbackConfig,
 
-    // ADR-034 §D1.2.1 / D4.B.4 (#1291) — config provenance lifecycle
+    // ADR-034 §D1.2.1 / D4.B.4 — config provenance lifecycle
     /// Promote the current `LiveConfig` snapshot's `revision` to
     /// `known_good_revision`. Persists to `live.toml.known_good`
     /// via the per-op persist matrix; the in-memory snapshot
@@ -655,7 +655,7 @@ pub enum IpcCommand {
     /// Set the daemon log level dynamically
     SetLogLevel,
 
-    // LED control (Issue #324)
+    // LED control
     /// Set LED lighting scheme
     SetLedScheme,
     /// Set LED brightness
@@ -663,14 +663,14 @@ pub enum IpcCommand {
     /// Get current LED status
     GetLedStatus,
 
-    // Event monitoring (Issue #326)
+    // Event monitoring
     /// Start real-time event monitoring
     StartEventMonitor,
     /// Stop real-time event monitoring
     StopEventMonitor,
     /// Get buffered monitor events (drains buffer)
     GetMonitorEvents,
-    /// Subscribe to real-time event stream (push model, #394)
+    /// Subscribe to real-time event stream (push model)
     /// Keeps the connection open and streams events as newline-delimited JSON batches.
     SubscribeEvents,
 
@@ -678,7 +678,7 @@ pub enum IpcCommand {
     /// Simulate a mapping execution by mode + index
     SimulateMapping,
 
-    // Plugin management (Issue #328)
+    // Plugin management
     /// List available and loaded plugins
     ListPlugins,
     /// Get metadata for a specific plugin
@@ -688,7 +688,7 @@ pub enum IpcCommand {
     /// Disable a plugin by name
     DisablePlugin,
 
-    // Mode switching (Issue #507)
+    // Mode switching
     /// Switch the daemon's active mode by name
     SwitchMode,
 
@@ -701,7 +701,7 @@ pub enum IpcCommand {
     /// Report the active mode + lock state (mode, locked, lock origin).
     ModeStatus,
 
-    // ADR-032 P4 — UI mode awareness (#1089)
+    // ADR-032 P4 — UI mode awareness
     /// Publish the GUI's current UI mode ("llm" | "studio") so the
     /// daemon's `Status` response (and the MCP `conductor_status` tool
     /// passthrough) can include it. Fire-and-forget: the daemon accepts
@@ -709,7 +709,7 @@ pub enum IpcCommand {
     /// query `conductor_status`. The GUI publishes on every mode toggle.
     SetUiMode,
 
-    // ADR-027 D19 — GUI launch handshake (#1215)
+    // ADR-027 D19 — GUI launch handshake
     /// First-message handshake from a daemon-spawned GUI. Args:
     /// `{ "nonce": "<base64-url-safe-no-pad>" }`. On match, the
     /// connection's `CallerContext` is elevated to `GuiTrusted`
@@ -721,8 +721,8 @@ pub enum IpcCommand {
     Handshake,
 
     // ADR-034 §D4.2 / D4.B.3.B — was specced as the AwaitingConfig
-    // idle-mode bootstrap IPC. The idle mode is reserved/unreachable
-    // (#1323), but the `Init` handler itself is wired and runs in whatever
+    // idle-mode bootstrap IPC. The idle mode is reserved/unreachable,
+    // but the `Init` handler itself is wired and runs in whatever
     // state the daemon is already in.
     /// Replace the whole live config from a `ConfigSource`:
     /// `{ "source": Defaults | FromPath { path } }`. PREPAREs the new
@@ -731,7 +731,7 @@ pub enum IpcCommand {
     /// `SaveConfig` takes. Originally specced as the
     /// `LifecycleState::AwaitingConfig` bootstrap command (transition
     /// `AwaitingConfig → Starting`); since that idle mode is
-    /// reserved/unreachable (#1323), `Init` simply runs in the daemon's
+    /// reserved/unreachable, `Init` simply runs in the daemon's
     /// current state. (The §D4.2 CLI-only peer restriction was to land with
     /// the AwaitingConfig integration and is likewise not yet enforced.)
     Init,
@@ -740,14 +740,14 @@ pub enum IpcCommand {
     /// config **body is intentionally omitted** (it is large and this is the hot
     /// CAS/status path); use [`IpcCommand::GetConfigBody`] when the canonical
     /// config tree itself is needed. (The sentinel `{ state_generation: 0, … }`
-    /// response was reserved for the unreachable `AwaitingConfig` mode, #1323.)
+    /// response was reserved for the unreachable `AwaitingConfig` mode.)
     /// Accepted in every lifecycle state.
     GetConfigSnapshot,
     /// Query the current `LiveConfig` snapshot **including the config body** —
     /// returns `{ state_generation, config, revision, applied_at }`. ReadOnly.
     /// The GUI's `get_config` reads this so it reflects the daemon's canonical
     /// in-memory tree (live LLM/IPC mutations included) rather than a stale
-    /// on-disk `config.toml` (ADR-034 §D4 / ADR-043; #1779 B2). The returned
+    /// on-disk `config.toml` (ADR-034 §D4 / ADR-043). The returned
     /// `state_generation` is the CAS base a client can thread back as the next
     /// `SaveConfig` `base_generation` for a coherent single-snapshot CAS — a
     /// follow-up wires the GUI to do so (today `save_config` still fetches its
@@ -756,7 +756,7 @@ pub enum IpcCommand {
     /// Accepted in every lifecycle state.
     GetConfigBody,
 
-    // ADR-034 §D2 / D4.C.1 (#1308) — strict IPC mutation surface.
+    // ADR-034 §D2 / D4.C.1 — strict IPC mutation surface.
     // Type-only landing; the dispatch table in
     // `engine_manager::handle_ipc_request` returns `UnknownCommand`
     // for these until the per-handler slices land (D4.C.6+).
@@ -767,7 +767,7 @@ pub enum IpcCommand {
     /// `state_generation`; stale base returns
     /// `IpcErrorCode::StaleBaseGeneration = 5002`. The optional
     /// `base_revision` (the `GetConfigBody` content hash the client
-    /// displayed) adds an anti-clobber content guard (#2417): if it no
+    /// displayed) adds an anti-clobber content guard: if it no
     /// longer matches the live revision the save is rejected with
     /// `StaleBaseContent = 5007` **before** commit — content-hash, not
     /// generation, so a daemon self-write that bumps the generation
@@ -799,15 +799,15 @@ pub enum IpcCommand {
     /// load" before invoking `Init { source: FromPath }`).
     ConfigDriftStatus,
     /// Structured diff of the daemon's in-memory live config vs the on-disk
-    /// config (the drift source) — ReadOnly (#2414, ADR-034 §D4.D). Returns
+    /// config (the drift source) — ReadOnly (ADR-034 §D4.D). Returns
     /// `{ differs, changed_sections, live, target }`: `changed_sections` is the
     /// set of top-level keys that differ, `live`/`target` the full trees for
-    /// the GUI to render. Precursor for #2284's drift-banner Review-diff /
+    /// the GUI to render. Precursor for a future drift-banner Review-diff /
     /// Overwrite. No args (V1 diffs against the daemon's own `config_path`).
     /// Accepted in every lifecycle state (pure read, like `ConfigDriftStatus`).
     GetConfigDiff,
     /// Overwrite the on-disk config file with the daemon's live config — the
-    /// "Overwrite user.toml" drift-banner action (#2284, ADR-034 §D4.D): "my live
+    /// "Overwrite user.toml" drift-banner action (ADR-034 §D4.D): "my live
     /// config wins". No args; writes the live snapshot to the daemon's own
     /// `config_path` via the §D9-suppressed write path (the watcher must not
     /// re-surface it as external drift). Returns `{ "revision" }`. A dedicated op
@@ -817,7 +817,7 @@ pub enum IpcCommand {
     /// config to persist before the initial load.
     OverwriteConfigFile,
 
-    // ADR-027 D13a — audit denial observability (#1167)
+    // ADR-027 D13a — audit denial observability
     /// One-shot query of the persistent audit log. Args:
     /// `{ "denied_only": bool, "limit": u32 }`. Returns the most
     /// recent matching `AuditEntry` rows as a JSON array. Backs
@@ -829,7 +829,7 @@ pub enum IpcCommand {
     /// batches of `AuditEntry`. Backs `conductorctl audit tail -f`.
     SubscribeAudit,
 
-    /// ADR-034 §D8 / #2380 — operator recovery from the fail-closed
+    /// ADR-034 §D8 — operator recovery from the fail-closed
     /// audit-unavailable state. When the audit outbox failed to open (corrupt
     /// chain / I/O), config mutations are refused (`AuditDegraded`); this
     /// reopens it, rotating a corrupt file aside to
@@ -845,7 +845,7 @@ impl IpcCommand {
     /// ADR-034 §D4.2 / D4.B.3.B — IPC accept-list for the
     /// `LifecycleState::AwaitingConfig` idle mode.
     ///
-    /// **RESERVED (#1323): the daemon never enters `AwaitingConfig`
+    /// **RESERVED: the daemon never enters `AwaitingConfig`
     /// today, so this predicate has no runtime consumer** — the dispatch
     /// filter that called it was removed as dead code. It is retained as
     /// the canonical accept-list spec (and is exercised by the truth-table
@@ -856,10 +856,10 @@ impl IpcCommand {
     /// - `Init { source }` — would transition AwaitingConfig → Starting
     /// - `Status` / GetStatus — daemon health probe
     /// - `GetConfigSnapshot` — would return sentinel state_generation=0
-    /// - `GetConfigBody` (#1779) — pure read; returns the `config: null`
+    /// - `GetConfigBody` — pure read; returns the `config: null`
     ///   sentinel during AwaitingConfig
-    /// - `ConfigDriftStatus` (D4.C.1 #1308) — pure read
-    /// - `GetConfigDiff` (#2414) — pure read; live-vs-on-disk config diff
+    /// - `ConfigDriftStatus` (D4.C.1) — pure read
+    /// - `GetConfigDiff` — pure read; live-vs-on-disk config diff
     /// - `Ping` — defensive aliveness probe
     pub fn allowed_during_awaiting_config(&self) -> bool {
         matches!(
@@ -936,12 +936,12 @@ pub struct DeviceStatus {
     pub name: Option<String>,
     pub port: Option<usize>,
     pub last_event_at: Option<u64>, // Unix timestamp in seconds
-    /// Multi-device port statuses (v4.20.0 - ADR-009 Phase 2)
+    /// Multi-device port statuses (ADR-009 Phase 2)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub devices: Vec<DevicePortStatus>,
 }
 
-/// Per-device port status for multi-device mode (v4.20.0 - ADR-009 Phase 2)
+/// Per-device port status for multi-device mode (ADR-009 Phase 2)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DevicePortStatus {
     pub device_id: String,
@@ -951,7 +951,7 @@ pub struct DevicePortStatus {
     /// Whether the device is enabled (not muted) (D8)
     pub enabled: bool,
     pub last_event_at: Option<u64>,
-    /// Whether this device is bound to a configured `[[devices]]` identity (v4.26.0 - ADR-009 D19)
+    /// Whether this device is bound to a configured `[[devices]]` identity (ADR-009 D19)
     ///
     /// `true` when the device was resolved via `BindingResult::Bound`.
     /// `false` when the device was opened as an unconfigured port (e.g. in `ListenMode::All`).
@@ -975,7 +975,7 @@ pub struct DevicePortStatus {
     /// Whether the output port was auto-paired (ADR-021)
     #[serde(default)]
     pub output_auto_paired: bool,
-    /// Device protocol: "midi", "hid", "osc", or "artnet" (#742)
+    /// Device protocol: "midi", "hid", "osc", or "artnet"
     #[serde(default = "default_protocol_midi")]
     pub protocol: String,
 }
@@ -1111,7 +1111,7 @@ pub struct DaemonState {
     pub uptime_secs: u64,
     /// Config path
     pub config_path: Option<String>,
-    /// Active profile info (Phase 1 - Issue #323)
+    /// Active profile info (Phase 1)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active_profile: Option<ActiveProfileInfo>,
 }
@@ -1130,8 +1130,8 @@ impl DaemonState {
             .map(|d| d.connected)
             .unwrap_or(false);
 
-        // v4.23.0: Include device_bindings from multi-device status
-        // v4.26.0: Use dps.is_configured field instead of broken starts_with("raw:") check (D19)
+        // Include device_bindings from multi-device status
+        // Use dps.is_configured field instead of broken starts_with("raw:") check (D19)
         let device_bindings: Vec<Value> = self
             .device_status
             .as_ref()
@@ -1157,10 +1157,10 @@ impl DaemonState {
             .unwrap_or_default();
 
         json!({
-            "daemon_running": true, // Always true when daemon is responding (#105)
+            "daemon_running": true, // Always true when daemon is responding
             "lifecycle_state": self.lifecycle_state.map(|s| format!("{}", s)).unwrap_or_else(|| "Unknown".to_string()),
             "connected": device_connected, // Backward compat: device connection state
-            "device_connected": device_connected, // v4.17.0: Explicit alias (#105)
+            "device_connected": device_connected, // Explicit alias
             "device": self.device_status.as_ref().map(|d| json!({
                 "name": d.name,
                 "port": d.port,
@@ -1185,8 +1185,8 @@ impl DaemonState {
 
     /// Convert to JSON for MCP devices tool
     pub fn to_devices_json(&self, midi_devices: Vec<MidiDeviceInfo>) -> Value {
-        // v4.23.0: Include device_bindings from multi-device status
-        // v4.26.0: Use dps.is_configured field instead of broken starts_with("raw:") check (D19)
+        // Include device_bindings from multi-device status
+        // Use dps.is_configured field instead of broken starts_with("raw:") check (D19)
         let device_bindings: Vec<Value> = self
             .device_status
             .as_ref()
@@ -1230,7 +1230,7 @@ mod tests {
 
     #[test]
     fn validate_profile_path_accepts_uppercase_toml_extension() {
-        // #1294: `validate_profile_path` must match the startup path's
+        // `validate_profile_path` must match the startup path's
         // case-INSENSITIVE `.toml` contract. A profile named `studio.TOML`
         // resolves at boot but was previously rejected here at runtime
         // (IPC/MCP/app-detection switch), an api-contract mismatch.
@@ -1285,7 +1285,7 @@ mod tests {
 
     // ────────────────────────────────────────────────────────────────
     // ADR-034 §D4.2 / D4.B.3.B — IPC accept-list spec for AwaitingConfig.
-    // RESERVED (#1323): the idle mode is unreachable and the dispatch
+    // RESERVED: the idle mode is unreachable and the dispatch
     // filter was removed, but these pin the accept-list truth table so the
     // spec is preserved for an eventual reinstatement.
     // ────────────────────────────────────────────────────────────────
@@ -1293,9 +1293,9 @@ mod tests {
     #[test]
     fn awaiting_config_accept_list_covers_spec_set() {
         // Spec §D4.2 accept-list: Init, Status, GetConfigSnapshot,
-        // GetConfigBody (#1779 — ReadOnly read that returns the
+        // GetConfigBody (ReadOnly read that returns the
         // `config: null` sentinel during AwaitingConfig), ConfigDriftStatus
-        // (D4.C.1 #1308), Ping (defensive aliveness probe; no side effects).
+        // (D4.C.1), Ping (defensive aliveness probe; no side effects).
         for cmd in [
             IpcCommand::Init,
             IpcCommand::Status,
@@ -1327,14 +1327,14 @@ mod tests {
             IpcCommand::SetLedBrightness,
             IpcCommand::RollbackConfig,
             IpcCommand::RollbackConfigForce,
-            // D4.C.1 (#1308) — new strict-IPC mutation surface:
+            // D4.C.1 — new strict-IPC mutation surface:
             // CAS-checked saves and reloads MUST also reject
             // during AwaitingConfig (there's no snapshot to
             // base_generation against).
             IpcCommand::SaveConfig,
             IpcCommand::ReloadFromDisk,
             IpcCommand::ImportConfig,
-            // #2284 — Overwrite writes the live config to disk; there's no live
+            // Overwrite writes the live config to disk; there's no live
             // config to persist before the initial load, so it must reject too.
             IpcCommand::OverwriteConfigFile,
             IpcCommand::SwitchProfile,
@@ -1350,7 +1350,7 @@ mod tests {
     }
 
     // ────────────────────────────────────────────────────────────────
-    // ADR-034 §D2 / D4.C.1 (#1308) — strict IPC mutation surface
+    // ADR-034 §D2 / D4.C.1 — strict IPC mutation surface
     // wire-format tests. Pin SCREAMING_SNAKE_CASE so downstream
     // consumers (GUI, CLI, MCP) can plug handlers without protocol
     // drift across slices.
@@ -1418,7 +1418,7 @@ mod tests {
 
     #[test]
     fn resume_audit_command_serialises_screaming() {
-        // #2380: `conductorctl audit resume` → IpcCommand::ResumeAudit.
+        // `conductorctl audit resume` → IpcCommand::ResumeAudit.
         let request = IpcRequest {
             id: "resume-1".to_string(),
             command: IpcCommand::ResumeAudit,
@@ -1465,21 +1465,21 @@ mod tests {
         }
     }
 
-    /// v4.10.11: Test that Starting can transition to Degraded when device connection fails
+    /// Test that Starting can transition to Degraded when device connection fails
     #[test]
     fn test_starting_can_transition_to_degraded() {
         // Starting → Degraded is valid when device connection fails at startup
         assert!(LifecycleState::Starting.can_transition_to(LifecycleState::Degraded));
     }
 
-    /// v4.10.11: Test that Starting can transition to Stopping for clean shutdown during startup
+    /// Test that Starting can transition to Stopping for clean shutdown during startup
     #[test]
     fn test_starting_can_transition_to_stopping() {
         // Starting → Stopping is valid when shutdown is requested during startup
         assert!(LifecycleState::Starting.can_transition_to(LifecycleState::Stopping));
     }
 
-    /// ADR-034 §D8.2 / D4.C.1 (#1308): AuditDegraded transitions.
+    /// ADR-034 §D8.2 / D4.C.1: AuditDegraded transitions.
     /// Running demotes on flush-failure threshold (subsequent slice
     /// wires the threshold check); resumes after operator action.
     /// Clean shutdown allowed from AuditDegraded directly.
@@ -1751,7 +1751,7 @@ mod tests {
         assert_eq!(json["statistics"]["events_processed"], 100);
     }
 
-    /// v4.17.0: Test status JSON includes daemon_running when no device connected (#105)
+    /// Test status JSON includes daemon_running when no device connected
     #[test]
     fn test_status_json_includes_daemon_running_field() {
         let state = DaemonState {
@@ -1771,7 +1771,7 @@ mod tests {
         assert_eq!(json["device_connected"], false);
     }
 
-    /// v4.17.0: Test status JSON daemon_running with device connected (#105)
+    /// Test status JSON daemon_running with device connected
     #[test]
     fn test_status_json_daemon_running_with_device() {
         let state = DaemonState {
@@ -1868,7 +1868,7 @@ mod tests {
         assert!(matches!(request.command, IpcCommand::ExecuteMcpTool));
     }
 
-    /// v4.26.0 (D19): Test is_configured propagates correctly from DevicePortStatus to JSON
+    /// Test is_configured propagates correctly from DevicePortStatus to JSON (D19)
     #[test]
     fn test_is_configured_propagates_to_json() {
         let state = DaemonState {
@@ -1926,14 +1926,14 @@ mod tests {
         assert_eq!(bindings[0]["is_configured"], true);
         assert_eq!(bindings[1]["is_configured"], false);
 
-        // #742: Verify protocol field is serialized in JSON output
+        // Verify protocol field is serialized in JSON output
         let status_json = state.to_status_json();
         let bindings = status_json["device_bindings"].as_array().unwrap();
         assert_eq!(bindings[0]["protocol"], "midi");
         assert_eq!(bindings[1]["protocol"], "midi");
     }
 
-    /// v4.26.0 (D19): Test is_configured defaults to false for serde backward compat
+    /// Test is_configured defaults to false for serde backward compat (D19)
     #[test]
     fn test_is_configured_serde_default() {
         // Old JSON without is_configured field should default to false
@@ -1952,7 +1952,7 @@ mod tests {
         );
     }
 
-    /// #742: Test protocol defaults to "midi" for serde backward compat
+    /// Test protocol defaults to "midi" for serde backward compat
     #[test]
     fn test_protocol_serde_default() {
         let json = r#"{
@@ -1970,7 +1970,7 @@ mod tests {
         );
     }
 
-    /// Phase 1 - Issue #323: Test ActiveProfileInfo serialization
+    /// Phase 1: Test ActiveProfileInfo serialization
     #[test]
     fn test_active_profile_info_serialization() {
         let info = ActiveProfileInfo {
@@ -1986,7 +1986,7 @@ mod tests {
         assert_eq!(deserialized.name, "Logic Pro");
     }
 
-    /// Phase 1 - Issue #323: Test SwitchProfile IPC command serialization
+    /// Phase 1: Test SwitchProfile IPC command serialization
     #[test]
     fn test_switch_profile_command_serialization() {
         let request = IpcRequest {
@@ -2001,7 +2001,7 @@ mod tests {
         assert!(json.contains("\"command\":\"SWITCH_PROFILE\""));
     }
 
-    /// Phase 1 - Issue #323: Test GetActiveProfile IPC command serialization
+    /// Phase 1: Test GetActiveProfile IPC command serialization
     #[test]
     fn test_get_active_profile_command_serialization() {
         let request = IpcRequest {
@@ -2013,7 +2013,7 @@ mod tests {
         assert!(json.contains("\"command\":\"GET_ACTIVE_PROFILE\""));
     }
 
-    /// Phase 1 - Issue #323: Test DaemonState with active profile in status JSON
+    /// Phase 1: Test DaemonState with active profile in status JSON
     #[test]
     fn test_status_json_with_active_profile() {
         let state = DaemonState {
@@ -2039,7 +2039,7 @@ mod tests {
         );
     }
 
-    /// Phase 1 - Issue #323: Test DaemonState without active profile (backward compat)
+    /// Phase 1: Test DaemonState without active profile (backward compat)
     #[test]
     fn test_status_json_without_active_profile() {
         let state = DaemonState {
@@ -2057,7 +2057,7 @@ mod tests {
         assert!(json["active_profile"].is_null());
     }
 
-    /// Phase 1 - Issue #323: Test DaemonState active_profile defaults to None via serde
+    /// Phase 1: Test DaemonState active_profile defaults to None via serde
     #[test]
     fn test_active_profile_serde_default() {
         // Old JSON without active_profile field should default to None
@@ -2100,7 +2100,7 @@ mod tests {
         assert!(validate_plugin_name("plugin\0null").is_err());
     }
 
-    /// Phase 2 - Issue #353: ProfileSwitch with result_tx sends back success
+    /// Phase 2: ProfileSwitch with result_tx sends back success
     #[tokio::test]
     async fn test_profile_switch_result_channel_success() {
         let (result_tx, result_rx) = tokio::sync::oneshot::channel();
@@ -2126,7 +2126,7 @@ mod tests {
         assert_eq!(result.unwrap(), "Logic Pro");
     }
 
-    /// Phase 2 - Issue #353: ProfileSwitch with result_tx sends back failure
+    /// Phase 2: ProfileSwitch with result_tx sends back failure
     #[tokio::test]
     async fn test_profile_switch_result_channel_failure() {
         let (result_tx, result_rx) = tokio::sync::oneshot::channel();
@@ -2150,7 +2150,7 @@ mod tests {
         assert!(result.unwrap_err().contains("not found"));
     }
 
-    /// Phase 2 - Issue #353: ProfileSwitch with None result_tx (fire-and-forget)
+    /// Phase 2: ProfileSwitch with None result_tx (fire-and-forget)
     #[test]
     fn test_profile_switch_fire_and_forget() {
         let _cmd = DaemonCommand::ProfileSwitch {
@@ -2163,7 +2163,7 @@ mod tests {
     }
 
     // =========================================================================
-    // SwitchMode IPC command tests (Issue #507)
+    // SwitchMode IPC command tests
     // =========================================================================
 
     #[test]
@@ -2200,7 +2200,7 @@ mod tests {
     }
 
     // =========================================================================
-    // EventFilter tests (Issue #325)
+    // EventFilter tests
     // =========================================================================
 
     fn make_note_on(note: u8, vel: u8, channel: Option<u8>) -> MonitorEvent {

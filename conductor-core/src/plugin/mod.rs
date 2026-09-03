@@ -45,11 +45,11 @@ mod loader;
 mod metadata;
 mod trigger_plugin;
 
-// WASM plugin runtime (v2.5 - sandboxed execution)
+// WASM plugin runtime (sandboxed execution)
 #[cfg(feature = "plugin-wasm")]
 pub mod wasm_runtime;
 
-// Plugin signing/verification (v2.7 - cryptographic security)
+// Plugin signing/verification (cryptographic security)
 #[cfg(feature = "plugin-signing")]
 pub mod signing;
 

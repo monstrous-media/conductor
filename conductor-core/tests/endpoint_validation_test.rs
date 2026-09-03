@@ -1,11 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-// ADR-035 Slice 5 — endpoint validation: non-empty-matchers invariant,
+// ADR-035 — endpoint validation: non-empty-matchers invariant,
 // direction legality, route alias resolution against the endpoint set, and
 // the dropped `direction = Input` connector rejection.
 //
-// Acceptance (issue #1742): all-empty Matcher → error; input endpoint accepted.
+// Acceptance: all-empty Matcher → error; input endpoint accepted.
 
 use conductor_core::Config;
 use conductor_core::config::validation::{Severity, validate_config};
@@ -109,7 +109,7 @@ input_matchers = [{ type = "NameContains", value = "Pad" }]
 
 #[test]
 fn input_direction_endpoint_is_accepted() {
-    // ADR-035 Slice 5: input endpoints are first-class (no Input rejection).
+    // ADR-035: input endpoints are first-class (no Input rejection).
     // ADR-042 Phase A: a network *listener* must bind loopback only, so the
     // host is `127.0.0.1` here (a non-loopback listener host is now a
     // config-load error — see network_listener_validation_test.rs).
@@ -166,7 +166,7 @@ port_name = "Conductor: In"
 
 #[test]
 fn route_referencing_endpoint_aliases_resolves() {
-    // Routes resolve `from`/`to` against the unified endpoint set (Slice 5),
+    // Routes resolve `from`/`to` against the unified endpoint set,
     // so a route between two [[endpoints]] aliases is valid (no unknown-alias).
     let cfg = parse(
         r#"

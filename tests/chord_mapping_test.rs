@@ -165,7 +165,7 @@ fn test_chord_with_wrong_notes_does_not_match() {
     // so a ChordDetected event MUST be emitted. Require it with `.expect`
     // rather than skipping the assertion when no chord is found — otherwise a
     // chord-detection regression would silently pass this negative test
-    // (#1524). Mirrors the exact-match test below.
+    // Mirrors the exact-match test below.
     let chord_event = processed
         .iter()
         .find(|e| {

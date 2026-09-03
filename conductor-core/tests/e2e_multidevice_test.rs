@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! End-to-end tests for multi-device MIDI pipeline (v4.24.0 - ADR-009 Phase 6)
+//! End-to-end tests for multi-device MIDI pipeline (ADR-009 Phase 6)
 //!
 //! Full pipeline: Config parse -> EventProcessor::process(MidiEvent) -> ProcessedEvent
 //! -> CompiledRuleSet::match_event -> Action inspection.
@@ -272,7 +272,7 @@ fn test_e2e_no_match_returns_none() {
 
 #[test]
 fn test_e2e_device_name_resolves_to_alias_before_matching() {
-    // #1512: the other E2E tests pass the resolved alias ("pads") straight into
+    // The other E2E tests pass the resolved alias ("pads") straight into
     // match_event, so a regression in the real physical-name -> alias resolution
     // (the whole point of the `[[endpoints]]` identities this suite configures)
     // would go uncaught. This test drives a concrete MIDI source *name* through

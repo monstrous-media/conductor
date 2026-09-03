@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-038 Slice 5 — let-through validator (spec §4.3).
+//! ADR-038 — let-through validator (spec §4.3).
 //!
 //! Two checks ship here:
 //!  (1) **HID hard error** — `let_through = true` on an *exclusively-HID*

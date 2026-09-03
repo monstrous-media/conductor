@@ -132,7 +132,7 @@ impl MidiSimulator {
         captured
     }
 
-    /// Snapshot all captured events WITHOUT clearing the queue (#1434).
+    /// Snapshot all captured events WITHOUT clearing the queue.
     ///
     /// Unlike [`get_events`](Self::get_events) (which drains), this is the
     /// read-only accessor for repeated inspection — the interactive `events`
@@ -351,7 +351,7 @@ impl MidiSimulator {
                 max_velocity,
                 steps,
             } => {
-                // #1508: validate before the arithmetic. Previously `steps == 0`
+                // Validate before the arithmetic. Previously `steps == 0`
                 // panicked on divide-by-zero and `max_velocity < min_velocity`
                 // panicked on u8 underflow (debug). A malformed scenario should
                 // fail clearly, not crash inside arithmetic.
@@ -362,7 +362,7 @@ impl MidiSimulator {
                 );
 
                 // Interpolate over `steps - 1` intervals so the first event is
-                // min_velocity and the last is max_velocity INCLUSIVE (#1520) —
+                // min_velocity and the last is max_velocity INCLUSIVE —
                 // the old `span / steps` over `0..steps` stopped short of max.
                 // u16 avoids u8 overflow; the result is bounded by max_velocity
                 // so it casts back to u8. steps == 1 is the degenerate single
@@ -608,14 +608,14 @@ mod tests {
 
         // Note-ons sit at even indices (on, off, on, off, …). The ramp must span
         // the full [min, max] range INCLUSIVE — first = min, last = max — not
-        // stop short at 100 like the old `span / steps` formula (#1520).
+        // stop short at 100 like the old `span / steps` formula.
         let velocities: Vec<u8> = events.iter().step_by(2).map(|e| e[2]).collect();
         assert_eq!(velocities, vec![20, 45, 70, 95, 120]);
     }
 
     #[test]
     fn test_velocity_ramp_single_step_uses_min() {
-        // A 1-step ramp is the degenerate single sample at min_velocity (#1520).
+        // A 1-step ramp is the degenerate single sample at min_velocity.
         let sim = MidiSimulator::new(0);
         sim.perform_gesture(Gesture::VelocityRamp {
             note: 60,
@@ -631,7 +631,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "steps > 0")]
     fn test_velocity_ramp_zero_steps_panics() {
-        // steps == 0 must fail loudly, not divide by zero (#1508/#1520).
+        // steps == 0 must fail loudly, not divide by zero.
         let sim = MidiSimulator::new(0);
         sim.perform_gesture(Gesture::VelocityRamp {
             note: 60,
@@ -644,8 +644,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "max_velocity")]
     fn test_velocity_ramp_descending_panics() {
-        // max < min is rejected by assertion, not a u8-underflow panic
-        // (#1508/#1520).
+        // max < min is rejected by assertion, not a u8-underflow panic.
         let sim = MidiSimulator::new(0);
         sim.perform_gesture(Gesture::VelocityRamp {
             note: 60,
@@ -664,7 +663,7 @@ mod tests {
         assert_eq!(events[0][0], 0x9F); // Status byte with channel 15
     }
 
-    /// #1508: `steps == 0` used to panic from divide-by-zero deep inside the
+    /// `steps == 0` used to panic from divide-by-zero deep inside the
     /// arithmetic. It now fails with a clear, validated assertion (the panic
     /// happens before any sleep, so this test is fast).
     #[test]
@@ -679,7 +678,7 @@ mod tests {
         });
     }
 
-    /// #1508: `max_velocity < min_velocity` used to panic from u8 underflow in
+    /// `max_velocity < min_velocity` used to panic from u8 underflow in
     /// debug/test builds. It now fails with a clear, validated assertion.
     #[test]
     #[should_panic(expected = "max_velocity")]
@@ -693,7 +692,7 @@ mod tests {
         });
     }
 
-    /// #1508: the `max_velocity == min_velocity` boundary is valid (span 0) and
+    /// The `max_velocity == min_velocity` boundary is valid (span 0) and
     /// must NOT panic — every step emits the same velocity.
     #[test]
     fn velocity_ramp_equal_min_max_does_not_panic() {

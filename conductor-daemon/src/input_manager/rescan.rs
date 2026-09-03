@@ -8,7 +8,7 @@
 //! building blocks used by both [`super::listen`] and the rekey path.
 //!
 //! The two-phase rekey apply itself lives in [`super::rekey`] so this
-//! file stays under the per-file LLM Council size ceiling (#1684).
+//! file stays under the per-file size ceiling.
 
 use super::InputManager;
 use crate::daemon::DaemonCommand;
@@ -26,7 +26,7 @@ use tracing::{info, warn};
 
 /// One entry in the desired open-port set produced by a rescan.
 ///
-/// #1478: the desired set is a `Vec`, not a `HashMap` keyed by
+/// The desired set is a `Vec`, not a `HashMap` keyed by
 /// `port_name`. Two OS ports can share a name (e.g. two identical
 /// controllers) yet must stay distinct — they resolve to distinct
 /// `device_id`s (`from_port_instance` mints `X`, `X #2`, …). Keying by
@@ -76,7 +76,7 @@ impl InputManager {
 
         mgr.connect_to_port(port_index, midi_event_tx, command_tx)?;
 
-        // ADR-039 §4.3 (#1760): push MidiEvents onto the unified pump via the
+        // ADR-039 §4.3: push MidiEvents onto the unified pump via the
         // shared shed-load policy (try_send + drop-newest), replacing the old
         // blocking `send().await`. The per-device metrics handle is retained so
         // `input_source_metrics()` can surface this source's counters.
@@ -89,14 +89,14 @@ impl InputManager {
         Ok(())
     }
 
-    /// Rescan MIDI ports for hot-plug detection (v4.22.0 - ADR-009 Phase 4)
+    /// Rescan MIDI ports for hot-plug detection (ADR-009 Phase 4)
     ///
     /// Compares currently available ports against open ports in `midi_managers`.
     /// Opens newly discovered ports and marks removed ports as disconnected.
     /// Returns `(opened, removed, rekeyed)` — `rekeyed` is the count of
     /// existing ports whose DeviceId changed because of a `[[bindings]]`
-    /// edit (see `compute_rekeys`, #955).
-    /// Compute the desired open-port set for a rescan pass (#1476).
+    /// edit (see `compute_rekeys`).
+    /// Compute the desired open-port set for a rescan pass.
     ///
     /// Pure given its inputs so the `BindingResult::Ambiguous` × MIDI
     /// Learn interaction can be unit-tested without real hardware.
@@ -134,7 +134,7 @@ impl InputManager {
                 }
                 BindingResult::Unbound { port_name, .. } => match listen_mode {
                     ListenMode::All => {
-                        // #1478: instance-disambiguate duplicate names so
+                        // Instance-disambiguate duplicate names so
                         // each physical port keeps a distinct DeviceId
                         // (`X`, `X #2`, …) instead of collapsing.
                         let instance = unbound_instance_counts
@@ -177,7 +177,7 @@ impl InputManager {
         (desired_ports, ambiguous_skipped)
     }
 
-    /// Enumerate current MIDI input ports (name + index). #2390: extracted from
+    /// Enumerate current MIDI input ports (name + index). Extracted from
     /// `rescan_ports` so the blocking CoreMIDI call (`MidiInput::new()` +
     /// `.ports()` + per-port `port_name()`) can run OFF the run-loop via
     /// [`Self::enumerate_input_ports_async`]. Returns `Err` if the MIDI client
@@ -198,7 +198,7 @@ impl InputManager {
     }
 
     /// Run [`Self::enumerate_input_ports`] on the blocking thread pool so the
-    /// ~500ms CoreMIDI enumeration never stalls the async run-loop (#2390).
+    /// ~500ms CoreMIDI enumeration never stalls the async run-loop.
     /// Mirrors `output_resolver::enumerate_output_ports_async`.
     pub(crate) async fn enumerate_input_ports_async() -> Result<Vec<PortInfo>, String> {
         match tokio::task::spawn_blocking(Self::enumerate_input_ports).await {
@@ -209,7 +209,7 @@ impl InputManager {
 
     /// Hot-plug rescan diff/open, given a pre-enumerated port list.
     ///
-    /// #2390: the blocking CoreMIDI enumeration (`MidiInput::new()` + `.ports()`)
+    /// The blocking CoreMIDI enumeration (`MidiInput::new()` + `.ports()`)
     /// is NO LONGER done here — it scaled with the number of open ports (~500ms
     /// with 22+ ports) and ran inline on the run-loop while holding the
     /// `input_manager` lock, stalling MIDI forwarding every 5s (stuck notes).
@@ -228,7 +228,7 @@ impl InputManager {
             return Ok((0, 0, 0));
         }
 
-        // #974: GamepadOnly mode skipped MIDI bring-up at startup, but
+        // GamepadOnly mode skipped MIDI bring-up at startup, but
         // hot-plug rescan would still re-enumerate MIDI on every tick
         // (multi_device_active is set so gamepad-state machinery stays
         // active). Mirror the listen_to_all_ports early-return — no
@@ -241,13 +241,13 @@ impl InputManager {
         let advanced = &config.advanced_settings;
 
         // Step 1 (port enumeration) moved off the run-loop — `port_infos` is
-        // passed in already enumerated (#2390). See `enumerate_input_ports`.
+        // passed in already enumerated. See `enumerate_input_ports`.
 
-        // Resolve the unified endpoint set up-front (ADR-035 Slice 9.5) — same
+        // Resolve the unified endpoint set up-front (ADR-035) — same
         // normalized source as listen_to_all_ports, so authored `[[endpoints]]`
         // bind on hot-plug rescan too. Needed BEFORE filtering so Conductor's
         // own MidiVirtualPort outputs are excluded from input scanning even when
-        // created via reload/hot-plug (#2054/#2216). Guaranteed-Ok post-load;
+        // created via reload/hot-plug. Guaranteed-Ok post-load;
         // `?` defensive.
         let endpoints = conductor_core::config::loader::normalize_to_endpoints(config)
             .map_err(|e| format!("normalize endpoints for resolve: {e}"))?
@@ -262,7 +262,7 @@ impl InputManager {
         // Step 3: Resolve ports against the unified endpoint set.
         let bindings = PortResolver::resolve(&filtered, &endpoints);
 
-        // v4.26.0 (D19): Rebuild configured_devices from fresh bindings
+        // D19: Rebuild configured_devices from fresh bindings
         self.configured_devices.clear();
         for binding in &bindings {
             if let BindingResult::Bound { device_id, .. } = binding {
@@ -271,7 +271,7 @@ impl InputManager {
         }
 
         // Build set of port names we should have open, with instance
-        // disambiguation. #1476: the Ambiguous arm now honours MIDI Learn
+        // disambiguation. The Ambiguous arm now honours MIDI Learn
         // exactly like `listen_to_all_ports` — see `build_rescan_desired`.
         let learn_active = self
             .midi_learn_active
@@ -280,7 +280,7 @@ impl InputManager {
         let (desired_ports, ambiguous_skipped) =
             Self::build_rescan_desired(&filtered, &bindings, advanced.listen_mode, learn_active);
 
-        // #943: surface each skipped-ambiguous port beyond the log so the
+        // Surface each skipped-ambiguous port beyond the log so the
         // GUI / MCP / CLI can offer a "refine matcher" CTA. Emission stays
         // in the caller (it needs `&self`); the desired-set computation is
         // pure so it can be unit-tested without hardware.
@@ -293,7 +293,7 @@ impl InputManager {
             self.emit_ambiguous_port_event(port_name, *port_index, claimed_by);
         }
 
-        // Step 4: Snapshot current managers by DeviceId (#1478: identity,
+        // Step 4: Snapshot current managers by DeviceId (identity,
         // not bare port name — two ports can share a name).
         let current_port_names: HashMap<DeviceId, String> = self
             .midi_managers
@@ -369,8 +369,8 @@ impl InputManager {
             }
         }
 
-        // Step 8: Re-key existing ports whose desired DeviceId changed (#955).
-        // Two-phase apply (council bug_003 + bug_005, PR #960 review):
+        // Step 8: Re-key existing ports whose desired DeviceId changed.
+        // Two-phase apply:
         //   - Phase 1 (`drain_rekeys_for_apply`): drain all old keys
         //     from `midi_managers` and migrate `muted_devices` entries
         //     onto the new keys before any reapply.
@@ -446,7 +446,7 @@ impl InputManager {
         let Some(mut mgr) = self.midi_managers.remove(device_id) else {
             return false;
         };
-        // ADR-039 #1760: drop this source's metrics handle alongside its manager
+        // ADR-039: drop this source's metrics handle alongside its manager
         // so `input_source_metrics()` doesn't report stale counters for a
         // removed device.
         self.midi_source_metrics.remove(device_id);
@@ -587,7 +587,7 @@ mod tests {
 
     #[test]
     fn remove_disconnected_manager_drops_source_metrics() {
-        // ADR-039 #1760: a per-device source metrics handle is retained when a
+        // ADR-039: a per-device source metrics handle is retained when a
         // port opens and surfaced via `input_source_metrics()`; it must be
         // dropped together with the manager so a removed device leaves no stale
         // counters behind.
@@ -626,9 +626,8 @@ mod tests {
     }
 
     // NB: the bulk-`disconnect()` clears-source-metrics case is covered by
-    // `mod tests::test_disconnect_clears_source_metrics_handles` in mod.rs
-    // (PR #2177 — copilot-swe-agent landed that test); this module keeps the
-    // per-device hot-plug removal coverage above.
+    // `mod tests::test_disconnect_clears_source_metrics_handles` in mod.rs;
+    // this module keeps the per-device hot-plug removal coverage above.
 
     #[test]
     fn remove_disconnected_manager_returns_false_for_missing_device_id() {
@@ -661,7 +660,7 @@ mod tests {
         }
     }
 
-    // ADR-035 Slice 9.5: PortResolver now consumes the unified endpoint set,
+    // ADR-035: PortResolver now consumes the unified endpoint set,
     // so test fixtures build an input `EndpointConfig` (Matcher/Input) — the
     // shape a legacy binding lowers to.
     fn binding_for(
@@ -687,7 +686,7 @@ mod tests {
 
     #[test]
     fn rescan_opens_ambiguous_port_under_raw_id_when_learn_active() {
-        // #1476: rescan must mirror listen_to_all_ports — while MIDI Learn
+        // Rescan must mirror listen_to_all_ports — while MIDI Learn
         // is active, an ambiguous port (identity already claimed by another
         // port) is opened under a raw DeviceId for discovery, not skipped.
         let ports = ["LPD8 One", "LPD8 Two"];
@@ -723,7 +722,7 @@ mod tests {
     #[test]
     fn rescan_skips_ambiguous_port_when_learn_inactive() {
         // Learn inactive: ambiguous port stays skipped and is surfaced for
-        // the `ambiguous_port_detected` event (existing #943 behaviour).
+        // the `ambiguous_port_detected` event (existing behaviour).
         let ports = ["LPD8 One", "LPD8 Two"];
         let port_infos: Vec<PortInfo> = ports
             .iter()
@@ -747,10 +746,10 @@ mod tests {
     #[test]
     fn rescan_learn_active_ambiguous_keeps_bound_and_adds_raw_for_duplicate_name() {
         // Two physical ports share the name "LPD8": the first binds the
-        // alias, the second resolves Ambiguous. #1478: the desired set is
+        // alias, the second resolves Ambiguous. The desired set is
         // a Vec, so BOTH are preserved — the Bound entry keeps its alias
         // AND the ambiguous port is added under a raw id for MIDI Learn
-        // discovery (#1476). Pre-#1478 the name-keyed map collapsed them
+        // discovery. Previously the name-keyed map collapsed them
         // to one entry.
         let ports = ["LPD8", "LPD8"];
         let port_infos: Vec<PortInfo> = ports
@@ -795,7 +794,7 @@ mod tests {
 
     #[test]
     fn rescan_preserves_duplicate_unbound_port_names() {
-        // #1478 core: two OS ports named "X" under ListenMode::All must
+        // Two OS ports named "X" under ListenMode::All must
         // yield two distinct desired entries (instance-disambiguated
         // DeviceIds) with distinct port indices — not collapse to one,
         // which previously dropped/clobbered the first port on rescan.
@@ -834,12 +833,12 @@ mod tests {
     }
 
     // The `compute_rekeys` and `drain_rekeys_for_apply` tests live in
-    // `super::rekey::tests` alongside the helpers themselves; see #1684
-    // for the per-file size split.
+    // `super::rekey::tests` alongside the helpers themselves; that split
+    // keeps each file under the per-file size limit.
 
     #[tokio::test]
     async fn rescan_ports_is_noop_in_gamepad_only_mode() {
-        // #974 review (Copilot 3168507626): the GamepadOnly early-return
+        // The GamepadOnly early-return
         // in `listen_to_all_ports` sets `multi_device_active = true` so
         // gamepad hot-plug works. But `rescan_ports` was gated only on
         // that flag — once set, every hot-plug tick called
@@ -861,7 +860,7 @@ mod tests {
         let (event_tx, _event_rx) = mpsc::channel::<DeviceEvent<ProtocolEvent>>(16);
         let (command_tx, _command_rx) = mpsc::channel::<DaemonCommand>(16);
 
-        // #2390: rescan_ports now takes pre-enumerated ports. GamepadOnly
+        // rescan_ports now takes pre-enumerated ports. GamepadOnly
         // early-returns before touching them, so the injected list is unused.
         let result = manager.rescan_ports(vec![], &config, &event_tx, &command_tx);
         assert_eq!(
@@ -875,7 +874,7 @@ mod tests {
     #[tokio::test]
     async fn rescan_ports_with_injected_ports_opens_nothing_when_unconfigured_and_configured_mode()
     {
-        // #2390 testability win: rescan_ports no longer enumerates hardware, so
+        // Testability win: rescan_ports no longer enumerates hardware, so
         // the diff path can be exercised with injected ports. With
         // `listen_mode=Configured` and no matching endpoints, every port is
         // Unbound → skipped → nothing opened/removed/rekeyed. Deterministic on

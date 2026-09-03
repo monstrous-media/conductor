@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase B-early Slice B.1 — cross-platform OS-keyring roundtrip.
+//! ADR-042 Phase B-early — cross-platform OS-keyring roundtrip.
 //!
 //! Kept separate from `keychain_test.rs` (which is Unix-only, using
 //! `libc`/`O_NOFOLLOW`) so the keyring path also **compiles on Windows** and is

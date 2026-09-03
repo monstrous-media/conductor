@@ -3,7 +3,7 @@
 
 use super::*;
 
-// ── #576: ChannelAftertouch end-to-end validation ──────────────────
+// ── ChannelAftertouch end-to-end validation ──────────────────
 //
 // The `Aftertouch` (0xD0) pipeline was tested at every isolated layer
 // (MidiEvent parse, InputEvent conversion, ProcessedEvent emission,
@@ -84,13 +84,13 @@ async fn test_e2e_channel_aftertouch_below_threshold_does_not_fire() {
     );
 }
 
-/// #1135 regression-lock: `mapping_matched` MonitorEvents must carry the
-/// originating device's `device_id`, so the GUI EventRow can label the
+/// Regression-lock: `mapping_matched` MonitorEvents must carry the
+/// originating device's `device_id`, so the GUI's event rows can label the
 /// source instead of falling back to the `'Unknown'` placeholder.
 ///
-/// Pre-#885 the legacy single-device hot path hardcoded
+/// Previously the legacy single-device hot path hardcoded
 /// `prov.device_id = None`, which propagated as `device_id: null` on the
-/// wire and rendered as `'Unknown'`. #885 deleted that path; this test
+/// wire and rendered as `'Unknown'`. That path was deleted; this test
 /// pins the post-fix invariant so it can't regress silently.
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
@@ -199,7 +199,7 @@ async fn test_simulate_mapping_value_override() {
 }
 
 // =========================================================================
-// ADR-026 Phase 3.D.1 hotfix (#945) — IPC ExecuteMcpTool path for
+// ADR-026 Phase 3.D.1 hotfix — IPC ExecuteMcpTool path for
 // conductor_probe_device_identity must not deadlock
 // =========================================================================
 //
@@ -351,10 +351,10 @@ async fn ipc_execute_mcp_tool_probe_missing_port_name_returns_error() {
     );
 }
 
-// ─── ADR-032 P4 — `IpcCommand::SetUiMode` + `ui_mode` in Status (#1089) ───
+// ─── ADR-032 P4 — `IpcCommand::SetUiMode` + `ui_mode` in Status ───
 
 #[tokio::test]
-#[cfg_attr(target_os = "linux", ignore)] // EngineManager::new triggers Enigo init which panics on headless Linux (#1096 round 2)
+#[cfg_attr(target_os = "linux", ignore)] // EngineManager::new triggers Enigo init which panics on headless Linux
 async fn status_omits_ui_mode_when_unset() {
     // Default: GUI hasn't reported. Status response must NOT carry the
     // `ui_mode` key (so consumers without a connected GUI see no shape

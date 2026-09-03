@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! `EngineManager::execute_profile_switch` + `sync_config_after_apply`,
-//! extracted from `engine_manager::reload` (refactor #2073).
+//! extracted from `engine_manager::reload`.
 
 use super::*;
 
@@ -41,7 +41,7 @@ impl EngineManager {
 
         match result {
             Ok(metrics) => {
-                // #2564 (Council D4): commit identity via the shared choke
+                // Commit identity via the shared choke
                 // point, LAST after the reload succeeded — in-memory ArcSwap +
                 // durable active_profile.json together.
                 self.commit_active_profile(ActiveProfileInfo {
@@ -54,7 +54,7 @@ impl EngineManager {
                     name, metrics.duration_ms
                 );
 
-                // #2553: retarget the watcher AND move the Overwrite/§D9 write
+                // Retarget the watcher AND move the Overwrite/§D9 write
                 // target together, so `user_file_path` never diverges from the
                 // watched profile file after a switch.
                 self.retarget_watched_user_file(self.config_path.clone())
@@ -76,17 +76,17 @@ impl EngineManager {
             }
         }
     }
-    /// Sync config back after plan apply: save to disk, update state, recompile rule set (#265)
+    /// Sync config back after plan apply: save to disk, update state, recompile rule set
     ///
     /// Reuses compilation logic from `reload_config()` but writes the provided config
     /// to disk instead of reading from disk.
     #[cfg(feature = "llm-executor")]
     pub(crate) async fn sync_config_after_apply(&mut self, new_config: Config) -> Result<()> {
-        // ADR-025 Phase 3.F (#886): abort any pending observation check
+        // ADR-025 Phase 3.F: abort any pending observation check
         // BEFORE any awaited swap work. See reload_config for the race.
         self.abort_pending_pc_observation_check();
 
-        // #2316: PREPARE before ANY write. `prepare_runtime` can fail (bad
+        // PREPARE before ANY write. `prepare_runtime` can fail (bad
         // listener ACL, mapping/route compile error) and returns `Err` via `?`.
         // Doing it first means a failure aborts the apply with NO disk write —
         // avoiding the split-brain where the profile file already holds the new
@@ -101,13 +101,13 @@ impl EngineManager {
         // `handle_save_config` (ADR-044 Phase 2 + ADR-034 §D11). PREPARE already
         // succeeded above, so a build failure aborted with no commit and no write.
         //
-        // 1. COMMIT the config to `live.toml` (the sole authority). #2554: no
+        // 1. COMMIT the config to `live.toml` (the sole authority). No
         //    self-write suppression is armed — the mutate writes only `live.toml`,
-        //    which the §D9 watcher does NOT watch (post-#2551 it watches the user
+        //    which the §D9 watcher does NOT watch (it watches the user
         //    file), so there is nothing to suppress and a stale arm would wrongly
         //    drop a genuine external `config.toml` edit. Committing BEFORE any
         //    disk-facing work also means a commit failure can't leave state
-        //    diverged (the split-brain edge #2316 is about).
+        //    diverged.
         let live = Arc::clone(&self.live_config);
         let snap = live.load();
         if let Err(e) = live
@@ -123,12 +123,12 @@ impl EngineManager {
             return Err(DaemonError::Ipc(format!("live_config mutate: {e}")));
         }
 
-        // 2. APPLY is infallible (ADR-044) — runs post-commit (Council #2168 R3),
+        // 2. APPLY is infallible (ADR-044) — runs post-commit,
         //    rebuilding the full runtime (listeners, rate limiter, probe toggle,
         //    capture flags, port rescan, device_output_map, device status).
         self.apply_committed_guarded(prepared, "plan-apply").await;
 
-        // ADR-043 Option C (#2554): NO write-back to the profile/user file — the
+        // ADR-043 Option C: NO write-back to the profile/user file — the
         // plan-apply commit above persists `live.toml` (the sole durable
         // authority); the GUI reads it via GetConfigBody. (Removed the §D11
         // write-through, which wrote `self.config_path` = live.toml anyway.)

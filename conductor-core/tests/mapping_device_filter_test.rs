@@ -178,7 +178,7 @@ fn test_device_filter_none_device_id_rejects_device_specific() {
     // `test_device_filter_none_device_id_matches_unfiltered` — only pins that
     // None matches an *unfiltered* mapping; without this an implementation
     // treating None as match-all would fire device-bound actions for a stray
-    // / unidentified source and still pass the suite (#1501).
+    // / unidentified source and still pass the suite.
     let event = ProcessedEvent::PadPressed {
         note: 36,
         velocity: 100,

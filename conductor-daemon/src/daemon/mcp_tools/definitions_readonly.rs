@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! ReadOnly-tier (inspection) MCP tool definitions.
-//! Split out of `mcp_tools.rs` in #2601 (file exceeded the review window).
+//! Split out of `mcp_tools.rs` (file exceeded the review window).
 
 use super::super::mcp_types::ToolDefinition;
 use serde_json::json;
@@ -78,7 +78,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
             }),
         },
         // ADR-031 § 3.7 — signal routing graph (Phase 1B + Phase 3).
-        // (`conductor_list_connectors` was removed in #2052: its runtime
+        // (`conductor_list_connectors` was removed: its runtime
         // connectors + `connected`/`bound_port` view is a strict subset of
         // `conductor_get_resolved_routing_graph` below; the static view is in
         // `conductor_get_routing_graph`.)
@@ -91,10 +91,9 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // ADR-031 P3 slice 16 (gap A from the 2026-05-16 mid-flight
-        // audit on #1143) — combined topology view. Spec § 3.7 row 3
-        // promised this tool in Phase 1; PR #1156 deferred it pending
-        // RouteEngine on SharedDaemonStateRefs. This slice ships the
+        // ADR-031 P3 (gap A) — combined topology view. Spec § 3.7 row 3
+        // promised this tool in Phase 1; it was deferred pending
+        // RouteEngine on SharedDaemonStateRefs. This tool ships the
         // config-derived view (connectors + routes) so the LLM can
         // answer "what does my routing graph look like?" in one
         // round-trip; the runtime `excluded` array and per-connector
@@ -109,7 +108,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // ADR-031 §3.4 / #1598 Phase 1 — runtime-resolved routing graph.
+        // ADR-031 §3.4 Phase 1 — runtime-resolved routing graph.
         // `conductor_get_routing_graph` (above) returns the DECLARED
         // (config) view; this tool returns the RESOLVED view from the
         // runtime `connector_registry` (binding state, lowering applied)
@@ -127,7 +126,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // ADR-036 D5 / Slice 9 (#1667) — route-match introspection.
+        // ADR-036 D5 — route-match introspection.
         // Evaluates a hypothetical MIDI event against the live compiled
         // RouteEngine (pre- AND post-mapping phases) and explains, per
         // candidate route, whether it fired or was skipped + why. Reads
@@ -159,7 +158,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["event", "active_mode"]
             }),
         },
-        // ADR-036 §8 / Slice 9 (#1667) — bounded dispatch-trace ring.
+        // ADR-036 §8 — bounded dispatch-trace ring.
         // Reads `SharedDaemonStateRefs.dispatch_trace` via the executor.
         ToolDefinition {
             name: "conductor_get_dispatch_trace".to_string(),
@@ -177,7 +176,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // ADR-031 P4 § 6.2 / #1144 slice 4 — live per-connector
+        // ADR-031 P4 § 6.2 — live per-connector
         // throughput metrics. Reads from the runtime
         // `connector_registry` (NOT config) so the LLM sees actual
         // activity — total messages forwarded, current sliding-window
@@ -199,7 +198,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
             description: "Report the active mode and lock state (mode, index, locked, lock origin).".to_string(),
             input_schema: json!({ "type": "object", "properties": {} }),
         },
-        // ReadOnly: Signal topology summary (ADR-016 Chunk 1C - #565)
+        // ReadOnly: Signal topology summary (ADR-016)
         ToolDefinition {
             name: "conductor_get_topology_summary".to_string(),
             description: "Returns a structured summary of the current signal routing topology: devices, mappings, cross-device routing, detected feedback loops, and warnings. Use this for detailed signal flow analysis.".to_string(),
@@ -209,7 +208,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // ReadOnly: Get active profile (Phase 1 - Issue #323)
+        // ReadOnly: Get active profile (Phase 1)
         ToolDefinition {
             name: "conductor_get_active_profile".to_string(),
             description: "Get the currently active profile name and config path. Returns null if no profile is active (using default config).".to_string(),
@@ -251,7 +250,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // Multi-device tools (v4.23.0 - ADR-009 Phase 5)
+        // Multi-device tools (ADR-009 Phase 5)
         ToolDefinition {
             name: "conductor_list_device_bindings".to_string(),
             description: "List multi-device binding status including device IDs, port names, connection state, and mute state".to_string(),
@@ -261,7 +260,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // Plugin management (Issue #328)
+        // Plugin management
         ToolDefinition {
             name: "conductor_list_plugins".to_string(),
             description: "List available and loaded plugins".to_string(),
@@ -286,7 +285,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["name"]
             }),
         },
-        // Event fingerprinting (ADR-022 Phase 5D, #755)
+        // Event fingerprinting (ADR-022 Phase 5D)
         ToolDefinition {
             name: "conductor_suggest_binding".to_string(),
             description: "Suggest a binding configuration for a port. Uses live event fingerprinting when events have been observed (method: event_fingerprint), falls back to port-name heuristics (method: port_name_heuristic, confidence capped at 0.5). Returns primary suggestion (category, confidence, alias, protocol, reasoning) plus ranked alternatives array with lower-confidence fallback categories.".to_string(),
@@ -354,7 +353,7 @@ pub(super) fn readonly_tool_definitions() -> Vec<ToolDefinition> {
                 "required": []
             }),
         },
-        // Network-listener security (ADR-042 Phase B-early, #1899 B.7 visibility)
+        // Network-listener security (ADR-042 Phase B-early, B.7 visibility)
         ToolDefinition {
             name: "conductor_security_status".to_string(),
             description: "Report the network-approval HMAC key's rotation status. Returns `{ hmac_key_fingerprint, hmac_key_age_days, hmac_key_warning }` where `hmac_key_warning` is one of `ok` / `consider_rotation` (>=180d) / `should_rotate` (>=270d) / `approaching_expiry` (>=300d) / `deprecated` (>=365d) / `hard_expired` (>=730d — the daemon refuses to start) / `unavailable` (no key initialised yet or backend unavailable; fingerprint and age are null, plus a `detail` string explaining why). ReadOnly and report-only: never refuses, even for a hard-expired key. Mirrors `conductorctl security status --json`.".to_string(),

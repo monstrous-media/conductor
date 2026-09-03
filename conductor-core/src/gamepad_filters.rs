@@ -1,10 +1,10 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Gamepad input-stream quality filters (#599).
+//! Gamepad input-stream quality filters.
 //!
 //! Containment for macOS gilrs backend quirks observed on the Xbox Wireless
-//! Controller over Bluetooth (see PR #2337 verification evidence):
+//! Controller over Bluetooth:
 //!
 //! - [`AxisZeroFilter`] — duplicate HID elements sharing an axis usage emit a
 //!   spurious `0.0` twin alongside every real reading.
@@ -44,7 +44,7 @@ const SLOT_AXES: [gilrs::Axis; 6] = [
     gilrs::Axis::RightZ,
 ];
 
-/// Inline hold/release filter for spurious zero axis readings (#599).
+/// Inline hold/release filter for spurious zero axis readings.
 ///
 /// The macOS gilrs backend (objc2-io-kit) exposes duplicate HID elements
 /// sharing an axis usage on some controllers (observed: Xbox Wireless
@@ -64,8 +64,7 @@ const SLOT_AXES: [gilrs::Axis; 6] = [
 ///   loop's [`due_recenters`](Self::due_recenters) call releases it as a
 ///   genuine recenter (worst-case recenter delay: the window, 4ms — inside
 ///   the 8.3ms gamepad polling budget). This covers high-rate hardware whose
-///   genuine flick-to-center lands inside the window (cloud-review finding,
-///   PR #2337).
+///   genuine flick-to-center lands inside the window.
 /// - **`0.0` outside the window** (or with no prior non-zero): forwarded
 ///   immediately — the normal recenter path on observed BT cadence (≥15ms).
 ///
@@ -134,7 +133,7 @@ impl AxisZeroFilter {
     }
 }
 
-/// Transition-aware gate for analog trigger rest noise (#599).
+/// Transition-aware gate for analog trigger rest noise.
 ///
 /// Idle triggers chatter (observed: ~0.05 every 1-3s on an Xbox Wireless
 /// Controller), and every `ButtonChanged` reading below the deadzone
@@ -202,7 +201,7 @@ mod tests {
     fn test_axis_zero_filter_releases_genuine_fast_recenter() {
         use gilrs::Axis::*;
 
-        // Cloud-review scenario (PR #2337): high-rate hardware recenters
+        // High-rate hardware recenters
         // within the window — the zero is held, then released as a synthetic
         // recenter when the window expires with no newer non-zero.
         let mut f = AxisZeroFilter::new();

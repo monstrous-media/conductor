@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Workflow security policy test (#1443).
+//! Workflow security policy test.
 //!
 //! Apple signing/notarization secrets (`secrets.APPLE_*`) must never appear
 //! in a *job-level* `env:` block of the release workflow. A job-level env

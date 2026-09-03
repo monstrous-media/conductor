@@ -9,7 +9,7 @@
 // flood the audit log — held in a BOUNDED LRU (spec §4.4) so the suppression
 // state itself can't be turned into a spoofed-source OOM vector.
 //
-// Acceptance (issue #1898, spec §5 A.5):
+// Acceptance (spec §5 A.5):
 //   cargo test --package conductor-daemon --test audit_edge_test
 
 use std::net::IpAddr;

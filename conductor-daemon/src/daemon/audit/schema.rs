@@ -13,9 +13,9 @@ use std::time::Duration;
 /// `entry_hash` columns to `audit_log` for the append-only hash
 /// chain. Migration on open runs both
 /// [`MIGRATE_V1_TO_V2_ADD_PREV_HASH`] and
-/// [`MIGRATE_V1_TO_V2_ADD_ENTRY_HASH`] (PR #1031 review fix:
-/// these are the actual constant names — the original docs
-/// referenced a non-existent `MIGRATE_V1_TO_V2_ADD_HASH_COLUMNS`).
+/// [`MIGRATE_V1_TO_V2_ADD_ENTRY_HASH`] (these are the actual constant
+/// names — an earlier revision of this doc referenced a non-existent
+/// `MIGRATE_V1_TO_V2_ADD_HASH_COLUMNS`).
 ///
 /// **v3** (ADR-034 §D4.A.3.3.B.2, 2026-05-17): adds the `provenance`
 /// column to record the `Provenance { initiator, source, peer }`
@@ -23,13 +23,13 @@ use std::time::Duration;
 /// [`MIGRATE_V2_TO_V3_ADD_PROVENANCE`]. Existing v2 rows load with
 /// `provenance = None` — backwards-compatible, no rehash required.
 ///
-/// **v4** (#2120 follow-up, 2026-06-07): one-time chain rebuild for
+/// **v4** (2026-06-07): one-time chain rebuild for
 /// pre-existing v3 rows that already carry non-NULL `provenance`.
 /// Those rows were historically hashed without the provenance segment.
 /// Once provenance became part of `CanonicalRow`, reopening such a DB
 /// would otherwise yield `ChainBreak::HashMismatch` until rebuild.
 ///
-/// **Hash chain scope (#2120):** the v3 `provenance` column IS part of
+/// **Hash chain scope:** the v3 `provenance` column IS part of
 /// `CanonicalRow`/`compute_entry_hash` — tampering with it breaks
 /// `verify_chain`. `CanonicalRow.provenance` uses
 /// `#[serde(skip_serializing_if = "Option::is_none")]`, so a `None`
@@ -83,7 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_user_context ON audit_log(user_context);
 /// existing v1 DBs. Any PRAGMA or ALTER error (DB locked,
 /// corrupt file, missing table) is surfaced so the migration
 /// doesn't silently bump `schema_version` to v2 while leaving
-/// the columns missing (PR #1031 round-4/6 review).
+/// the columns missing.
 #[cfg(feature = "audit-db")]
 pub const MIGRATE_V1_TO_V2_ADD_PREV_HASH: &str = "ALTER TABLE audit_log ADD COLUMN prev_hash TEXT";
 #[cfg(feature = "audit-db")]
@@ -161,7 +161,7 @@ pub enum AuditEventType {
     /// emit this row). The `summary` discriminates the reason (`awaiting_approval`
     /// / `registry_tampered` / `registry_unreadable` / `keychain_unavailable` /
     /// `keychain_expired`) and the arguments carry the `acl_hash` so a withheld
-    /// listener's ACL is forensically recorded (Council reasoning-tier review).
+    /// listener's ACL is forensically recorded.
     NetworkListenerApproval,
     /// ADR-027 D6 — an LLM agentic-loop budget dimension (iterations, tool
     /// calls, tokens, wall-clock, or a capability-specific quota) was
@@ -439,7 +439,7 @@ impl AuditEntry {
 
     /// Set result (raw JSON string).
     ///
-    /// PR #1032 review (2026-05-02): pre-fix this truncated to
+    /// Pre-fix this truncated to
     /// 10KB by raw-byte slicing + appending `...[truncated]`,
     /// which (a) could split a UTF-8 character and (b) routinely
     /// produced invalid JSON. The downstream
@@ -454,11 +454,6 @@ impl AuditEntry {
     /// first and the truncated bytes are guaranteed to be
     /// post-redaction. `with_result` just stores the raw
     /// result string.
-    ///
-    /// (PR #1032 round-3 review, 2026-05-02: previous link
-    /// targeted the private `insert_entry` method, which
-    /// rustdoc can't resolve from public docs and which would
-    /// produce a broken-intra-doc-link warning.)
     pub fn with_result(mut self, result: impl Into<String>) -> Self {
         self.result = Some(result.into());
         self
@@ -530,10 +525,9 @@ mod tests {
 
     #[test]
     fn test_audit_event_type_roundtrip() {
-        // Council #1287 round 1 drive-by: cover ALL variants. If you add to
+        // Cover ALL variants. If you add to
         // `AuditEventType`, add the variant here and to the `as_str` / `parse`
-        // match arms — the missing-coverage was caught by Council reading the
-        // full enum alongside this test.
+        // match arms.
         for event_type in [
             AuditEventType::ToolStart,
             AuditEventType::ToolComplete,
@@ -616,7 +610,7 @@ mod tests {
 
     #[test]
     fn test_audit_entry_result_stored_raw_without_truncation() {
-        // PR #1032 review (2026-05-02): truncation moved out of
+        // Truncation moved out of
         // `with_result` and into the audit logger's
         // `insert_entry`, AFTER redaction. `with_result` now
         // stores the raw string verbatim. The pre-redaction

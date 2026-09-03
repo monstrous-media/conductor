@@ -18,7 +18,7 @@
 //! [`EgressPolicy::check_host`] *and* [`EgressPolicy::check_resolved_ips`], and
 //! emitting the `EgressBlocked` audit event on a [`EgressDecision::Block`].
 //!
-//! ## Council R1 P0s addressed here
+//! ## Key security properties addressed here
 //!
 //! - **DNS-rebinding defense** — [`EgressPolicy::check_resolved_ips`] rejects
 //!   any request whose host resolves to a loopback / private / link-local /
@@ -262,7 +262,7 @@ impl EgressPolicy {
     /// attack, not a policy preference, so `Warn` does not soften it — `Warn`
     /// only softens the *domain allowlist* (see [`check_host`]).
     ///
-    /// **Empty `ips` fails CLOSED in `Strict`** (Council #1912): an empty set
+    /// **Empty `ips` fails CLOSED in `Strict`**: an empty set
     /// means the caller could not resolve the host, so we cannot verify it is
     /// not internal. Allowing would be fail-OPEN — and combined with the
     /// resolve→connect TOCTOU (reqwest may resolve when our lookup didn't), it
@@ -301,7 +301,7 @@ impl EgressPolicy {
 
 /// Normalize a host (or the bare-domain part of a rule) to a canonical ASCII
 /// form for comparison. Applies IDNA/Punycode folding so that `café.com`,
-/// `CAFÉ.COM`, and `xn--caf-dma.com` all compare equal (Council #1912). On
+/// `CAFÉ.COM`, and `xn--caf-dma.com` all compare equal. On
 /// invalid input (IPv6 literal, malformed name, a `*` that slipped through),
 /// falls back to ASCII-lowercase — which won't match a valid allowlist entry,
 /// so `Strict` still blocks (fail-safe).
@@ -347,7 +347,7 @@ pub fn is_internal_ip(ip: IpAddr) -> bool {
                 || v4.is_link_local() // 169.254.0.0/16 — includes 169.254.169.254
                 || v4.is_unspecified()
                 || v4.is_broadcast()
-                || v4.is_multicast() // 224.0.0.0/4 — SSRF vector (Council #1912)
+                || v4.is_multicast() // 224.0.0.0/4 — SSRF vector
                 || o[0] == 0 // 0.0.0.0/8 "this network"
                 || (o[0] & 0xf0) == 0xf0 // 240.0.0.0/4 reserved / future-use (incl. 255.*)
                 || (o[0] == 198 && (o[1] & 0xfe) == 18) // 198.18.0.0/15 benchmarking (RFC 2544)
@@ -362,7 +362,7 @@ pub fn is_internal_ip(ip: IpAddr) -> bool {
                 return is_internal_ip(IpAddr::V4(v4));
             }
             // IPv6 transition mechanisms embed an IPv4 address inside a
-            // public-looking IPv6 (Council #1912 round 2 — SSRF evasion):
+            // public-looking IPv6 (SSRF evasion):
             //   6to4   2002::/16          → embedded v4 in segments[1..=2]
             //   NAT64  64:ff9b::/96 (WKP) → embedded v4 in segments[6..=7]
             if let Some(embedded) = embedded_ipv4(v6)
@@ -372,7 +372,7 @@ pub fn is_internal_ip(ip: IpAddr) -> bool {
             }
             v6.is_loopback()
                 || v6.is_unspecified()
-                || v6.is_multicast() // ff00::/8 — SSRF vector (Council #1912)
+                || v6.is_multicast() // ff00::/8 — SSRF vector
                 || is_ipv6_unique_local(v6)   // fc00::/7
                 || is_ipv6_link_local(v6) // fe80::/10
         }
@@ -484,7 +484,7 @@ mod tests {
         // Allowlisted host: clean allow.
         assert_eq!(p.check_host("t", "github.com"), EgressDecision::Allow);
         // Non-allowlisted host under warn: allowed BUT surfaced for logging
-        // (not a silent Allow — that was the Council #1912 finding).
+        // (not a silent Allow).
         let d = p.check_host("t", "evil.example.com");
         assert!(!d.is_blocked());
         assert!(matches!(d, EgressDecision::AllowWithWarning { .. }));
@@ -505,7 +505,7 @@ mod tests {
 
     #[test]
     fn empty_ip_set_fails_closed_in_strict() {
-        // Council #1912: a host that did not resolve must NOT silently pass the
+        // A host that did not resolve must NOT silently pass the
         // rebinding check in Strict (fail-open → SSRF via resolve/connect TOCTOU).
         let strict = policy(EgressMode::Strict, &["github.com"]);
         assert!(
@@ -660,7 +660,7 @@ mod tests {
         assert!(is_internal_ip("ff02::1".parse().unwrap())); // v6 multicast (SSRF vector)
         // IPv4-compatible (deprecated) ::a.b.c.d embedding loopback
         assert!(is_internal_ip("::127.0.0.1".parse().unwrap()));
-        // 6to4 (2002::/16) embedding internal v4 (Council #1912 r2)
+        // 6to4 (2002::/16) embedding internal v4
         assert!(is_internal_ip("2002:7f00:0001::".parse().unwrap())); // 127.0.0.1
         assert!(is_internal_ip("2002:0a00:0001::".parse().unwrap())); // 10.0.0.1
         // NAT64 well-known prefix embedding internal v4

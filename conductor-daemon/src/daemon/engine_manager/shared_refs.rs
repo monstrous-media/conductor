@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! `SharedDaemonStateRefs` struct + impls, extracted from
-//! `engine_manager::mod` (refactor #2073).
+//! `engine_manager::mod`.
 
 use super::*;
 
@@ -17,9 +17,9 @@ pub struct SharedDaemonStateRefs {
     pub input_manager: Arc<Mutex<Option<InputManager>>>,
     pub config_path: PathBuf,
     pub start_time: Instant,
-    /// Command channel for triggering daemon actions (v4.23.0 - ADR-009 Phase 5)
+    /// Command channel for triggering daemon actions (ADR-009 Phase 5)
     pub command_tx: mpsc::Sender<DaemonCommand>,
-    /// Active profile info (Phase 1 - Issue #323)
+    /// Active profile info
     pub active_profile: Arc<ArcSwap<Option<ActiveProfileInfo>>>,
     /// Per-device event fingerprint stats (ADR-022 D7)
     pub event_stats: Arc<DashMap<String, EventStats>>,
@@ -34,35 +34,33 @@ pub struct SharedDaemonStateRefs {
     /// Source of truth for connector status + bound ports. Currently
     /// read by the `conductor_get_resolved_routing_graph` MCP tool. Future
     /// readers (`conductor_get_routing_graph`, IPC `GetRoutingGraph` /
-    /// `GetConnectorStatus`) are deferred — see Phase 1B PR #1156
-    /// "Deferred" section.
+    /// `GetConnectorStatus`) are deferred.
     pub connector_registry: Arc<RwLock<crate::connector_registry::ConnectorRegistry>>,
-    /// Resolved alias → port_name map shared with ActionExecutor
-    /// (#1611). Exposed on the refs so the
-    /// `conductor_get_resolved_routing_graph` MCP tool (#1598 Phase 2
-    /// Step C) can compute `bound_port` / `connected` from the SAME
+    /// Resolved alias → port_name map shared with ActionExecutor.
+    /// Exposed on the refs so the
+    /// `conductor_get_resolved_routing_graph` MCP tool can compute `bound_port` / `connected` from the SAME
     /// authoritative source the Bindings panel + ActionExecutor read
-    /// — avoids the duplication that bit Step C in its first round
+    /// — avoiding a duplication bug from an earlier implementation
     /// (registry's runtime fields were never populated, so the GUI
     /// showed every connector as unbound while Bindings showed them
     /// connected). See [[tdd-must-exercise-production-data-path]].
     pub device_output_map: Arc<ArcSwap<HashMap<String, String>>>,
-    /// Compiled route engine (ADR-036 / Slice 9). Wait-free snapshot of
+    /// Compiled route engine (ADR-036). Wait-free snapshot of
     /// the live routes, rebuilt on config reload alongside the rule set.
     /// Read by the `conductor_explain_route_match` MCP tool to evaluate a
     /// candidate event against the same routes the event pump dispatches.
     pub route_engine: Arc<ArcSwap<crate::route_engine::RouteEngine>>,
     /// Bounded ring buffer of recent route-dispatch decisions
-    /// (ADR-036 §8 / Slice 9). Written by the event pump's
+    /// (ADR-036 §8). Written by the event pump's
     /// `dispatch_route_outputs`; read by `conductor_get_dispatch_trace`.
     pub dispatch_trace: Arc<crate::daemon::dispatch_trace::DispatchTraceRing>,
 }
 
 /// Test-only constructors for `SharedDaemonStateRefs`.
 ///
-/// Gated behind the `test-helpers` feature (#1608 pattern) so production
+/// Gated behind the `test-helpers` feature so production
 /// code can't accidentally build a refs bundle with inert/default state.
-/// Used by the routing-tool integration tests (ADR-036 Slice 9) which
+/// Used by the routing-tool integration tests (ADR-036) which
 /// only exercise the `route_engine` + `dispatch_trace` reads.
 #[cfg(any(test, feature = "test-helpers"))]
 impl SharedDaemonStateRefs {
@@ -111,8 +109,8 @@ impl SharedDaemonStateRefs {
 
         // Get input mode from input manager
         // Return None when input_manager is not initialized
-        // (LLM Council feedback v4.13.3: don't falsely report "MidiOnly")
-        // v4.21.0: Extract raw data under lock, do JSON conversion after release
+        // Don't falsely report "MidiOnly" here.
+        // Extract raw data under lock, do JSON conversion after release
         let (input_mode, hid_devices) = {
             let raw_data = {
                 let guard = self.input_manager.lock().await;

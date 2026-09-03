@@ -410,7 +410,7 @@ impl PhysicalControlStateStore {
         Some(snapshot)
     }
 
-    /// ADR-025 Phase 3.F helper (#886): check whether a `ProgramChange`
+    /// ADR-025 Phase 3.F helper: check whether a `ProgramChange`
     /// entry exists for `(device, channel)`. Centralises the
     /// presence-check logic so callers don't rebuild the `StateKey`
     /// shape at every site.

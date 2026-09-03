@@ -91,7 +91,7 @@ fn bench_get_pc_warm(c: &mut Criterion) {
     });
 }
 
-/// Reviewer-requested measurement (PR #844): what the condition
+/// Reviewer-requested measurement: what the condition
 /// evaluator actually pays per call. Rebuilds the `StateKey` every
 /// iter with a fresh `String` for device — this is the alloc path
 /// that `evaluate_active_pc_is` and siblings take on every condition

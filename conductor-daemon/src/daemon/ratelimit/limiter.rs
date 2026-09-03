@@ -15,7 +15,7 @@ const DEFAULT_WINDOW_SECS: u64 = 60;
 
 /// Every [`ToolRiskTier`] that usage reporting must surface, in a single
 /// place so a new tier can't silently drop out of [`RateLimiter::get_usage`]
-/// the way `ArtifactRender` did (#2144). The companion
+/// the way `ArtifactRender` did. The companion
 /// [`assert_all_tiers_reported`] is an exhaustiveness guard: because
 /// `ToolRiskTier` is deliberately not `#[non_exhaustive]`, adding a variant
 /// breaks that `match` and forces this array to be updated.
@@ -28,7 +28,7 @@ const ALL_REPORTED_TIERS: [ToolRiskTier; 6] = [
     ToolRiskTier::Privileged,
 ];
 
-/// Compile-time guard for [`ALL_REPORTED_TIERS`] (#2144). Never called: it
+/// Compile-time guard for [`ALL_REPORTED_TIERS`]. Never called: it
 /// exists so a newly-added `ToolRiskTier` variant fails to compile here,
 /// pointing the author at the array above. Keep one match arm per variant
 /// and do NOT add a `_` arm — the whole point is exhaustiveness.
@@ -187,7 +187,7 @@ struct ClientState {
 /// that long — every recorded entry is then necessarily within the window.
 /// `checked_sub` avoids the `Instant - Duration` underflow panic that fires
 /// when uptime < window, e.g. a daemon serving requests in the first
-/// `window` seconds after boot (#1699).
+/// `window` seconds after boot.
 fn window_cutoff(window: Duration) -> Option<Instant> {
     Instant::now().checked_sub(window)
 }
@@ -201,7 +201,7 @@ fn within_window(timestamp: Instant, cutoff: Option<Instant>) -> bool {
 
 /// Whole seconds until the window frees up, rounded UP so a sub-second
 /// remainder never reports `0` while the client is still rate-limited
-/// (#1474). `oldest` is the oldest in-window entry; `None` falls back to
+/// `oldest` is the oldest in-window entry; `None` falls back to
 /// the full window length.
 fn retry_after_secs(oldest: Option<Instant>, window: Duration, full_window_secs: u64) -> u64 {
     match oldest {
@@ -299,7 +299,7 @@ pub struct RateLimiter {
     config: RateLimitConfig,
     /// Per-client state
     clients: Arc<Mutex<HashMap<String, ClientState>>>,
-    /// Timestamp of the last opportunistic eviction sweep (#1472). The
+    /// Timestamp of the last opportunistic eviction sweep. The
     /// sweep that drops expired idle clients is amortised to at most once
     /// per window, so per-request overhead stays O(1) while unbounded
     /// unique-client-id growth is still reclaimed by ordinary activity.
@@ -417,7 +417,7 @@ impl RateLimiter {
         // Record the request
         state.record(tier);
 
-        // Opportunistic idle-client eviction (#1472). Without this, every
+        // Opportunistic idle-client eviction. Without this, every
         // distinct `client_id` that makes one request and never returns
         // leaves a `ClientState` behind forever — `cleanup_all()` is the
         // only evictor and nothing schedules it. Sweep the whole map at
@@ -452,7 +452,7 @@ impl RateLimiter {
     ///
     /// Reports `(count, limit)` for **every** [`ToolRiskTier`] (see
     /// [`ALL_REPORTED_TIERS`]). A tier with no recorded requests reports
-    /// `(0, limit)`. #2144: `ArtifactRender` records under its own bucket
+    /// `(0, limit)`. `ArtifactRender` records under its own bucket
     /// key, so a usage report that iterated a hand-maintained subset of
     /// tiers dropped it silently — every tier is now sourced from the one
     /// exhaustiveness-checked array.
@@ -751,7 +751,7 @@ mod tests {
         assert_eq!(usage.get(&ToolRiskTier::ConfigChange), Some(&(0, 10)));
     }
 
-    /// #2144: `ArtifactRender` requests are recorded under their own tier
+    /// `ArtifactRender` requests are recorded under their own tier
     /// key (`record`/`count_tier` key on the exact tier passed) but
     /// `get_usage` iterated a hardcoded tier list that omitted
     /// `ArtifactRender`, so those requests never surfaced in the usage
@@ -787,7 +787,7 @@ mod tests {
         );
     }
 
-    /// #2144: the usage report's key set must be EXACTLY the canonical
+    /// The usage report's key set must be EXACTLY the canonical
     /// `ALL_REPORTED_TIERS` — for both a known client and an unknown one
     /// (the zero-fill branch). We compare against the const rather than a
     /// second hardcoded literal so this test can't drift independently;

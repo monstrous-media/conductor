@@ -46,7 +46,7 @@ pub struct ActionDispatch {
     pub provenance: ActionProvenance,
     /// When the dispatch was created (for latency measurement)
     pub dispatch_time: Instant,
-    /// ADR-042 D17 network-origin taint (ADR-039-A Slice 2, #2325).
+    /// ADR-042 D17 network-origin taint (ADR-039-A).
     /// `Some(listener_alias)` when the triggering event came from a network
     /// listener (OSC — including loopback); `None` for MIDI/gamepad origins.
     /// The executor threads this per-dispatch (set unconditionally before
@@ -93,14 +93,13 @@ pub struct ActionCompletion {
     pub dispatch_time: Instant,
     /// Raw MIDI bytes sent by SendMidi/MidiForward (for recursion guard)
     pub sent_midi: Option<Vec<u8>>,
-    /// Output port names captured by the executor during this dispatch
-    /// (issue #555). Populated on the success path of every nested
+    /// Output port names captured by the executor during this dispatch.
+    /// Populated on the success path of every nested
     /// `SendMidi` and `MidiForward` (post `_source` resolution), so:
     ///
     /// - Wrapper actions (`Sequence`, `Repeat`, `Conditional`,
     ///   `ContextSwitchTable`) that nest one or more MIDI sends produce
-    ///   one entry per successful inner send (Copilot review on
-    ///   PR #1211).
+    ///   one entry per successful inner send (Copilot review).
     /// - `MidiForward { target: "_source" }` produces the *resolved*
     ///   port (the originating device's bound output), not the literal
     ///   `"_source"` placeholder.
@@ -164,13 +163,13 @@ impl ActionDispatcher {
         // virtual-port watch whose sender is immediately dropped (no updates).
         // The worker tolerates a dropped sender (treats has_changed Err as no
         // change). Production uses `spawn_with_config` to inject the SHARED
-        // config + a live watch receiver (#2396).
+        // config + a live watch receiver.
         let shared_config = Arc::new(ArcSwap::from_pointee(SharedActionConfig::default()));
         let (_vport_tx, vport_rx) = watch::channel(Vec::<String>::new());
         Self::spawn_with_config(device_output_map, control_state, shared_config, vport_rx)
     }
 
-    /// #2396: production spawn — inject the SHARED read-mostly config `ArcSwap`
+    /// Production spawn — inject the SHARED read-mostly config `ArcSwap`
     /// (OSC endpoints + D17 allow-map) and the virtual-port-names `watch`
     /// receiver. The worker attaches `shared_config` to its `ActionExecutor`
     /// (so EngineManager's `store`s reach the dispatch path) and applies
@@ -325,14 +324,14 @@ struct ExecutorWorker {
     dispatch_rx: crossbeam_channel::Receiver<ActionDispatch>,
     completion_tx: tokio::sync::mpsc::UnboundedSender<ActionCompletion>,
     shutdown: Arc<AtomicBool>,
-    /// #2396: latest-wins desired virtual-port names. Applied on this thread
+    /// Latest-wins desired virtual-port names. Applied on this thread
     /// (midir create/teardown is thread-affine, ADR-009 D1) both at the idle
     /// top-of-loop AND right before each dispatch.
     vport_rx: watch::Receiver<Vec<String>>,
-    /// #2396: the desired set most recently applied. `apply_pending_virtual_ports`
+    /// The desired set most recently applied. `apply_pending_virtual_ports`
     /// diffs the latest published set against this instead of consuming the
     /// watch's edge-triggered `has_changed` flag, so it is idempotent and safe
-    /// to call from both apply sites per loop iteration (PR #2403 review).
+    /// to call from both apply sites per loop iteration.
     applied_vports: Vec<String>,
 }
 
@@ -351,7 +350,7 @@ impl ExecutorWorker {
         // ADR-025 Phase 2: attach the shared control-state store so Conditional
         // actions can evaluate `ActivePcIs` / `CcValueInRange` / `NoteHeld` against
         // live state on this, the production dispatch path.
-        // #2396: attach the SHARED read-mostly config so OscForward target
+        // Attach the SHARED read-mostly config so OscForward target
         // resolution and the ADR-042 D17 gate read config that EngineManager
         // actually updates (the bug: it was set on a different executor).
         let executor =
@@ -380,7 +379,7 @@ impl ExecutorWorker {
                 break;
             }
 
-            // #2396: apply any pending virtual-port change on this thread
+            // Apply any pending virtual-port change on this thread
             // (midir create/teardown is thread-affine, ADR-009 D1) during the
             // idle/between-actions window, so a port created on reload/hot-plug
             // becomes visible even when no action is dispatched. Idempotent
@@ -394,7 +393,7 @@ impl ExecutorWorker {
                 .recv_timeout(std::time::Duration::from_millis(50))
             {
                 Ok(dispatch) => {
-                    // #2396 (Copilot review): a vport update may have landed
+                    // (Copilot review): a vport update may have landed
                     // while we were blocked in recv_timeout above. Re-apply
                     // BEFORE executing so this action sees current ports, not
                     // next-iteration-stale ones (the one-dispatch "port not
@@ -419,7 +418,7 @@ impl ExecutorWorker {
         info!("Action executor thread exiting");
     }
 
-    /// #2396: apply the latest desired virtual-port set if it changed.
+    /// Apply the latest desired virtual-port set if it changed.
     ///
     /// Clones the names out and DROPS the watch `Ref` before the (potentially
     /// slow) midir OS work, so a concurrent `send` is never blocked behind port
@@ -427,7 +426,7 @@ impl ExecutorWorker {
     /// creates/tears down the delta (close-then-open), so a no-op tick is cheap
     /// and unchanged ports keep their handles (no in-flight-route breakage).
     fn apply_pending_virtual_ports(&mut self) {
-        // #2396 review hardening (PR #2403): do NOT gate on the watch's
+        // Do NOT gate on the watch's
         // consumable `has_changed()` edge flag. This method runs from TWO sites
         // per loop iteration — the idle top-of-loop and right before each
         // dispatch (to close the recv_timeout race where a port update lands
@@ -470,7 +469,7 @@ impl ExecutorWorker {
         let exec_start = Instant::now();
         let invocation_id = dispatch.invocation_id;
 
-        // ADR-042 D17 (ADR-039-A Slice 2, #2325): thread the network-origin
+        // ADR-042 D17 (ADR-039-A): thread the network-origin
         // taint into the executor for THIS dispatch. Set unconditionally
         // (Some or None) so a prior tainted dispatch can never bleed its
         // taint — or its absence — into this one. The gate itself runs
@@ -515,7 +514,7 @@ impl ExecutorWorker {
         // breadcrumbs into the next one.
         let routing_trace = self.executor.take_routing_trace();
 
-        // Issue #555: drain the per-port send trail collected by the
+        // Drain the per-port send trail collected by the
         // executor (one entry per successful nested SendMidi /
         // MidiForward, post `_source` resolution). Has to be drained
         // unconditionally for the same reason as `routing_trace`: a
@@ -1798,7 +1797,7 @@ mod tests {
         dispatcher.shutdown();
     }
 
-    // ── #2396: executor-config-reaches-the-dispatch-thread integration tests ──
+    // ── Executor-config-reaches-the-dispatch-thread integration tests ──
     // These drive config through the REAL propagation channels (the shared
     // `ArcSwap` + the dispatch thread) and assert a DISPATCHED action observes
     // it — the coverage gap that let the original bug ship (unit tests had only
@@ -1937,7 +1936,7 @@ mod tests {
         dispatcher.shutdown();
     }
 
-    // #2396 review hardening (PR #2403): the virtual-port apply must be
+    // The virtual-port apply must be
     // idempotent and latest-wins, NOT gated on the watch's consumable
     // `has_changed()` edge flag.
     //   - Copilot: apply must run before each dispatch (not only at the idle

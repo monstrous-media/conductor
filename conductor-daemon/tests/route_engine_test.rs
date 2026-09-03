@@ -3,7 +3,7 @@
 
 //! ADR-031 Phase 2B § 4.4 — `RouteEngine` runtime.
 //!
-//! Covers the full Phase 2B runtime surface for ADR-031 P2 (#1142):
+//! Covers the full Phase 2B runtime surface for ADR-031 P2:
 //! the engine is built from `&[RouteConfig]`, indexes routes by source
 //! alias for O(1) lookup, supports fan-out (multiple routes from one
 //! source), excludes disabled / cross-protocol-transform / OSC-filter
@@ -360,7 +360,7 @@ fn message_types_filter_matches_only_listed_types() {
 
 #[test]
 fn channel_aftertouch_classifies_as_aftertouch_not_channel_pressure() {
-    // Copilot review on PR #1175: status 0xD0 (MIDI Channel Pressure /
+    // Copilot review: status 0xD0 (MIDI Channel Pressure /
     // channel aftertouch) must classify as `MidiMessageType::Aftertouch`
     // — the vocabulary the routes validator accepts and the rest of the
     // pipeline uses (event_processor, action_executor, the Aftertouch
@@ -445,7 +445,7 @@ fn note_range_does_not_apply_to_non_note_events() {
 
 #[test]
 fn osc_address_prefix_filter_never_matches_midi_events() {
-    // Copilot review on PR #1175 finding #4 / Council finding #3:
+    // Copilot review:
     // `osc_address_prefix` is an OSC-domain constraint a raw MIDI event
     // can never satisfy. A route filtered on it is inert in the
     // MIDI-only pipeline — `route_destinations()` must yield nothing
@@ -549,7 +549,7 @@ fn route_with_midi_transform_applies_channel_remap() {
 fn all_cross_protocol_transforms_are_admitted() {
     // The "rotate the fixture to the next still-excluded transform" lifecycle
     // (MidiToOsc → MidiToArtNet → HidToArtNet → OscToMidi) ENDED with
-    // ADR-039-A (#1361): `OscToMidi` was the last cross-protocol transform
+    // ADR-039-A: `OscToMidi` was the last cross-protocol transform
     // without a runtime, and it is now admitted (the OSC input listener feeds
     // it the structured `OscInbound` via `RouteEvalContext.osc`). So NO
     // `SignalTransform` variant is excluded as
@@ -622,9 +622,9 @@ fn route_with_transform_producing_empty_output_is_skipped() {
     );
 }
 
-// ── Slice 6: Council review on slice 5 ──
+// ── Slice 6: review of slice 5 ──
 //
-// Council FAIL (2f058e3e) flagged two real bugs:
+// Review flagged two real bugs:
 //   #1 System-message behavioral asymmetry — `filter: None` routes a
 //      system message through, but `filter: Some(empty)` dropped it
 //      (filter_matches early-returned false for status >= 0xF0). An
@@ -646,7 +646,7 @@ fn system_message_with_no_filter_route_is_forwarded() {
 
 #[test]
 fn system_message_with_empty_filter_route_is_also_forwarded() {
-    // Council finding #1: an EMPTY filter (all dimensions
+    // An EMPTY filter (all dimensions
     // unconstrained) must behave identically to `filter: None` —
     // both mean "match everything". Pre-fix, the empty-filter route
     // dropped the system message while the no-filter route forwarded
@@ -682,7 +682,7 @@ fn system_message_with_constrained_filter_is_dropped() {
 
 #[test]
 fn cross_protocol_route_is_excluded_at_compile_time() {
-    // Council finding #2: cross-protocol transforms must be excluded
+    // Cross-protocol transforms must be excluded
     // from the compiled map entirely (with a one-time warning at
     // compile()), NOT skipped per-event via a hot-path `tracing::warn!`.
     //
@@ -691,7 +691,7 @@ fn cross_protocol_route_is_excluded_at_compile_time() {
     // no routes at all — `route_destinations` returns empty without
     // ever reaching a per-event branch.
     //
-    // #1523: this used `MidiToOsc`, but P5 slice 3+4 (#1347) ADMITTED
+    // This used `MidiToOsc`, but P5 slice 3+4 ADMITTED
     // `MidiToOsc`, so asserting it is excluded contradicted the runtime
     // contract (and risked pressuring a regression). Use `OscToMidi`,
     // which — like `HidToArtNet` in
@@ -721,7 +721,7 @@ fn cross_protocol_route_does_not_suppress_sibling_midi_route() {
     // one plain MIDI (kept) — should still fire the MIDI route. The
     // compile-time exclusion must be per-route, not per-source.
     //
-    // #1523: use the still-excluded `OscToMidi` rather than the now-admitted
+    // Use the still-excluded `OscToMidi` rather than the now-admitted
     // `MidiToOsc`, so "one cross-protocol route is excluded" is unambiguously
     // true under the current transform matrix.
     let xform = SignalTransform::OscToMidi {
@@ -743,9 +743,9 @@ fn cross_protocol_route_does_not_suppress_sibling_midi_route() {
     assert_eq!(outputs[0].to_alias, "absynth");
 }
 
-// ── Slice 7: Council review on slice 6 ──
+// ── Slice 7: review of slice 6 ──
 //
-// Council FAIL (1b31848b) flagged four concerns:
+// Review flagged four concerns:
 //   #1 Send+Sync not explicit — fixed via a compile-time static
 //      assertion in route_engine.rs (no runtime test needed).
 //   #2 Cross-protocol exclusion had no API-level feedback — fixed
@@ -768,7 +768,7 @@ fn excluded_routes_reports_disabled_routes() {
 }
 
 // NOTE: `excluded_routes_reports_cross_protocol_routes` was removed in
-// ADR-039-A (#1361). It asserted that a cross-protocol route is reported via
+// ADR-039-A. It asserted that a cross-protocol route is reported via
 // `excluded_routes()` with `CrossProtocolTransformUnsupported`, using whichever
 // transform was still unimplemented as the fixture. `OscToMidi` was the LAST
 // such transform and is now admitted, so that exclusion reason is unreachable
@@ -829,7 +829,7 @@ fn midi_to_artnet_route_drops_input_not_in_mapping_table() {
 
 #[test]
 fn excluded_routes_reports_osc_filter_routes() {
-    // Council review on PR #1175 finding #3: a route whose filter sets
+    // A route whose filter sets
     // `osc_address_prefix` can never match a MIDI event (OSC-domain
     // constraint, AND-combined with every other dimension). Dropping it
     // silently inside `filter_matches()` per-event gave the user no
@@ -860,7 +860,7 @@ fn excluded_routes_is_empty_when_all_routes_compile() {
 
 #[test]
 fn note_on_velocity_zero_classifies_as_note_off_for_filter() {
-    // Council finding #4: `NoteOn` with velocity 0 is semantically a
+    // `NoteOn` with velocity 0 is semantically a
     // `NoteOff` (MIDI running-status convention). A route filtering
     // for `message_types = [NoteOff]` must match a zero-velocity
     // NoteOn.
@@ -902,7 +902,7 @@ fn note_on_velocity_zero_does_not_match_note_on_filter() {
     );
 }
 
-// ── Slice 9 (#1667): explain_route_match ──
+// ── Slice 9: explain_route_match ──
 //
 // `conductor_explain_route_match` needs a per-route trace: for a given
 // (source_alias, raw_midi, active_mode), report each candidate route as
@@ -1025,7 +1025,7 @@ fn explain_matches_dispatch_decision() {
     );
 }
 
-// ── ADR-039 #1759: protocol-tagged `route_destinations(&ProtocolEvent)` shim ──
+// ── ADR-039: protocol-tagged `route_destinations(&ProtocolEvent)` shim ──
 //
 // The byte core `route_destinations_midi` is exercised exhaustively above.
 // These cover the new tag-dispatch shim: Input delegates to the core; Osc/Dmx
@@ -1066,7 +1066,7 @@ fn shim_osc_and_dmx_variants_route_to_nothing() {
         args: vec![],
         time: Instant::now(),
     });
-    // ADR-039-A (#1361) landed OSC inbound routing, but these routes carry NO
+    // ADR-039-A landed OSC inbound routing, but these routes carry NO
     // transform. A no-transform route can't forward an OSC event (OSC has no
     // MIDI wire bytes to pass through), so it skips — producing nothing — rather
     // than emitting an empty MIDI message. (A real OSC route needs an
@@ -1129,7 +1129,7 @@ fn shim_input_unknown_source_routes_to_nothing() {
     );
 }
 
-// ── ADR-039-B (#1762): structured HID transform routing (spec §6.2.1) ──
+// ── ADR-039-B: structured HID transform routing (spec §6.2.1) ──
 //
 // HidToArtNet is the first STRUCTURED transform: it reads the original
 // `InputEvent` threaded via `RouteEvalContext`, because the lossy MIDI byte
@@ -1164,7 +1164,7 @@ fn gamepad_button(pad: u8, velocity: u8) -> conductor_core::events::InputEvent {
 
 #[test]
 fn hid_to_artnet_is_no_longer_excluded_at_compile() {
-    // #1762 un-excludes HidToArtNet now that the structured-event seam exists.
+    // HidToArtNet is un-excluded now that the structured-event seam exists.
     let engine = RouteEngine::compile(&[hid_to_artnet_route("gamepad", "dmx_out", "south", 5)]);
     assert!(
         engine.excluded_routes().is_empty(),
@@ -1220,7 +1220,7 @@ fn hid_to_artnet_skips_unmapped_trigger() {
     assert!(outs.is_empty(), "unmapped trigger (north) should not fire");
 }
 
-// ── ADR-039-B (#1762 step 2): HidToMidi structured transform ──
+// ── ADR-039-B (step 2): HidToMidi structured transform ──
 
 fn hid_to_midi_route(from: &str, to: &str, trigger: &str, cc: u8, channel: u8) -> RouteConfig {
     let mut trigger_to_cc = std::collections::HashMap::new();
@@ -1276,7 +1276,7 @@ fn hid_to_midi_skips_without_a_structured_event() {
     );
 }
 
-// ── ADR-039-B (#1762 step 3): HidToOsc structured transform ──
+// ── ADR-039-B (step 3): HidToOsc structured transform ──
 
 fn hid_to_osc_route(from: &str, to: &str, trigger: &str, address: &str) -> RouteConfig {
     let mut trigger_to_address = std::collections::HashMap::new();

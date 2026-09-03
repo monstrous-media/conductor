@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 //! `EngineManager::reload_from_cached_config`, extracted from
-//! `engine_manager::reload` (refactor #2073).
+//! `engine_manager::reload`.
 
 use super::*;
 
 impl EngineManager {
-    /// Fast-path profile switch using a pre-validated cached config (Issue #355).
+    /// Fast-path profile switch using a pre-validated cached config.
     ///
     /// Skips file I/O and schema validation (already done at cache time).
     /// Only does: state transition → compile → atomic swap → state transition.
@@ -18,7 +18,7 @@ impl EngineManager {
     ) -> Result<ReloadMetrics> {
         let start = Instant::now();
 
-        // ADR-025 Phase 3.F (#886): abort any pending observation check
+        // ADR-025 Phase 3.F: abort any pending observation check
         // BEFORE any awaited swap work. See the equivalent comment in
         // reload_config for the race this closes.
         self.abort_pending_pc_observation_check();
@@ -70,7 +70,7 @@ impl EngineManager {
             }
         };
 
-        // #2173: extract the metric counts BEFORE moving `cached_config` into the
+        // Extract the metric counts BEFORE moving `cached_config` into the
         // op, so the cache-hit fast path doesn't clone the whole Config just to
         // read `.modes`/`.global_mappings` for metrics afterward.
         let modes_loaded = cached_config.modes.len();
@@ -99,7 +99,7 @@ impl EngineManager {
                 // bail, mirroring the PREPARE-failure path above. Unlike
                 // `reload_config`, this fast path has no error-restoring wrapper,
                 // so it must restore locally rather than lean on the caller
-                // (Council #2168 R4 — don't rely on a fragile caller contract).
+                // (don't rely on a fragile caller contract).
                 if let Err(te) = self.transition_state(current_state).await {
                     warn!(
                         "Failed to restore {:?} after cached-reload COMMIT failure, forcing: {}",
@@ -113,7 +113,7 @@ impl EngineManager {
 
         // APPLY is infallible (ADR-044) — it runs post-commit, so it never
         // reverts the lifecycle state away from the now-committed config
-        // (Council #2168 R3). The pre-commit PREPARE failure above is the only
+        // The pre-commit PREPARE failure above is the only
         // path that restores `current_state`.
         let mapping_compile_ms = self
             .apply_committed_guarded(prepared, "profile-switch")

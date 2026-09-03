@@ -102,10 +102,10 @@ pub struct ToolExecutor {
     /// Inner MCP tool executor for ReadOnly operations
     mcp_executor: McpToolExecutor,
 
-    /// Audit sink for comprehensive tracking (P4-04; ADR-045 D5 #2493):
+    /// Audit sink for comprehensive tracking (P4-04; ADR-045 D5):
     /// writes go through the `AuditSink` trait seam — SQLite in `audit-db`
     /// builds, the JSONL sink as fallback. Field keeps its historical name
-    /// to bound the diff; it has held a trait object since #2493.
+    /// to bound the diff; it has held a trait object since that change.
     audit_logger: Option<Arc<dyn AuditSink>>,
 
     /// Confirmation manager for HardwareIO operations (P4-01)
@@ -132,14 +132,14 @@ pub struct ToolExecutor {
     /// - drain() is a write operation but is the intended consume pattern
     midi_learn_events: Option<Arc<Mutex<VecDeque<MidiLearnEvent>>>>,
 
-    /// Shared daemon state refs for live status reporting (#107)
+    /// Shared daemon state refs for live status reporting
     ///
     /// When set, `conductor_get_status` reads live device_status, lifecycle_state,
     /// and statistics from the engine_manager's shared Arcs instead of returning
     /// a fallback with `connected: false`.
     daemon_state_refs: Option<SharedDaemonStateRefs>,
 
-    /// Auto-stop timer for the current LLM-initiated MIDI Learn session (#1053).
+    /// Auto-stop timer for the current LLM-initiated MIDI Learn session.
     ///
     /// `conductor_start_learn` accepts a `timeout_seconds` argument but the
     /// LLM agent loop has no async timer of its own — it's stateless across
@@ -151,7 +151,7 @@ pub struct ToolExecutor {
     /// (preventing a stale timer from prematurely ending a fresh session).
     midi_learn_timer: Arc<Mutex<Option<JoinHandle<()>>>>,
 
-    /// Monotonic generation counter for MIDI Learn sessions (#1059 review).
+    /// Monotonic generation counter for MIDI Learn sessions.
     ///
     /// `JoinHandle::abort()` is best-effort: if the prior timer's
     /// `tokio::time::sleep` has already woken when a fresh start arrives,
@@ -280,7 +280,7 @@ impl ToolExecutor {
         }
     }
 
-    /// Create a new tool executor with MIDI Learn state and daemon state (#107)
+    /// Create a new tool executor with MIDI Learn state and daemon state
     ///
     /// This constructor accepts both MIDI Learn state and shared daemon state refs,
     /// enabling live status reporting for `conductor_get_status` via IPC.
@@ -375,7 +375,7 @@ impl ToolExecutor {
     /// * `arguments` - Tool arguments as JSON
     /// * `caller_ctx` - ADR-027 D1-pinned peer identity from the IPC
     ///   accept loop. **Every call goes through
-    ///   `security::gate::enforce`** (PR-D activation). When `Some`,
+    ///   `security::gate::enforce`**. When `Some`,
     ///   the supplied trust band drives the decision table directly.
     ///   When `None`, the method substitutes
     ///   `CallerContext::synthetic_unpinned()` (trust band
@@ -411,13 +411,13 @@ impl ToolExecutor {
         );
 
         // ADR-027 D5/D1 wiring: consult the security gate before
-        // any tool work. PR-B added the call site, PR-C wired
-        // `RequirePlan` / `RequireConfirmation` to the existing
-        // per-tier handlers, PR-D activated enforcement
-        // (`SecurityPolicy::default().shadow_mode = false` in
-        // production) and closed the gate-bypass-on-`None` gap.
+        // any tool work. The call site wires `RequirePlan` /
+        // `RequireConfirmation` to the existing per-tier handlers,
+        // activates enforcement (`SecurityPolicy::default().shadow_mode
+        // = false` in production), and closes the
+        // gate-bypass-on-`None` gap.
         //
-        // Order (PR-C revised after Copilot round-2 on #1103):
+        // Order:
         //   1. Gate first. `Deny` returns immediately without
         //      consuming rate-limit quota — denials shouldn't
         //      waste throttling budget, and the denial reason is
@@ -429,7 +429,7 @@ impl ToolExecutor {
         //      `execute_hardware_io`) or fall through to
         //      per-tier dispatch.
         //
-        // None-handling (PR-D): a `None` caller_ctx means the
+        // None-handling: a `None` caller_ctx means the
         // IPC accept loop couldn't pin the peer (Linux < 5.3
         // with no `pidfd_open`, same-uid TCC anomaly, etc.).
         // Such peers go through the gate as a synthetic
@@ -467,17 +467,16 @@ impl ToolExecutor {
                 | crate::security::GateDecision::AllowWithAudit => {
                     // Fall through to rate-limit + per-tier
                     // dispatch. `AllowWithAudit` is treated as
-                    // `Allow` for PR-B purposes — D13a's audit-
-                    // stream emission is a follow-up sub-piece;
+                    // `Allow` — D13a's audit-stream emission is a
+                    // follow-up sub-piece;
                     // the audit logger already records every
                     // tool execution via the per-tier handler's
                     // own log calls.
                 }
                 crate::security::GateDecision::Deny(reason) => {
                     // **Return BEFORE rate-limit** so denied
-                    // requests don't consume throttling budget
-                    // (Copilot review on PR #1103, round-2). The
-                    // gate's denial reason is also more
+                    // requests don't consume throttling budget.
+                    // The gate's denial reason is also more
                     // informative than `RateLimited` would be.
                     // Use `{}` (Display) not `{:?}` (Debug) — the
                     // `Display` impl on `DenialReason` renders
@@ -500,7 +499,7 @@ impl ToolExecutor {
                     };
                 }
                 crate::security::GateDecision::RequirePlan(_req) => {
-                    // ADR-027 D5/D1 wiring (PR-C): route to the
+                    // ADR-027 D5/D1 wiring: route to the
                     // existing Plan/Apply machinery. The gate's
                     // RequirePlan decision means this tool needs
                     // a user-confirmable plan before its mutation
@@ -514,8 +513,8 @@ impl ToolExecutor {
                     // `log_tool_complete`) — the plan event
                     // doesn't include the originating tool_name /
                     // args, which is a known pre-existing gap
-                    // (Copilot round-2 on #1103) for a future PR
-                    // that adds tool-attributable plan logging.
+                    // for a future PR that adds tool-attributable
+                    // plan logging.
                     debug!(
                         "Gate routed tool '{}' (tier {:?}) to Plan/Apply via RequirePlan",
                         tool_name, risk_tier
@@ -523,7 +522,7 @@ impl ToolExecutor {
                     gate_route = GateRoute::ToConfigChange;
                 }
                 crate::security::GateDecision::RequireConfirmation(_req) => {
-                    // ADR-027 D5/D1 wiring (PR-C): route to the
+                    // ADR-027 D5/D1 wiring: route to the
                     // existing hardware-IO confirmation machinery
                     // (ADR-027 D7 partial). The handler returns
                     // `ExecutionResult::HardwareIoConfirmation`
@@ -667,7 +666,7 @@ impl ToolExecutor {
             "hid_devices": []
         });
 
-        // Enumerate MIDI devices with warmup pattern for fresh results (#104)
+        // Enumerate MIDI devices with warmup pattern for fresh results
         // Uses spawn_blocking to avoid blocking the tokio runtime
         let midi_devices = crate::daemon::device_utils::enumerate_midi_devices_fresh_async().await;
         let midi_json: Vec<Value> = midi_devices
@@ -833,12 +832,12 @@ impl ToolExecutor {
             return ExecutionResult::Success { result };
         }
 
-        // (ADR-035 follow-up #2052: `conductor_list_connectors` was removed —
+        // (ADR-035 follow-up: `conductor_list_connectors` was removed —
         // its runtime connectors+status view is a subset of
         // `conductor_get_resolved_routing_graph` (below), which reports the same
         // per-connector `connected`/`bound_port` plus route resolution.)
 
-        // ADR-042 Phase B-early (#1899) — B.7 visibility: report the
+        // ADR-042 Phase B-early — B.7 visibility: report the
         // network-approval HMAC key's rotation status. Report-only and
         // infallible at the tool level — a missing key / unavailable backend
         // degrades to a structured "unavailable" payload (mirroring
@@ -863,7 +862,7 @@ impl ToolExecutor {
             return ExecutionResult::Success { result };
         }
 
-        // ADR-031 §3.4 / #1598 Phase 1 — runtime-resolved routing graph.
+        // ADR-031 §3.4 / Phase 1 — runtime-resolved routing graph.
         // The canonical view the GUI should render: connectors from the
         // live registry (bindings lowered, explicit `[[connectors]]`
         // folded in) and routes resolved against that registry so
@@ -873,7 +872,7 @@ impl ToolExecutor {
         // principle from action execution to graph rendering. Requires
         // `daemon_state_refs` (reads the live registry / input manager).
         if tool_name == "conductor_get_resolved_routing_graph" {
-            // #1598 Phase 2 Step C — read from AUTHORITATIVE sources
+            // Phase 2 Step C — read from AUTHORITATIVE sources
             // (input_manager + device_output_map), not from
             // `LiveConnector.bound_port` / `.connected`. The registry's
             // runtime fields are initialised to `None`/`false` by
@@ -889,8 +888,8 @@ impl ToolExecutor {
                             .to_string(),
                 };
             };
-            // Lock-ordering note (Copilot finding on PR #1633): acquire
-            // the locks-with-await BEFORE the connector_registry
+            // Lock-ordering note: acquire the locks-with-await BEFORE
+            // the connector_registry
             // RwLockReadGuard so we never hold the registry guard
             // across an `.await`. Holding a guard across await opens
             // a deadlock window with any path that takes input_manager
@@ -911,7 +910,7 @@ impl ToolExecutor {
             // `reachable_output_ports` below; reused for `routes` at build time.
             let snap = self.live_config.load();
 
-            // #2203: the live set of MIDI output ports, so an output endpoint
+            // The live set of MIDI output ports, so an output endpoint
             // whose resolved port isn't actually present (e.g. an input-only
             // target) reports connected=false instead of a misleading green.
             // `enumerate_output_ports` is a synchronous midir scan, so offload it
@@ -921,15 +920,14 @@ impl ToolExecutor {
             // lock-ordering invariant (no `.await` while holding the guard) is
             // preserved. A join failure degrades safely to "no outputs available".
             //
-            // #2421: a midir scan from THIS process does not list the virtual
+            // A midir scan from THIS process does not list the virtual
             // output ports the daemon itself created, so `reachable_output_ports`
             // folds in the enabled MidiVirtualPort endpoints the daemon
             // materializes. Without it, a working daemon virtual output rendered
             // red in Endpoints + Routing Graph while Discovered Ports showed it
             // green (those views derive status from a separate enumeration). The
             // fold-in is gated on `virtual_ports_available()` so platforms that
-            // cannot create virtual ports (Windows) don't report them connected
-            // (Copilot review on PR #2443).
+            // cannot create virtual ports (Windows) don't report them connected.
             let enumerated =
                 tokio::task::spawn_blocking(crate::daemon::output_resolver::enumerate_output_ports)
                     .await
@@ -947,12 +945,12 @@ impl ToolExecutor {
                     .as_ref()
                     .map(|mgr| {
                         // Build entries inside this closure so `is_device_enabled`
-                        // can be queried while `mgr` is in scope (#1626).
+                        // can be queried while `mgr` is in scope.
                         mgr.get_device_bindings()
                             .into_iter()
                             .filter(|(_, _, _, is_configured)| *is_configured)
                             .map(|(device_id, port_name, connected, _)| {
-                                // #1626: runtime mute = NOT enabled (ADR-009 4b).
+                                // Runtime mute = NOT enabled (ADR-009 4b).
                                 let muted = !mgr.is_device_enabled(&device_id);
                                 crate::daemon::llm::resolved_routing_graph::InputBindingEntry {
                                     alias: device_id.as_str().to_string(),
@@ -1004,7 +1002,7 @@ impl ToolExecutor {
             return ExecutionResult::Success { result };
         }
 
-        // ADR-036 D5 / Slice 9 (#1667): explain why each route fires or is
+        // ADR-036 D5: explain why each route fires or is
         // skipped for a hypothetical event, against the LIVE RouteEngine.
         if tool_name == "conductor_explain_route_match" {
             let Some(refs) = self.daemon_state_refs.as_ref() else {
@@ -1065,7 +1063,7 @@ impl ToolExecutor {
             return ExecutionResult::Success { result };
         }
 
-        // ADR-036 §8 / Slice 9 (#1667): return the last N dispatch
+        // ADR-036 §8: return the last N dispatch
         // decisions from the bounded trace ring buffer.
         if tool_name == "conductor_get_dispatch_trace" {
             let Some(refs) = self.daemon_state_refs.as_ref() else {
@@ -1075,7 +1073,7 @@ impl ToolExecutor {
                             .to_string(),
                 };
             };
-            // `last`: default 32, capped at 256 (issue #1667).
+            // `last`: default 32, capped at 256.
             let last = arguments
                 .as_ref()
                 .and_then(|a| a.get("last"))
@@ -1117,7 +1115,7 @@ impl ToolExecutor {
             None
         };
 
-        // Get live status data from daemon state (#107)
+        // Get live status data from daemon state
         let status_data = if let Some(refs) = &self.daemon_state_refs {
             let state = refs.get_daemon_state().await;
             Some(state.to_status_json())
@@ -1292,7 +1290,7 @@ impl ToolExecutor {
                         // Bump the session generation BEFORE flipping
                         // active=true so any prior timer that wakes
                         // during this start window sees a stale gen
-                        // and skips its swap (#1059 review). The
+                        // and skips its swap. The
                         // returned value is the unique ID for this
                         // session; the spawned timer captures it and
                         // checks for match before stopping.
@@ -1301,12 +1299,12 @@ impl ToolExecutor {
                         // Set MIDI Learn active. `swap` returns the
                         // prior value so the tool result can tell the
                         // LLM whether it just preempted an active
-                        // session (#1053 follow-up — without this
-                        // signal the LLM rapid-restarts learn without
-                        // acknowledging the restart to the user).
+                        // session (without this signal the LLM
+                        // rapid-restarts learn without acknowledging
+                        // the restart to the user).
                         let was_already_active = active.swap(true, Ordering::SeqCst);
 
-                        // Spawn the daemon-side auto-stop timer (#1053). The
+                        // Spawn the daemon-side auto-stop timer. The
                         // LLM agent loop can't reliably "remember to call
                         // stop later" — it has no async timer and is
                         // stateless across turns — so the deadline lives
@@ -1324,7 +1322,7 @@ impl ToolExecutor {
                             let session_gen_for_timer = self.midi_learn_session_gen.clone();
                             *timer_guard = Some(tokio::spawn(async move {
                                 tokio::time::sleep(Duration::from_secs(timeout_seconds)).await;
-                                // Generation check (#1059 race fix): if a
+                                // Generation check: if a
                                 // newer session has replaced us, the counter
                                 // has advanced. Skip the swap entirely so
                                 // we don't stop the freshly-started session.
@@ -1394,7 +1392,7 @@ impl ToolExecutor {
                 match (&self.midi_learn_active, &self.midi_learn_events) {
                     (Some(active), Some(events)) => {
                         // Bump session generation so any pending timer's
-                        // wake check fails (#1059 race fix). Belt-and-
+                        // wake check fails. Belt-and-
                         // braces with the abort() below — even if abort
                         // loses the race, the gen check makes the timer's
                         // body a no-op.
@@ -1403,7 +1401,7 @@ impl ToolExecutor {
                         // Stop MIDI Learn
                         active.store(false, Ordering::SeqCst);
 
-                        // Cancel the auto-stop timer (#1053) so it doesn't
+                        // Cancel the auto-stop timer so it doesn't
                         // fire late and stop a fresh session that came
                         // after this explicit stop. No-op if the timer
                         // already fired or no session was active.
@@ -1504,10 +1502,10 @@ impl ToolExecutor {
                 }
                 None => ToolCallResult::error("Daemon state not available"),
             },
-            // v4.26.69: Switch active mode by name
+            // Switch active mode by name
             // DEPRECATED (ADR-040): switches the mode without touching any manual
             // lock — prefer conductor_set_mode. Behaviour unchanged (the
-            // description was the inaccurate part, Copilot #2290).
+            // description was the inaccurate part).
             "conductor_switch_mode" => {
                 let mode_name = arguments
                     .as_ref()
@@ -1516,16 +1514,16 @@ impl ToolExecutor {
 
                 match mode_name {
                     Some(name) => {
-                        // Phase 2 - Issue #321: Validate mode exists in config
+                        // Phase 2: Validate mode exists in config
                         let mode_index =
                             _config.and_then(|cfg| cfg.modes.iter().position(|m| m.name == name));
 
                         match mode_index {
                             Some(idx) => {
-                                // Phase 2 - Issue #321: Send mode change command to daemon
+                                // Phase 2: Send mode change command to daemon
                                 match &self.daemon_state_refs {
                                     Some(refs) => {
-                                        // Council review fix: use send().await instead of try_send to avoid silent drops
+                                        // Use send().await instead of try_send to avoid silent drops
                                         if let Err(e) = refs
                                             .command_tx
                                             .send(crate::daemon::types::DaemonCommand::ModeChange {
@@ -1583,7 +1581,7 @@ impl ToolExecutor {
                     None => ToolCallResult::error("Missing required argument: mode (string)"),
                 }
             }
-            // ADR-040 D4 §4.2 (Slice 4c) — mode-lock tools (shared helpers; same
+            // ADR-040 D4 §4.2 — mode-lock tools (shared helpers; same
             // command-channel path as conductor_switch_mode above).
             "conductor_set_mode" => match &self.daemon_state_refs {
                 Some(refs) => {
@@ -1599,7 +1597,7 @@ impl ToolExecutor {
                 Some(refs) => crate::daemon::mode_mcp::mode_status(&refs.command_tx).await,
                 None => ToolCallResult::error("Daemon state not available"),
             },
-            // Phase 1 - Issue #323: Switch profile
+            // Phase 1: Switch profile
             "conductor_switch_profile" => {
                 let profile_name = arguments
                     .as_ref()
@@ -1609,7 +1607,7 @@ impl ToolExecutor {
                     .as_ref()
                     .and_then(|a| a.get("config_path"))
                     .and_then(|v| v.as_str());
-                // #2564 D5 (additive): optional GUI profile id so the daemon can
+                // Optional GUI profile id (additive) so the daemon can
                 // persist/report the identity the GUI keys by.
                 let profile_id = arguments
                     .as_ref()
@@ -1703,7 +1701,7 @@ impl ToolExecutor {
                 }
             }
 
-            // Phase 1 - Issue #323: Get active profile
+            // Phase 1: Get active profile
             "conductor_get_active_profile" => match &self.daemon_state_refs {
                 Some(refs) => {
                     let profile = (**refs.active_profile.load()).clone();
@@ -1757,7 +1755,7 @@ impl ToolExecutor {
                             refs.command_tx
                                 .send(crate::daemon::types::DaemonCommand::IpcRequest {
                                     request,
-                                    // PR-D: Internal-origin daemon command
+                                    // Internal-origin daemon command
                                     // (no external peer). Today the
                                     // receiving plugin-management arms in
                                     // `engine_manager::handle_ipc_request`
@@ -1779,8 +1777,8 @@ impl ToolExecutor {
                                     // band for a daemon-internal call
                                     // whose outer LLM tool boundary has
                                     // already been gate-checked. Closes
-                                    // the PR-B `TODO(PR-D, gate-bypass
-                                    // on None)` for this site at the
+                                    // the earlier `TODO(gate-bypass on
+                                    // None)` for this site at the
                                     // type level even though the
                                     // runtime effect is currently nil.
                                     caller_ctx: Some(
@@ -1958,7 +1956,7 @@ impl ToolExecutor {
                             let max_vel = *same_note_velocities.iter().max().unwrap_or(&127);
                             if max_vel - min_vel > 30 {
                                 // Suggest VelocityRange with soft/medium/hard zones.
-                                // #2134: emit the CANONICAL `Trigger::VelocityRange`
+                                // Emit the CANONICAL `Trigger::VelocityRange`
                                 // field names (`soft_max` / `medium_max`), not a
                                 // `ranges` object. The previous `ranges` shape did
                                 // not match the enum variant, so applying the
@@ -2500,7 +2498,7 @@ impl ToolExecutor {
                     .and_then(|d| d.as_str())
                     .map(|s| s.to_string());
 
-                // ADR-038 Slice 6: optional let_through (default false = swallow).
+                // ADR-038: optional let_through (default false = swallow).
                 let let_through = args
                     .get("let_through")
                     .and_then(|v| v.as_bool())
@@ -2736,7 +2734,7 @@ impl ToolExecutor {
                                 .and_then(|d| d.as_str())
                                 .map(|s| s.to_string());
 
-                            // ADR-038 Slice 6: optional let_through in batch ops too.
+                            // ADR-038: optional let_through in batch ops too.
                             let let_through = op
                                 .get("let_through")
                                 .and_then(|v| v.as_bool())
@@ -2904,7 +2902,7 @@ impl ToolExecutor {
                             ConfigChange::DeleteMode { name }
                         }
 
-                        // ADR-031 P3 § 5.4 (#1143 slice 8) —
+                        // ADR-031 P3 § 5.4 —
                         // `update_route` completes the route-mutation
                         // trio (create/delete/update). Total-replace
                         // semantics: the LLM supplies the full new
@@ -3007,7 +3005,7 @@ impl ToolExecutor {
                             }
                         }
 
-                        // ADR-031 P3 § 5.4 (#1143 slice 7) — paired
+                        // ADR-031 P3 § 5.4 — paired
                         // with `create_route` per spec; `delete_route`
                         // also goes through batch_changes by design
                         // (no singleton tool). Takes a 0-based `index`
@@ -3031,7 +3029,7 @@ impl ToolExecutor {
                             ConfigChange::DeleteRoute { index }
                         }
 
-                        // ADR-031 P3 § 5.4 (#1143 slice 5) — accept
+                        // ADR-031 P3 § 5.4 — accept
                         // `create_route` inside a batch so the LLM can
                         // build a routing-setup plan with several
                         // routes in one approval round-trip.
@@ -3251,20 +3249,20 @@ impl ToolExecutor {
         // Route the mutation through `live_config.mutate_replace_whole` so
         // both engine_manager and any future LiveConfig subscriber see the
         // change through the same atomic publication. Undo history is
-        // recorded AFTER a successful publish (Copilot review #1283 round 1):
-        // if `mutate_replace_whole` errors (CAS conflict, compile failure),
+        // recorded AFTER a successful publish: if `mutate_replace_whole`
+        // errors (CAS conflict, compile failure),
         // a pre-recorded undo entry would describe an apply that never
         // happened, and a subsequent `undo()` would silently fast-forward
         // the config to a phantom inverse.
         //
         // Provenance: `Initiator::Llm { provider, model, plan_id }`.
-        // D4.A.3.3.B.2 (#1282) records the SAME Provenance value into
+        // D4.A.3.3.B.2 records the SAME Provenance value into
         // the audit log via `log_plan_applied(..., Some(provenance))`,
         // so both sinks (LiveConfig publish + audit row) agree on who
         // initiated the apply. `provider`/`model` remain placeholders
         // until the calling LLM session can thread its identity here
-        // — that wiring is the open follow-up; this PR ensures the
-        // pipeline carries the value once it's set.
+        // — that wiring is the open follow-up; the pipeline already
+        // carries the value once it's set.
         let pre_config = (*self.live_config.load().config).clone();
         let plan_description = plan.description.clone();
         let plan_changes = plan.changes.clone();
@@ -3278,7 +3276,7 @@ impl ToolExecutor {
             source: conductor_core::config::Source::InMemoryEdit,
             peer: None,
         };
-        // #1320: use `try_mutate_replace_whole` so a failed
+        // Use `try_mutate_replace_whole` so a failed
         // `apply_atomic` aborts the publish — pre-fix, the old
         // `mutate_replace_whole` would publish the candidate
         // regardless of apply success, bumping `state_generation`
@@ -3477,12 +3475,11 @@ impl ToolExecutor {
                         provider: "tbd".to_string(),
                         model: "tbd".to_string(),
                         // D4.A.3.3.B.1 stub: deliberate non-UUID sentinel —
-                        // B.2 (#1282) routes undo/redo through a proper
+                        // B.2 routes undo/redo through a proper
                         // session-scoped plan id once audit consumes the
                         // value. Free-text descriptions could contain
                         // user-supplied content and shouldn't leak into
-                        // a UUID-typed field downstream (Copilot review
-                        // #1283 round 1).
+                        // a UUID-typed field downstream.
                         plan_id: "undo-placeholder".to_string(),
                     },
                     source: conductor_core::config::Source::InMemoryEdit,
@@ -3606,11 +3603,11 @@ impl ToolExecutor {
 }
 
 /// Build a `ConfigChange::CreateEndpoint` plan for `conductor_create_endpoint`
-/// (ADR-035 Slice 8). Performs the eager, tool-time checks (non-empty alias,
+/// (ADR-035). Performs the eager, tool-time checks (non-empty alias,
 /// channel range, alias-uniqueness across the endpoint namespace) so the caller
 /// gets a clear error now rather than at plan-apply time.
 ///
-/// ADR-035 Phase 2 (#1748) removed the legacy `create_binding`/`create_connector`
+/// ADR-035 Phase 2 removed the legacy `create_binding`/`create_connector`
 /// /`create_device_identity`/`update_device_identity`/`delete_device_identity`
 /// tools — `conductor_create_endpoint` is the sole MCP I/O-authoring tool.
 #[allow(clippy::too_many_arguments)]
@@ -3661,7 +3658,7 @@ fn build_create_endpoint_plan(
 }
 
 /// Parse the `event` object of `conductor_explain_route_match` into
-/// `(source_device_alias, raw_midi_bytes)` (ADR-036 D5 / Slice 9). The
+/// `(source_device_alias, raw_midi_bytes)` (ADR-036 D5). The
 /// RouteEngine matches on raw MIDI, so the typed fields are assembled
 /// into a 2- or 3-byte channel-voice message. Validates ranges and the
 /// message type, returning a human-readable `Err` on malformed input.
@@ -3965,7 +3962,7 @@ mod tests {
         }
     }
 
-    /// ADR-038 Slice 6: conductor_create_mapping accepts `let_through` + a `Tap`
+    /// ADR-038: conductor_create_mapping accepts `let_through` + a `Tap`
     /// action and threads both into the planned ConfigChange.
     #[tokio::test]
     async fn test_create_mapping_threads_let_through_and_tap() {
@@ -4098,7 +4095,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_changes_with_create_route_operation() {
-        // ADR-031 P3 § 5.4 (#1143 slice 5) — a batch containing a
+        // ADR-031 P3 § 5.4 — a batch containing a
         // single `create_route` op produces a one-change plan with
         // the `CreateRoute` variant populated end-to-end (JSON parse
         // → ConfigChange enum → plan storage).
@@ -4174,7 +4171,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_changes_with_update_route_operation() {
-        // ADR-031 P3 § 5.4 (#1143 slice 8) — `update_route` op
+        // ADR-031 P3 § 5.4 — `update_route` op
         // produces a `ConfigChange::UpdateRoute` populated end-to-end
         // (JSON parse → enum → plan).
         use crate::daemon::llm::ConfigChange;
@@ -4251,7 +4248,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_changes_with_delete_route_operation() {
-        // ADR-031 P3 § 5.4 (#1143 slice 7) — `delete_route` op
+        // ADR-031 P3 § 5.4 — `delete_route` op
         // parses the required `index` field and lands a
         // `ConfigChange::DeleteRoute` in the plan.
         use crate::daemon::llm::ConfigChange;
@@ -4922,7 +4919,7 @@ mod tests {
         }
     }
 
-    // conductor_send_midi tests (v4.26.67)
+    // conductor_send_midi tests
     // =========================================================================
 
     #[tokio::test]
@@ -5148,7 +5145,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_status_classified_as_readonly() {
-        // ADR-042 #1899 B.7 — `conductor_security_status` reports the
+        // ADR-042 B.7 — `conductor_security_status` reports the
         // network-approval HMAC key's rotation status; it only reads, so it
         // must be ReadOnly (never a mutating tier).
         use crate::daemon::mcp_tools::get_tool_risk_tier;
@@ -5159,7 +5156,7 @@ mod tests {
         );
     }
 
-    // ADR-042 #1899 B.7 — the `conductor_security_status` payload builders and
+    // ADR-042 B.7 — the `conductor_security_status` payload builders and
     // their shape tests live in the sibling `security_status` module. Here we
     // only pin the tool's risk-tier classification (above); the executor
     // handler is a thin wrapper that audit-logs and returns Success.
@@ -5699,7 +5696,7 @@ mod tests {
     }
 
     // =========================================================================
-    // Constructor Tests (LLM Council Feedback v4.13.2)
+    // Constructor Tests
     // =========================================================================
 
     #[tokio::test]
@@ -5946,7 +5943,7 @@ mod tests {
         assert_eq!(trigger["type"], "VelocityRange");
         assert_eq!(trigger["note"], 36);
 
-        // #2134: the suggestion must use the CANONICAL `soft_max` / `medium_max`
+        // The suggestion must use the CANONICAL `soft_max` / `medium_max`
         // fields, not a `ranges` object — otherwise applying it silently drops
         // the thresholds. velocities 30/80/127 → min 30, max 127, range 97 →
         // soft_max = 30 + 97/3 = 62, medium_max = 30 + 2*97/3 = 94.
@@ -6010,7 +6007,7 @@ mod tests {
         assert_eq!(trigger["type"], "Note");
     }
 
-    // conductor_switch_mode tests (v4.26.69)
+    // conductor_switch_mode tests
     // =========================================================================
 
     #[tokio::test]
@@ -6187,7 +6184,7 @@ mod tests {
         }
     }
 
-    // ─── ADR-025 Phase 2.H: conductor_set_context_mapping (#854) ──────
+    // ─── ADR-025 Phase 2.H: conductor_set_context_mapping ──────
 
     #[tokio::test]
     async fn test_set_context_mapping_pc_creates_plan() {
@@ -6394,7 +6391,7 @@ mod tests {
         }
     }
 
-    // ── #1053: daemon-side MIDI Learn timeout enforcement ───────────────
+    // ── Daemon-side MIDI Learn timeout enforcement ───────────────
     //
     // Before this fix, `conductor_start_learn` was fire-and-forget: it
     // flipped `midi_learn_active` to true and returned `timeout_seconds`
@@ -6489,7 +6486,7 @@ mod tests {
         );
     }
 
-    // #1059 Copilot review: race window between `active.store(true)` and
+    // Race window between `active.store(true)` and
     // `prev.abort()` in start. If the prior timer's sleep wakes during
     // that window, its body runs `active.swap(false, ...)` against the
     // freshly-started session and silently stops it. Fix: each timer
@@ -6538,7 +6535,7 @@ mod tests {
         );
     }
 
-    // #1053 follow-up: when the LLM rapid-restarts conductor_start_learn
+    // When the LLM rapid-restarts conductor_start_learn
     // (intentionally — user asked it to "run learn each time"), the LLM
     // had no signal that it was preempting an active session. The tool
     // result looked identical for fresh start vs restart, so the LLM
@@ -6609,7 +6606,7 @@ mod tests {
             "second start message should explicitly say restarted: {}",
             r2_msg
         );
-        // Copilot review (#1059): the daemon does NOT drain
+        // The daemon does NOT drain
         // midi_learn_events on restart — only conductor_stop_learn
         // drains. The message must NOT falsely claim events were
         // discarded; it should explain the buffer semantics instead.
@@ -6637,7 +6634,7 @@ mod tests {
         panic!("No Text content block in result");
     }
 
-    // ===== ADR-035 Slice 8: conductor_create_endpoint + deprecations =====
+    // ===== ADR-035: conductor_create_endpoint + deprecations =====
 
     #[tokio::test]
     async fn test_create_endpoint_matcher_produces_plan() {

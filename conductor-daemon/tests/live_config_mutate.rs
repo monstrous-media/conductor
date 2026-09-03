@@ -135,7 +135,7 @@ fn initial_state_generation_is_zero_sentinel() {
 
 #[test]
 fn new_published_seeds_first_published_snapshot_at_generation_1() {
-    // #2533: the daemon boot uses `new_published` so a `live.toml` loaded at
+    // The daemon boot uses `new_published` so a `live.toml` loaded at
     // startup is the FIRST PUBLISHED snapshot (gen 1) — not the gen-0
     // uninitialised sentinel that `handle_get_config_body` blanks. (ADR-034
     // KI-A2/R6-A8: "first published = 1; gen 0 = unambiguous uninitialised".)
@@ -413,7 +413,7 @@ async fn rollback_force_bypasses_outer_cas_step_2() {
 // Cancellation safety — KI-A1 detached spawn
 // ────────────────────────────────────────────────────────────────────
 
-/// #1326 rewrite: ACTUALLY cancel the inner `mutate` future and
+/// Rewrite to ACTUALLY cancel the inner `mutate` future and
 /// assert the spawned commit task survives.
 ///
 /// The old test dropped a `JoinHandle` — but per tokio docs that
@@ -442,7 +442,7 @@ async fn caller_future_cancellation_does_not_cancel_inner_commit() {
     let live = Arc::new(LiveConfig::new(empty_config()).expect("init"));
     let live_for_call = Arc::clone(&live);
 
-    // #1522: arm the test-only commit barrier BEFORE the mutate. The spawned
+    // Arm the test-only commit barrier BEFORE the mutate. The spawned
     // commit task blocks on it before running commit_locked, so the caller's
     // `mutate` future is GUARANTEED still awaiting the oneshot when we cancel
     // it — cancellation is now the load-bearing path deterministically, not a
@@ -500,7 +500,7 @@ async fn caller_future_cancellation_does_not_cancel_inner_commit() {
 // Overflow panic — KI-A4
 // ────────────────────────────────────────────────────────────────────
 
-/// #1325 rewrite: actually drive `LiveConfig::mutate` with
+/// Rewrite to actually drive `LiveConfig::mutate` with
 /// `state_generation = u64::MAX` and assert it surfaces
 /// `MutateError::Overflow`. The old test only asserted on the
 /// std-lib `u64::checked_add` behaviour without touching
@@ -508,8 +508,8 @@ async fn caller_future_cancellation_does_not_cancel_inner_commit() {
 /// from `commit_locked` or silently wrapped `state_generation`
 /// would pass it.
 ///
-/// Uses the new `install_test_snapshot` test-only seam (added in
-/// the same PR) to inject the synthesised u64::MAX snapshot.
+/// Uses the new `install_test_snapshot` test-only seam
+/// to inject the synthesised u64::MAX snapshot.
 #[tokio::test]
 async fn state_generation_overflow_returns_overflow_error() {
     let live = LiveConfig::new(empty_config()).expect("init");
@@ -565,8 +565,7 @@ async fn state_generation_overflow_returns_overflow_error() {
 async fn rollback_force_with_empty_reason_is_invalid_op() {
     // Defense-in-depth: IPC framer enforces non-empty per KI-B3,
     // but the daemon also rejects empty/whitespace reasons so a
-    // buggy IPC layer can't bypass the contract. Council R4 fix
-    // per DeepSeek.
+    // buggy IPC layer can't bypass the contract.
     let live = LiveConfig::new(empty_config()).expect("init");
     for reason in ["", "   ", "\t\n  "] {
         let result = live
@@ -591,7 +590,7 @@ async fn rollback_force_with_empty_reason_is_invalid_op() {
 
 #[tokio::test]
 async fn rollback_without_known_good_returns_no_snapshot_invalid_op() {
-    // D4.B.4 (#1291) wires the file-side `live.toml.known_good`
+    // D4.B.4 wires the file-side `live.toml.known_good`
     // reader. When the operator hasn't run `mark-known-good` yet
     // (and no prior daemon recorded one), the file is absent and
     // Rollback surfaces a distinct InvalidOp explaining the
@@ -631,7 +630,7 @@ async fn rollback_without_known_good_returns_no_snapshot_invalid_op() {
 
 #[tokio::test]
 async fn concurrent_mark_known_good_does_not_get_clobbered_by_stale_writer() {
-    // TOCTOU regression (Council R1: GPT-5.4 + Gemini). The previous
+    // TOCTOU regression. The previous
     // implementation computed new_known_good outside the lock from
     // `snapshot_before`. If another mutator MarkKnownGood'd between
     // step 1 and step 11, the stale writer would publish with the
@@ -985,7 +984,7 @@ async fn many_concurrent_reads_do_not_block_writer() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// try_mutate_replace_whole — #1320 fallible mutator
+// try_mutate_replace_whole — fallible mutator
 //
 // Bug: `mutate_replace_whole` takes `FnOnce(&mut Config)` (no return),
 // so a closure that "failed" semantically (e.g. `plan.apply_atomic`
@@ -999,7 +998,7 @@ async fn many_concurrent_reads_do_not_block_writer() {
 // `MutateError::MutatorAborted(msg)` and does NOT publish.
 // ────────────────────────────────────────────────────────────────────
 
-/// THE regression test for #1320. Closure returns Err — the helper
+/// THE regression test. Closure returns Err — the helper
 /// MUST surface `MutatorAborted` AND the live snapshot MUST NOT
 /// advance generation or change content.
 #[tokio::test]
@@ -1090,7 +1089,7 @@ async fn try_mutate_replace_whole_publishes_the_mutated_state() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// #1324 — deterministic TOCTOU interleave test (BlockingCompiler)
+// Deterministic TOCTOU interleave test (BlockingCompiler)
 // ────────────────────────────────────────────────────────────────────
 
 /// Sync-rendezvous compiler that blocks on the test-targeted
@@ -1101,12 +1100,12 @@ async fn try_mutate_replace_whole_publishes_the_mutated_state() {
 /// Use `1` to skip `LiveConfig::with_compiler`'s initial-snapshot
 /// compile (n=0) and block on the test's first mutate (n=1).
 ///
-/// Used by #1324 to deterministically interleave two mutators:
+/// Used to deterministically interleave two mutators:
 /// Task A (ReplaceWhole) blocks at compile; Task B (MarkKnownGood)
 /// runs to completion; Task A resumes and is forced to interact
 /// with the post-MarkKnownGood snapshot. Pre-fix, this raced and
-/// could silently clobber the known_good_revision marker (Council
-/// R1). Post-fix, Task A either CAS-rejects or preserves the marker.
+/// could silently clobber the known_good_revision marker.
+/// Post-fix, Task A either CAS-rejects or preserves the marker.
 struct BlockingCompilerAtCall {
     started_tx: std::sync::Mutex<Option<std::sync::mpsc::SyncSender<()>>>,
     release_rx: std::sync::Mutex<std::sync::mpsc::Receiver<()>>,
@@ -1148,7 +1147,7 @@ impl RuleCompiler for BlockingCompilerAtCall {
     }
 }
 
-/// THE actual #1324 regression test (replaces the prior sequential
+/// THE actual regression test (replaces the prior sequential
 /// `concurrent_mark_known_good_does_not_get_clobbered_by_stale_writer`
 /// which was acknowledged in its own comments to not race anything).
 ///

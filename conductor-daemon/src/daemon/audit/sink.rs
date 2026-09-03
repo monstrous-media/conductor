@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-045 D5 (#2493) — the `AuditSink` seam.
+//! ADR-045 D5 — the `AuditSink` seam.
 //!
 //! Consumers (LLM executor, IPC `SubscribeAudit`, ADR-042 listener edge,
 //! path-validation audit) write to this trait, never to a concrete sink:

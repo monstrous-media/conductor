@@ -1,10 +1,9 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-027 §D16 (full) + §D12 — per-peer IPC message rate limit
-//! (#1168, #1213).
+//! ADR-027 §D16 (full) + §D12 — per-peer IPC message rate limit.
 //!
-//! The D16 concurrent-connection cap (shipped in #1028) closes the
+//! The D16 concurrent-connection cap closes the
 //! "open N sockets and pin memory" attack arm. This module closes
 //! the orthogonal arm: a same-user attacker holding ONE connection
 //! and flooding it with messages, exhausting daemon CPU on the
@@ -57,7 +56,7 @@ const MAX_TRACKED_PEERS: usize = 1024;
 /// fork a fresh bucket: the kernel canonicalises before the daemon
 /// ever sees the bytes. Direct `PeerKey` construction with
 /// non-canonical paths is only reachable from tests, where the
-/// caller controls both sides (Council review on PR #1216 round 3).
+/// caller controls both sides.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PeerKey {
     pub pid: u32,
@@ -92,8 +91,8 @@ pub enum RateLimitDecision {
     /// security limiter must NOT proceed on possibly-corrupt state.
     ///
     /// **DoS tradeoff**: a poisoned `Mutex` will reject EVERY peer
-    /// for the daemon's lifetime, which is itself a DoS surface
-    /// (Council review on PR #1216 round 3). Accepted because:
+    /// for the daemon's lifetime, which is itself a DoS surface.
+    /// Accepted because:
     /// (a) mirrors `keystroke_policy::InternalStateCorrupt` — same
     /// rate-limiter fail-closed posture, consistency matters more
     /// than per-module reinvention; (b) operations under the lock
@@ -171,7 +170,7 @@ impl IpcMessageRateLimiter {
         // Prune expired timestamps. Use `<=` so a timestamp landing
         // EXACTLY on the window boundary is treated as expired —
         // semantically "older than 1s ago" includes the inclusive
-        // boundary (Council review on PR #1216).
+        // boundary.
         if let Some(cutoff) = now.checked_sub(IPC_RATE_WINDOW) {
             while let Some(&front) = window.front() {
                 if front <= cutoff {
@@ -197,7 +196,7 @@ impl IpcMessageRateLimiter {
         // Worst-case memory is therefore
         // O(MAX_TRACKED_PEERS × STANDARD_IPC_MSGS_PER_SEC) — bounded
         // and predictable, no post-push trim needed.
-        // (Council review on PR #1216 — earlier trim was dead code.)
+        // (Earlier trim was dead code.)
         RateLimitDecision::Allowed
     }
 
@@ -210,8 +209,7 @@ impl IpcMessageRateLimiter {
     /// posture: cleanup is a best-effort hint, not a security
     /// invariant; the next `check` from this peer will hit the
     /// poisoned-lock branch and deny via `InternalStateCorrupt`,
-    /// so the prior peer's stale window can't be exploited
-    /// (Council review on PR #1216).
+    /// so the prior peer's stale window can't be exploited.
     pub fn forget(&self, pid: u32, exe: &Path) {
         match self.state.lock() {
             Ok(mut state) => {
@@ -246,8 +244,7 @@ fn prune_empty_entries(peers: &mut HashMap<PeerKey, VecDeque<Instant>>, now: Ins
         if let Some(cutoff) = cutoff {
             while let Some(&front) = window.front() {
                 // Match `check_at`'s `<=` semantics so the two
-                // pruning sites stay consistent (Council review on
-                // PR #1216 round 2).
+                // pruning sites stay consistent.
                 if front <= cutoff {
                     window.pop_front();
                 } else {
@@ -336,7 +333,7 @@ mod tests {
         }
     }
 
-    /// ADR-027 §D12 (#1213): same PID, different exe paths — e.g.
+    /// ADR-027 §D12: same PID, different exe paths — e.g.
     /// a forked attacker `execve`ing into a different binary —
     /// must NOT inherit the predecessor's budget.
     #[test]

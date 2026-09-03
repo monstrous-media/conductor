@@ -1,12 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager::run` main event loop, extracted from `engine_manager::mod`
-//! (refactor #2073).
+//! `EngineManager::run` main event loop, extracted from `engine_manager::mod`.
 
 use super::*;
 
-/// #2392: run-loop select-arm latency guard.
+/// Run-loop select-arm latency guard.
 ///
 /// The daemon run-loop is a single biased `tokio::select!`; any arm body that
 /// `.await`s for more than a few ms parks the WHOLE loop and backs up MIDI in
@@ -76,14 +75,14 @@ impl EngineManager {
         // Transition to Starting state
         self.transition_state(LifecycleState::Starting).await?;
 
-        // Initialize input device connection (v3.0)
-        // v4.10.11: Transition to appropriate state based on connection result
+        // Initialize input device connection
+        // Transition to appropriate state based on connection result
         let connection_result = self.connect_input_devices().await;
 
         if let Err(e) = connection_result {
             warn!("Failed to connect to input device during startup: {}", e);
             self.log_error("InputConnectionFailed", e.to_string()).await;
-            // v4.10.11: Enter Degraded state - device may be connected later via IPC
+            // Enter Degraded state - device may be connected later via IPC
             self.transition_state(LifecycleState::Degraded).await?;
             info!("Engine manager running in degraded mode (no input devices)");
         } else {
@@ -91,7 +90,7 @@ impl EngineManager {
             info!("Engine manager running");
         }
 
-        // ADR-034 §D8 sub-slice C (#2296): if the audit outbox failed to open at
+        // ADR-034 §D8: if the audit outbox failed to open at
         // startup, surface it as the `AuditDegraded` lifecycle state. The
         // fail-closed mutation refusal is already enforced in
         // `LiveConfig::commit_locked`; this makes the condition visible to
@@ -109,13 +108,13 @@ impl EngineManager {
             self.transition_state(LifecycleState::AuditDegraded).await?;
         }
 
-        // ADR-025 Phase 3.F runtime check (#886): schedule the deferred
+        // ADR-025 Phase 3.F runtime check: schedule the deferred
         // observed-vs-expected PC-tuple warning. The static inventory log
         // already fired in `new()` with context "startup"; this pairs the
         // same context label so the two log lines can be correlated.
         self.schedule_pc_observation_check("startup");
 
-        // Issue #355: Preload profile cache from profiles directory at startup
+        // Preload profile cache from profiles directory at startup
         if let Some(config_dir) = dirs::config_dir() {
             let profiles_dir = config_dir.join("conductor").join("profiles");
             if profiles_dir.is_dir() {
@@ -123,10 +122,10 @@ impl EngineManager {
             }
         }
 
-        // Phase 2 - Issue #353: Start app detector for automatic profile switching
+        // Start app detector for automatic profile switching
         self.start_app_detector().await;
 
-        // Main event loop: process input events and commands concurrently (v3.0, v4.20.0)
+        // Main event loop: process input events and commands concurrently
         // ADR-015: biased select ensures completions are processed before new input events (D4, D14)
         loop {
             tokio::select! {
@@ -140,12 +139,12 @@ impl EngineManager {
 
                 // Unified input dispatch — every device (legacy single-device or
                 // multi-device `[[bindings]]`) emits DeviceEvent<ProtocolEvent> here.
-                // (#885: legacy `process_input_event` path removed.)
+                // (Legacy `process_input_event` path removed.)
                 //
-                // ADR-039 #1758: unwrap the protocol tag back to `InputEvent`
+                // ADR-039: unwrap the protocol tag back to `InputEvent`
                 // before the (still `InputEvent`-shaped) `process_device_event`
                 // stage. Only `ProtocolEvent::Input` is produced today; OSC/DMX
-                // sources and a protocol-tag-aware route stage land in #1759/#1760,
+                // sources and a protocol-tag-aware route stage land later,
                 // so a non-Input event here is unreachable and logged, not handled.
                 Some(device_event) = self.device_event_rx.recv() => {
                     let _arm = ArmTimer::new("device_event");
@@ -157,7 +156,7 @@ impl EngineManager {
                             }
                         }
                         Err(other) => {
-                            // ADR-039-A Slice 1 (#1361): OSC inbound is consumed by
+                            // ADR-039-A: OSC inbound is consumed by
                             // the ROUTE engine only — never the mapping engine (so
                             // there is no OSC→Action path; ADR-042 D17 holds by
                             // construction). It therefore cannot go through
@@ -166,7 +165,7 @@ impl EngineManager {
                             // (ADR-039-C) — drop + log.
                             let (device_id, proto) = other.into_parts();
                             // Match on a reference so `proto` is never moved
-                            // (Copilot review #2328 — the previous `matches!`
+                            // (the previous `matches!`
                             // borrowed correctly, but matching `&proto` makes that
                             // unambiguous).
                             match &proto {
@@ -200,12 +199,12 @@ impl EngineManager {
                         }
 
                         DaemonCommand::ConfigFileChanged(path) => {
-                            // Council review fix: suppress reload when we just wrote the config ourselves.
+                            // Suppress reload when we just wrote the config ourselves.
                             // Use a window larger than the ConfigWatcher debounce (500ms) to ensure
                             // the debounced event is caught even if it arrives slightly late.
                             let suppress = {
                                 let mut guard = self.config_write_suppress.lock().await;
-                                // #2295: non-consuming within the window — a single
+                                // Non-consuming within the window — a single
                                 // daemon write touches live.toml AND the profile, so
                                 // both debounced events must be suppressed, not just
                                 // the first.
@@ -247,7 +246,7 @@ impl EngineManager {
                             self.update_device_status(false, None, None).await;
                             self.log_error("DeviceDisconnected", "Input device unplugged").await;
 
-                            // Disconnect device manager (v3.0)
+                            // Disconnect device manager
                             self.disconnect_input_devices().await;
                         }
 
@@ -289,7 +288,7 @@ impl EngineManager {
                         DaemonCommand::FatalError(msg) => {
                             error!("Fatal error: {}", msg);
                             self.log_error("FatalError", msg).await;
-                            // ADR-025 Phase 3.F (#886): abort *before* the
+                            // ADR-025 Phase 3.F: abort *before* the
                             // awaited state transition and teardown so the
                             // 60s sleeper can't wake during shutdown.
                             self.abort_pending_pc_observation_check();
@@ -299,7 +298,7 @@ impl EngineManager {
 
                         DaemonCommand::Shutdown => {
                             info!("Shutdown requested");
-                            // ADR-025 Phase 3.F (#886): abort *before* the
+                            // ADR-025 Phase 3.F: abort *before* the
                             // awaited state transition and teardown so the
                             // 60s sleeper can't wake during shutdown.
                             self.abort_pending_pc_observation_check();
@@ -312,7 +311,7 @@ impl EngineManager {
                             debug!("Menu bar action received (not yet implemented)");
                         }
 
-                        // v4.20.0 - ADR-009 Phase 2
+                        // ADR-009 Phase 2
                         DaemonCommand::TimerTick => {
                             if let Err(e) = self.process_timer_tick().await {
                                 trace!("Timer tick error: {}", e);
@@ -340,8 +339,8 @@ impl EngineManager {
                             info!(device_id = %device_id, enabled = enabled, "Device enabled state changed");
                         }
 
-                        // v4.22.0 - ADR-009 Phase 4: Hot-plug port rescan.
-                        // #2390: the CoreMIDI port enumeration is slow (~500ms
+                        // ADR-009 Phase 4: Hot-plug port rescan.
+                        // The CoreMIDI port enumeration is slow (~500ms
                         // with many ports) and must NOT run on the run-loop —
                         // awaiting it inline parked this `select!` and stalled
                         // MIDI forwarding every 5s (stuck notes). Spawn the
@@ -351,7 +350,7 @@ impl EngineManager {
                         // running so bursty senders can't pile up concurrent
                         // scans.
                         //
-                        // #2392: the gamepad probe (`list_gamepads`, a FIXED
+                        // The gamepad probe (`list_gamepads`, a FIXED
                         // ~500ms gilrs window when no controller is connected) is
                         // ALSO slow and was previously awaited inline in
                         // `process_hot_plug_apply` — re-parking the loop ~535ms
@@ -375,7 +374,7 @@ impl EngineManager {
                                         .map(|mgr| mgr.needs_gamepad_rescan())
                                         .unwrap_or(false)
                                 };
-                                // #2393: cheap lock-free mode read so the off-loop
+                                // Cheap lock-free mode read so the off-loop
                                 // task skips the MIDI scan in GamepadOnly (where
                                 // rescan_ports discards it — pure waste + spurious
                                 // MIDI warnings on no-MIDI hosts).
@@ -389,7 +388,7 @@ impl EngineManager {
                                     } else {
                                         Ok(Vec::new())
                                     };
-                                    // #2392: probe gamepads OFF the run-loop. Only
+                                    // Probe gamepads OFF the run-loop. Only
                                     // when a rescan is warranted (gamepad mode +
                                     // not connected); when one is connected
                                     // `list_gamepads` returns immediately anyway.
@@ -429,7 +428,7 @@ impl EngineManager {
                                         }
                                     }
                                     // Clear the in-flight guard only AFTER the result
-                                    // has been delivered (Copilot review #2394): if it
+                                    // has been delivered: if it
                                     // were cleared before the `send().await` and the
                                     // command channel were backpressured, the next 5s
                                     // tick could spawn a concurrent enumeration/probe
@@ -439,8 +438,8 @@ impl EngineManager {
                             }
                         }
 
-                        // #2390: fast on-loop apply of a pre-enumerated rescan.
-                        // #2392: gamepad probe result is precomputed off-loop.
+                        // Fast on-loop apply of a pre-enumerated rescan.
+                        // Gamepad probe result is precomputed off-loop.
                         DaemonCommand::HotPlugApply {
                             port_infos,
                             gamepad_available,
@@ -465,7 +464,7 @@ impl EngineManager {
                             let _ = response_tx.send(outcome);
                         }
 
-                        // Phase 2 - Issue #353 + Issue #355: Profile switch with cache fast-path
+                        // Profile switch with cache fast-path
                         DaemonCommand::ProfileSwitch { profile_name, config_path, profile_id, result_tx } => {
                             info!("Profile switch requested: '{}' (config: {})", profile_name, config_path);
 
@@ -487,7 +486,7 @@ impl EngineManager {
                             let old_lifecycle_state = *self.state.read().await;
                             self.config_path = validated_path.clone();
 
-                            // Issue #355: Try cache fast-path first, fall back to full reload
+                            // Try cache fast-path first, fall back to full reload
                             use crate::daemon::profile_cache::CacheLookup;
                             let result = match self.profile_cache.get(&validated_path) {
                                 CacheLookup::Hit(cached_config) => {
@@ -508,7 +507,7 @@ impl EngineManager {
 
                             match result {
                                 Ok(metrics) => {
-                                    // #2564 (Council D4): identity commit via the shared
+                                    // Identity commit via the shared
                                     // choke point, LAST after the reload succeeded.
                                     self.commit_active_profile(ActiveProfileInfo {
                                         id: profile_id,
@@ -522,13 +521,13 @@ impl EngineManager {
                                     // ResolveContextMode that follows this switch re-resolves.
                                     self.reconcile_lock_after_reload();
 
-                                    // Phase 2 - Issue #353: Re-target ConfigWatcher to the new profile's config.
-                                    // #2553: also move the Overwrite/§D9 write target (`user_file_path`)
+                                    // Re-target ConfigWatcher to the new profile's config.
+                                    // Also move the Overwrite/§D9 write target (`user_file_path`)
                                     // to the same path so the two never diverge after a switch.
                                     self.retarget_watched_user_file(self.config_path.clone())
                                         .await;
 
-                                    // Issue #355: Emit monitor event for profile switch
+                                    // Emit monitor event for profile switch
                                     self.push_monitor_event(MonitorEvent {
                                         timestamp_ms: std::time::SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
@@ -561,13 +560,13 @@ impl EngineManager {
                             }
                         }
 
-                        // Phase 1 - Issue #323: Profile query
+                        // Profile query
                         DaemonCommand::ProfileQuery { response_tx } => {
                             let profile = (**self.active_profile.load()).clone();
                             let _ = response_tx.send(profile);
                         }
 
-                        // Phase 2 - Issue #353: Refresh app detector mappings
+                        // Refresh app detector mappings
                         DaemonCommand::RefreshAppMappings => {
                             if let Some(ref detector) = self.app_detector {
                                 if let Some(config_dir) = dirs::config_dir() {
@@ -584,7 +583,7 @@ impl EngineManager {
                             }
                         }
 
-                        // Phase 2 - Issue #321: Mode change via MCP tool
+                        // Mode change via MCP tool
                         DaemonCommand::ModeChange { mode } => {
                             debug!("Mode change requested via command: {}", mode);
                             if let Err(e) = self.persist_mode_change(mode).await {
@@ -592,14 +591,14 @@ impl EngineManager {
                             }
                         }
 
-                        // ADR-040 Slice 5 (§4.5/§4.7): app/window → mode auto-switch.
+                        // ADR-040 (§4.5/§4.7): app/window → mode auto-switch.
                         // Arrives AFTER any same-change ProfileSwitch (FIFO), so the
                         // resolve runs against the newly-loaded profile's config.
                         DaemonCommand::ResolveContextMode { app, window_title } => {
                             self.resolve_context_mode(app, window_title).await;
                         }
 
-                        // ADR-040 D4 §4.2 (Slice 4c) — mode-lock commands from the
+                        // ADR-040 D4 §4.2 — mode-lock commands from the
                         // MCP server / LLM executor (origin `Mcp`).
                         DaemonCommand::SetModeLocked {
                             mode,
@@ -611,7 +610,7 @@ impl EngineManager {
                                 .await
                                 .map_err(|e| match e {
                                     // Include the requested mode so the MCP error
-                                    // matches the CLI/IPC messaging (Copilot #2290).
+                                    // matches the CLI/IPC messaging.
                                     super::SetModeError::UnknownMode => {
                                         format!("unknown mode '{mode}'")
                                     }
@@ -642,14 +641,14 @@ impl EngineManager {
             }
         }
 
-        // ADR-039 §4.4 (#1760) — graceful shutdown ordering: quiesce → drain →
+        // ADR-039 §4.4 — graceful shutdown ordering: quiesce → drain →
         // flush/close. The order matters: draining BEFORE quiescing would hang
         // on a still-producing source; flushing the executor BEFORE the drain
         // would drop the actions the drained events dispatch.
         //
         // (1) Ingress quiesce — stop every input source enqueueing FIRST, so no
         //     new events are produced during the drain (R3). This is the
-        //     existing CFRunLoopStop / gilrs-stop clean-shutdown path (v4.26.1).
+        //     existing CFRunLoopStop / gilrs-stop clean-shutdown path.
         self.disconnect_input_devices().await;
 
         // (2) Bounded-drain the pump — process input already queued (e.g. a
@@ -672,7 +671,7 @@ impl EngineManager {
             }
         }
 
-        // ADR-025 Phase 3.F (#886): defensive belt-and-braces — the
+        // ADR-025 Phase 3.F: defensive belt-and-braces — the
         // Shutdown / FatalError arms already abort before break, but if
         // a future control-flow path exits the loop without going through
         // those arms, this catches it.
@@ -749,7 +748,7 @@ impl EngineManager {
         }
     }
 
-    /// ADR-039 §4.4 (#1760): bounded-drain the unified pump on shutdown — step 2
+    /// ADR-039 §4.4: bounded-drain the unified pump on shutdown — step 2
     /// of the shutdown ordering, run AFTER ingress quiesce
     /// (`disconnect_input_devices`) and BEFORE the executor flush.
     ///
@@ -763,7 +762,7 @@ impl EngineManager {
     /// `run`'s shutdown sequence, which always calls `disconnect_input_devices`
     /// immediately before it. Even if that ordering were ever violated, the
     /// `TOTAL_BUDGET` ceiling still bounds the call — correctness degrades to
-    /// "may drop a few late events", never to a hang (cloud-review #2177).
+    /// "may drop a few late events", never to a hang.
     async fn drain_pump_on_shutdown(&mut self) {
         /// Inter-event silence that signals the (quiesced) pump has gone quiet.
         const QUIET_GAP: Duration = Duration::from_millis(50);
@@ -783,8 +782,8 @@ impl EngineManager {
                     }
                 }
                 Err(other) => {
-                    // Unreachable until a network producer exists (#1759/#1760
-                    // note); mirror the run loop's drop-and-log rather than crash.
+                    // Unreachable until a network producer exists;
+                    // mirror the run loop's drop-and-log rather than crash.
                     error!(
                         protocol = other.event().protocol_label(),
                         "Shutdown drain dropped non-Input ProtocolEvent"
@@ -796,7 +795,7 @@ impl EngineManager {
     }
 }
 
-/// ADR-039 §4.4 (#1760): drain events already queued in the unified pump,
+/// ADR-039 §4.4: drain events already queued in the unified pump,
 /// bounded so it can never hang. Returns the drained events in arrival order.
 ///
 /// MUST be called only AFTER ingress is quiesced (input sources disconnected) —
@@ -855,14 +854,14 @@ fn external_change_action(source: ConfigSource, policy: UserFilePolicy) -> Exter
     }
 }
 
-/// ADR-034 §D9 (#2295): decide whether a `ConfigFileChanged` is the daemon's own
+/// ADR-034 §D9: decide whether a `ConfigFileChanged` is the daemon's own
 /// recent write (suppress the drift/reload) or a genuine external edit.
 ///
 /// **Non-consuming** within the window. A single daemon mutation writes BOTH
-/// `live.toml` (the `live_config` commit) and the active profile file (the #2260
+/// `live.toml` (the `live_config` commit) and the active profile file (the
 /// write-through, or plan-apply), producing two debounced watcher events.
 /// Consuming the marker on the first event let the second escape and surface as
-/// a false "external edit" drift → the #2295 banner/reload loop. So we keep the
+/// a false "external edit" drift → a banner/reload loop. So we keep the
 /// marker set until the window elapses (both events suppressed), and clear it
 /// only once expired so the next genuine external edit is honoured.
 fn is_self_write_suppressed(marker: &mut Option<Instant>, window: Duration) -> bool {
@@ -876,13 +875,13 @@ fn is_self_write_suppressed(marker: &mut Option<Instant>, window: Duration) -> b
     }
 }
 
-/// ADR-039 #1758: unwrap a unified-pump `DeviceEvent<ProtocolEvent>` back to the
+/// ADR-039: unwrap a unified-pump `DeviceEvent<ProtocolEvent>` back to the
 /// `DeviceEvent<InputEvent>` the `process_device_event` stage consumes.
 ///
 /// MIDI/HID sources tag their events as `ProtocolEvent::Input(..)` at ingress;
 /// this reverses that for the (still `InputEvent`-shaped) hot path. Returns
 /// `Err(original)` for non-`Input` variants — no source produces OSC/DMX events
-/// until the listeners land (#1759/#1760), so that arm is unreachable today and
+/// until the listeners land, so that arm is unreachable today and
 /// the recv loop logs+drops rather than handling it. Kept as a free fn so the
 /// recv-loop logic is unit-testable without spinning the daemon.
 fn pump_event_into_input(
@@ -932,7 +931,7 @@ mod external_change_action_tests {
         );
     }
 
-    // #2295 — self-write suppression must be non-consuming within the window so a
+    // Self-write suppression must be non-consuming within the window so a
     // single daemon mutation's TWO file writes (live.toml + profile) are both
     // suppressed instead of the second leaking out as false "external edit" drift.
     #[test]

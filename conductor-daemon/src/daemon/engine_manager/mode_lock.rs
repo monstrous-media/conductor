@@ -9,10 +9,10 @@
 //! unlock, select a different mode, or the daemon restarts. The lock is **transient** — never persisted: a forgotten lock must
 //! not survive a restart and silently disable auto-switching (§4.2 / §7 OQ-b).
 //!
-//! This is sub-PR 4a of #1767 (the state machine + auto-switch gate). The CLI
-//! affordances (`conductorctl mode set/unlock/status`, 4b) and the MCP tools
-//! (`conductor_set_mode`/`conductor_unlock_mode`/`conductor_mode_status`, 4c)
-//! drive these methods over IPC; the Slice-5 app/window auto-switch producer
+//! This module implements the state machine + auto-switch gate. The CLI
+//! affordances (`conductorctl mode set/unlock/status`) and the MCP tools
+//! (`conductor_set_mode`/`conductor_unlock_mode`/`conductor_mode_status`)
+//! drive these methods over IPC; the app/window auto-switch producer
 //! calls [`EngineManager::apply_auto_switch`] instead of
 //! [`persist_mode_change`](EngineManager::persist_mode_change) directly.
 
@@ -21,7 +21,7 @@ use super::*;
 /// Where a manual mode lock originated (surfaced in status for supportability).
 ///
 /// `Cli` is wired by 4b; `Mcp` by the MCP tools (4c); `Action` by a pad-fired
-/// `ModeChange` action (D4/§4.2 — #2350); `Gui` belongs to the separate GUI ADR
+/// `ModeChange` action (D4/§4.2); `Gui` belongs to the separate GUI ADR
 /// (D9, anticipatory until then).
 #[allow(dead_code)] // `Gui` is wired by the GUI ADR (D9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,7 +41,7 @@ pub(crate) enum LockSource {
 /// Classifying at the source (inside the locked critical section) lets callers
 /// map the failure to a precise IPC/MCP error code **without** re-reading mode
 /// state afterwards — which would be a TOCTOU race against a concurrent config
-/// reload (Council review on #2283).
+/// reload.
 #[derive(Debug)]
 pub(crate) enum SetModeError {
     /// The requested mode is not a declared `[[modes]]` block (a bad request).
@@ -67,17 +67,17 @@ impl EngineManager {
     }
 
     /// The active mode + lock state as a JSON object — the single source of
-    /// truth for `conductorctl mode status` (4b), the `conductor_mode_status`
-    /// MCP tool (4c), and the `QueryModeStatus` command.
+    /// truth for `conductorctl mode status`, the `conductor_mode_status`
+    /// MCP tool, and the `QueryModeStatus` command.
     pub(crate) fn mode_status_json(&self) -> serde_json::Value {
         let current = self.current_mode.load();
         let lock = self.mode_lock();
         // Resolution layer (§4.2 D4): while a manual lock is held the active
         // mode is decided by `ManualLock`. The window/app/default layers are
-        // only known once the Slice-5 app/window snapshot resolver is wired, so
+        // only known once the app/window snapshot resolver is wired, so
         // they report `null` until then.
         let resolution_layer = lock.as_ref().map(|_| "ManualLock");
-        // §4.3 (Slice 6): `window_permission_degraded` is meaningful only when
+        // §4.3: `window_permission_degraded` is meaningful only when
         // title polling is active (window_rules present). When inactive — or no
         // detector on this platform — report `null` (titles aren't read), not
         // `false` (which would imply "healthy").
@@ -215,7 +215,7 @@ impl EngineManager {
         // (config-file write + LiveConfig mutation in `persist_mode_change`) that
         // would otherwise churn on EVERY app change resolving to the current mode
         // — e.g. an unmapped app falling to the same default — and could trip the
-        // §D9 self-write drift watcher (Copilot review #2317). Manual selection
+        // §D9 self-write drift watcher. Manual selection
         // (`set_mode_manual`) intentionally still persists; this guard is only on
         // the auto-switch path.
         if self.current_mode.load().name == mode {
@@ -231,26 +231,26 @@ impl EngineManager {
     /// selection*, so it pins the mode against auto-switching (origin
     /// [`LockSource::Action`]) exactly like a GUI/CLI/MCP selection — otherwise a
     /// pad-selected mode would be silently overridden by the next app/window
-    /// auto-switch (#2350). Selecting a *different* mode replaces the lock
+    /// auto-switch. Selecting a *different* mode replaces the lock
     /// (handled by [`set_mode_manual`](Self::set_mode_manual)).
     ///
     /// Preserves [`persist_mode_change`](Self::persist_mode_change)'s lenient
     /// unknown-mode behaviour: an unknown target is persisted warn-only and does
     /// NOT lock. Config validation already rejects `ModeChange` to an undeclared
     /// mode, so this only guards a stray runtime value (and avoids regressing the
-    /// pre-#2350 warn-only path).
+    /// previous warn-only path).
     pub(crate) async fn apply_modechange_action(&self, mode: String) -> Result<()> {
         // Hold `mode_mutation_lock` across the whole exists-check → persist →
         // lock-store sequence, exactly like `set_mode_manual`, so it is atomic
-        // w.r.t. concurrent mode mutators (no TOCTOU across the persist await) —
-        // Council #2351. Inlined rather than calling `set_mode_manual` because the
+        // w.r.t. concurrent mode mutators (no TOCTOU across the persist await).
+        // Inlined rather than calling `set_mode_manual` because the
         // tokio `Mutex` is non-reentrant (calling it under the guard would
         // deadlock) and the unknown-mode fallback must persist warn-only *under
         // the same guard*, not after `set_mode_manual` releases it.
         let _guard = self.mode_mutation_lock.lock().await;
         let known = self.mode_exists(&mode);
         // `persist_mode_change` is warn-only (no state change) for an unknown
-        // mode — the pre-#2350 lenient behaviour on that path.
+        // mode — the previous lenient behaviour on that path.
         self.persist_mode_change(mode.clone()).await?;
         if known {
             info!("Mode locked to '{mode}' (origin Action)");

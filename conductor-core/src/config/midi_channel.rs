@@ -1,12 +1,12 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! 1-indexed MIDI channel serde helpers (#845 — Phase 1).
+//! 1-indexed MIDI channel serde helpers (Phase 1).
 //!
 //! The MIDI 1.0 spec presents channels as **1-16**; the status byte
 //! encodes channel as `(channel - 1)` in the lower 4 bits. Every piece
 //! of hardware, every DAW, and every MIDI tool the user touches
-//! displays 1-16. Today (pre-#845) Conductor's config TOML expects
+//! displays 1-16. Today, Conductor's config TOML expects
 //! 0-indexed (0-15) values for `channel` fields, which forces users
 //! to mentally offset by one — Channel 10 (the General MIDI percussion
 //! channel) becomes `channel = 9` in TOML.
@@ -72,7 +72,7 @@ const INTERNAL_CHANNEL_MAX: u8 = 15;
 /// Out-of-range inputs (0, ≥17) return a structured serde error
 /// instead of silently clamping — the operator's config is wrong and
 /// they need to know.
-#[allow(dead_code)] // Phase 2 (#845) wires this into Trigger/SendMidi/DeviceIdentityConfig
+#[allow(dead_code)] // Phase 2 wires this into Trigger/SendMidi/DeviceIdentityConfig
 pub fn deserialize_one_indexed_optional_u8<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
 where
     D: Deserializer<'de>,
@@ -98,7 +98,7 @@ where
 /// at 16 would mask invariant violations: a buggy caller constructing
 /// `Some(20)` would produce `channel = 17` in TOML which the next load
 /// would reject — better to surface the bug at write time.
-#[allow(dead_code)] // Phase 2 (#845) wires this into Trigger/SendMidi/DeviceIdentityConfig
+#[allow(dead_code)] // Phase 2 wires this into Trigger/SendMidi/DeviceIdentityConfig
 pub fn serialize_optional_u8_as_one_indexed<S>(
     value: &Option<u8>,
     serializer: S,
@@ -119,7 +119,7 @@ where
 
 /// Non-Option variant for fields like `LedConfig.channel` and
 /// `SendMidi.channel` that are always present.
-#[allow(dead_code)] // Phase 2 (#845) wires this into LedConfig.channel and SendMidi.channel
+#[allow(dead_code)] // Phase 2 wires this into LedConfig.channel and SendMidi.channel
 pub fn deserialize_one_indexed_u8<'de, D>(deserializer: D) -> Result<u8, D::Error>
 where
     D: Deserializer<'de>,
@@ -138,7 +138,7 @@ where
 /// Symmetric to `deserialize_one_indexed_u8` — returns a serializer
 /// error rather than saturating, for the same reason as
 /// `serialize_optional_u8_as_one_indexed`.
-#[allow(dead_code)] // Phase 2 (#845) wires this into LedConfig.channel and SendMidi.channel
+#[allow(dead_code)] // Phase 2 wires this into LedConfig.channel and SendMidi.channel
 pub fn serialize_u8_as_one_indexed<S>(value: &u8, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -309,7 +309,7 @@ mod tests {
         }
     }
 
-    // ── Serializer error path (Copilot review round 1) ─────────────
+    // ── Serializer error path ─────────────
     //
     // The deserializer rejects out-of-range INPUT, but a buggy caller
     // could construct `Some(20)` directly (skipping the deserializer)

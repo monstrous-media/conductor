@@ -5,19 +5,19 @@
 // `Arc<RwLock<Option<Config>>>` (mcp.rs) and `Arc<RwLock<Config>>`
 // (executor.rs) removal.
 //
-// Source-text greps capture the textual acceptance criteria from
-// #1281: once B.1 lands, every reference to the legacy types in
+// Source-text greps capture the textual acceptance criteria:
+// once B.1 lands, every reference to the legacy types in
 // the daemon source tree is gone. Audit-provenance plumbing is
-// a separate sub-piece (#1282) and does NOT gate these tests.
+// a separate sub-piece and does NOT gate these tests.
 //
 // These tests deliberately mirror the style introduced by D4.A.3.3.A
 // (engine_manager_d4a3_3a.rs) — the migration is mechanical and the
-// contract being asserted IS textual (the issue body literally specifies
-// `grep` invariants).
+// contract being asserted IS textual (the acceptance criteria literally
+// specify `grep` invariants).
 
 const EXECUTOR_SRC: &str = include_str!("../src/daemon/llm/executor.rs");
 /// Concatenation of every `.rs` under `src/daemon/engine_manager/` — the
-/// module was split into submodules in #2073, so the per-file scan below
+/// module was split into submodules, so the per-file scan below
 /// must read the whole module. Runtime read from `CARGO_MANIFEST_DIR`
 /// covers newly-added submodules automatically; scope matches the
 /// pre-split single-file `include_str!` (which included its test module).
@@ -25,7 +25,7 @@ fn read_engine_manager_src() -> String {
     // Recurse so the scan covers the whole module — including the
     // `engine_manager/tests/` subdirectory — matching the pre-split
     // `include_str!` scope (the single file included its inline test
-    // module). (Copilot review on #2075.)
+    // module). (Copilot review.)
     fn collect(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
         for entry in std::fs::read_dir(dir)
             .expect("read engine_manager dir")
@@ -55,7 +55,7 @@ static ENGINE_MANAGER_SRC: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(read_engine_manager_src);
 
 /// Concatenation of every `.rs` under `src/daemon/mcp/` — the module was
-/// split into submodules in #2601 (same treatment as engine_manager/#2073),
+/// split into submodules (same treatment as engine_manager),
 /// so the scan reads the whole directory, inline tests included.
 fn read_mcp_src() -> String {
     fn collect(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
@@ -86,7 +86,7 @@ static MCP_SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(read_mcp_
 /// dropping comment lines so structural-pattern asserts don't false-positive
 /// on doc comments that mention the retired types for historical context.
 ///
-/// Diagnostic correctness (Council #1283 round 2): the prior implementation
+/// Diagnostic correctness: the prior implementation
 /// stripped comments BEFORE enumeration, so a failing assertion would
 /// report a line index within the stripped source — not the real line in
 /// the original file. Engineers then chased ghost line numbers. We now
@@ -113,7 +113,7 @@ fn non_comment_lines(src: &str) -> Vec<(usize, &str)> {
 
 #[test]
 fn non_comment_lines_preserves_original_line_numbers() {
-    // Regression test for Council #1283 round 2 finding: line numbers in
+    // Regression test: line numbers in
     // panic messages must match the *original* source, not the post-strip
     // index.
     let src = "// comment 1\n// comment 2\nbad code here\n// comment 4\nmore bad code\n";
@@ -198,7 +198,7 @@ fn d4a3_3b1_no_arc_rwlock_config_in_three_target_files() {
     // explicit scan exists to give friendly diagnostics for the three
     // files where the migration is most visible.
     //
-    // Diagnostic correctness (Council #1283 round 2): each file is
+    // Diagnostic correctness: each file is
     // scanned separately so panic messages cite (file, line) rather
     // than a synthetic combined-source offset that wouldn't help
     // anyone find the violation.
@@ -240,7 +240,7 @@ fn rust_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
 
 #[test]
 fn d4a3_3b1_no_arc_rwlock_config_in_any_daemon_source() {
-    // #1502: the legacy-type invariant is repo-wide for the daemon source
+    // The legacy-type invariant is repo-wide for the daemon source
     // tree, not just the three migration-visible files. The hard-coded
     // include_str! tests above can't catch a regression introduced in any
     // OTHER module (including subdirectories such as `daemon/llm`). Walk

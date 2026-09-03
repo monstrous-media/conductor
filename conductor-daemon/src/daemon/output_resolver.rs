@@ -41,7 +41,7 @@ pub struct OutputResolution {
 /// Note: `MidiOutputManager::connect_by_name()` uses a CoreMIDI warmup/sleep
 /// when *opening* an output connection, but port *enumeration* via `midir` does
 /// not require it — `MidiOutput::new()` + `.ports()` returns the current list
-/// without the stale-cache issue that affects `MidiInput` on macOS (#108/#110).
+/// without the stale-cache issue that affects `MidiInput` on macOS.
 pub fn enumerate_output_ports() -> Vec<String> {
     match MidiOutput::new("Conductor Output Scanner") {
         Ok(midi_out) => {
@@ -257,7 +257,7 @@ pub fn build_output_map(
 }
 
 /// The set of OS virtual-MIDI-port names the daemon should keep created for a
-/// given endpoint set (#2063 / ADR-035, ADR-031 D10 "DAW proxy model").
+/// given endpoint set (ADR-035, ADR-031 D10 "DAW proxy model").
 ///
 /// Each enabled `MidiVirtualPort` endpoint declares a `port_name` that the
 /// daemon must materialize as a real OS MIDI port — without it a route to that
@@ -287,16 +287,16 @@ pub fn desired_virtual_port_names(endpoints: &[EndpointConfig]) -> Vec<String> {
 /// `MidiVirtualPort` endpoints this daemon materializes
 /// ([`desired_virtual_port_names`]).
 ///
-/// #2421: a daemon-created virtual output port is reachable but does NOT appear
+/// A daemon-created virtual output port is reachable but does NOT appear
 /// in `MidiOutput::ports()` from the creating process — that enumeration lists
 /// ports owned by *other* processes. Gating an endpoint's `connected` flag
-/// purely on the live enumeration (#2203) therefore reported daemon virtual
+/// purely on the live enumeration therefore reported daemon virtual
 /// ports red in the Endpoints + Routing Graph views, while the Discovered Ports
 /// view — a separate enumeration that *does* see them — showed them green.
 /// Folding the daemon's own materialized virtual ports back in makes the three
 /// views agree.
 ///
-/// This does NOT weaken the #2203 guard: only *enabled* `MidiVirtualPort`
+/// This does NOT weaken the live-enumeration guard: only *enabled* `MidiVirtualPort`
 /// endpoints contribute (the same desired-set `sync_virtual_ports` actually
 /// creates), so a disabled or never-created virtual port is still absent from
 /// the reachable set and stays disconnected.
@@ -310,7 +310,7 @@ pub fn reachable_output_ports(
     // actually create them. On Windows `MidiOutputManager` has no virtual-port
     // registry (`sync_virtual_ports` is a no-op), so a configured
     // `MidiVirtualPort` is never materialized and must NOT be reported reachable
-    // (Copilot review on PR #2443). Callers pass
+    // (Copilot review). Callers pass
     // `MidiOutputManager::virtual_ports_available()`.
     if virtual_ports_supported {
         reachable.extend(desired_virtual_port_names(endpoints));
@@ -574,7 +574,7 @@ mod tests {
 
     #[test]
     fn desired_virtual_port_names_collects_enabled_virtual_ports() {
-        // #2063: only enabled MidiVirtualPort endpoints contribute a desired OS
+        // Only enabled MidiVirtualPort endpoints contribute a desired OS
         // port name; disabled ones are excluded (so a reload tears them down),
         // non-virtual kinds never do, and duplicates collapse.
         let mut disabled = endpoint(
@@ -623,11 +623,11 @@ mod tests {
 
     #[test]
     fn reachable_output_ports_includes_daemon_created_virtual_ports() {
-        // #2421: a daemon-materialized virtual output port is reachable for
+        // A daemon-materialized virtual output port is reachable for
         // dispatch even though it is ABSENT from the live midir enumeration —
         // `MidiOutput::ports()` lists ports created by OTHER processes, not the
         // ones this daemon created. Gating `connected` purely on the live
-        // enumeration (#2203) therefore reported such ports red in the Endpoints
+        // enumeration therefore reported such ports red in the Endpoints
         // + Routing Graph views while the Discovered Ports view (a separate
         // enumeration that DOES see them) showed them green. The reachable set
         // must fold the daemon's own enabled MidiVirtualPort endpoints back in.
@@ -656,7 +656,7 @@ mod tests {
 
     #[test]
     fn reachable_output_ports_skips_virtual_ports_when_unsupported() {
-        // Copilot review on PR #2443: on platforms where the daemon cannot
+        // Copilot review: on platforms where the daemon cannot
         // create virtual MIDI ports (Windows — `MidiOutputManager` has no
         // `virtual_ports` and `sync_virtual_ports` is a no-op; or
         // CONDUCTOR_DISABLE_VIRTUAL_MIDI), a configured MidiVirtualPort is never
@@ -685,10 +685,10 @@ mod tests {
 
     #[test]
     fn reachable_output_ports_excludes_disabled_virtual_ports() {
-        // Guards the #2203 boundary: a DISABLED MidiVirtualPort is never
-        // materialized (excluded from `desired_virtual_port_names`), so it must
-        // NOT be reported reachable — it stays disconnected, exactly as #2203
-        // intends for a virtual port that was never created.
+        // A DISABLED MidiVirtualPort is never materialized (excluded from
+        // `desired_virtual_port_names`), so it must NOT be reported reachable
+        // — it stays disconnected, exactly as intended for a virtual port
+        // that was never created.
         let mut disabled = endpoint(
             "off_proxy",
             ConnectorDirection::Output,

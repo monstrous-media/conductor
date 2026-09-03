@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Lock-free rule engine benchmarks (v4.24.0 - ADR-009 Phase 6)
+//! Lock-free rule engine benchmarks (ADR-009 Phase 6)
 //!
 //! Benchmarks CompiledRuleSet::match_event() latency for single-device,
 //! multi-device, concurrent readers, scaling, and compilation.

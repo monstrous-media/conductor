@@ -1,13 +1,13 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Regression guard for #1413 (clawpatch contract-mismatch, medium confidence).
+//! Regression guard for a CLI contract-mismatch report (medium confidence).
 //!
-//! clawpatch flagged the daemon's `#[command(name = "conductor")]` as a
+//! A static review flagged the daemon's `#[command(name = "conductor")]` as a
 //! mismatch, assuming the executable is `conductor-daemon`. Validation shows it
 //! is not: the binary built from `conductor-daemon/src/main.rs` is named
 //! `conductor` (see `conductor-daemon/Cargo.toml` `[[bin]] name = "conductor"`),
-//! and `CLAUDE.md` lists `conductor` as the daemon CLI tool. `conductor-daemon`
+//! and the project's docs list `conductor` as the daemon CLI tool. `conductor-daemon`
 //! is the *package* name — an internal Cargo concept, not a shell-facing
 //! command. So the clap name already matches the real `conductor --help`
 //! contract; the proposed "fix" to `conductor-daemon` would have *introduced*

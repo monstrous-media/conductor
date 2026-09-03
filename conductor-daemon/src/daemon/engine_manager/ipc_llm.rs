@@ -23,7 +23,7 @@ impl EngineManager {
                         match self.tool_executor.apply_plan(&plan_id).await {
                             Ok(changes_applied) => {
                                 // Persist post-apply snapshot to disk + recompile rule
-                                // set (#265). LiveConfig already published the new
+                                // set. LiveConfig already published the new
                                 // revision; this just mirrors it to disk.
                                 let new_config = (*self.live_config.load().config).clone();
                                 if let Err(e) = self.sync_config_after_apply(new_config).await {
@@ -177,7 +177,7 @@ impl EngineManager {
             // the mpsc buffer unprocessed and the oneshot never resolves
             // until the executor's 30 s tokio::time::timeout fires —
             // long after the IPC client has given up at 5 s and closed
-            // the pipe (issue #945).
+            // the pipe.
             //
             // Bypass the executor and call run_probe_device_identity
             // directly. The wire format is reconstructed to match what
@@ -193,7 +193,7 @@ impl EngineManager {
             // user-supplied SysEx; there's no validation surface that
             // applies.
             Some(tool_name @ "conductor_probe_device_identity") => {
-                // KNOWN GAPS (all tracked in #949): bypassing
+                // KNOWN GAPS: bypassing
                 // tool_executor also bypasses the executor-owned
                 // RateLimiter, AuditLogger, and the
                 // SysExValidator/ConfirmationManager pre-step.
@@ -212,13 +212,12 @@ impl EngineManager {
                 //   (auto-confirms today). Skipping is safe
                 //   because the bytes aren't user-supplied.
                 //   Drift risk if validation rules add new
-                //   compliance checks later — that's what #949
-                //   covers.
+                //   compliance checks later.
                 // - **Audit logging**: real observability gap.
                 //   The probe attempt leaves no trail today.
                 //
                 // Proper fix: extract executor pre/post hooks
-                // both direct handlers can wrap (#949).
+                // both direct handlers can wrap.
                 use crate::daemon::hardware_io::ConfirmationStatus;
                 use crate::daemon::llm::executor::ExecutionResult;
                 use conductor_core::device_intelligence::probe::ProbeOutcomeWire;
@@ -279,7 +278,7 @@ impl EngineManager {
                     .as_ref()
                     .and_then(|a| a.get("config_path"))
                     .and_then(|v| v.as_str());
-                // #2564 D5 (additive): optional GUI profile id.
+                // Optional GUI profile id.
                 let profile_id = arguments
                     .as_ref()
                     .and_then(|a| a.get("profile_id"))

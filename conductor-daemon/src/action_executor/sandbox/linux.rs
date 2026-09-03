@@ -71,7 +71,7 @@ pub(super) fn apply(
         };
     };
 
-    // (Council R1, finding 3) A network-deny the kernel can't enforce must NOT
+    // A network-deny the kernel can't enforce must NOT
     // silently fail open. Landlock network rights need ABI ≥ 4 (kernel 6.7+);
     // on older kernels, if the policy denies network and the operator forbade
     // unsandboxed execution, fail closed.
@@ -89,7 +89,7 @@ pub(super) fn apply(
         );
     }
 
-    // (Council R1, finding 1) Handle the highest filesystem-access set the
+    // Handle the highest filesystem-access set the
     // crate knows for the kernel's ABI — `BestEffort` downgrades to what the
     // kernel actually supports — so newer rights (e.g. V3 file truncation) are
     // restricted, not just the V1 baseline. We handle only write-class access,

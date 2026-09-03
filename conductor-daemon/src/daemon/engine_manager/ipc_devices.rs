@@ -5,7 +5,7 @@ use super::*;
 
 impl EngineManager {
     pub(crate) fn handle_list_devices(&mut self, id: String) -> IpcResponse {
-        // Enumerate both MIDI and HID devices (v3.0)
+        // Enumerate both MIDI and HID devices
         let mut response_data = json!({});
         let mut has_data = false;
 
@@ -20,7 +20,7 @@ impl EngineManager {
             }
         }
 
-        // Get HID/gamepad devices (v3.0)
+        // Get HID/gamepad devices
         match HidDeviceManager::list_gamepads() {
             Ok(gamepads) => {
                 let gamepad_list: Vec<serde_json::Value> = gamepads

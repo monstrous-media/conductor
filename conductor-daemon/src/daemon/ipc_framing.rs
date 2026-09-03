@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Bounded line-framing for the IPC server (#1313).
+//! Bounded line-framing for the IPC server.
 //!
 //! Replaces `BufReader::read_line` with a helper that aborts as soon
 //! as `max_bytes` is exceeded — BEFORE waiting for a newline or EOF.
@@ -15,7 +15,7 @@
 //! `MAX_REQUEST_SIZE + N` bytes with NO newline, keep the connection
 //! open, and grow the daemon's per-connection buffer past 1 MB —
 //! up to the 300 s IPC_IDLE_TIMEOUT or until the OS runs out of
-//! memory. Clawpatch finding #1313, severity HIGH.
+//! memory.
 //!
 //! ## What
 //!
@@ -102,7 +102,7 @@ where
 
         let already_read = buf.len() - start_len;
         let remaining_cap = max_bytes.saturating_sub(already_read);
-        // Council R1: use saturating_add for all `cap + 1` arithmetic
+        // Use saturating_add for all `cap + 1` arithmetic
         // so a pathological `max_bytes = usize::MAX` can't panic.
         // The +1 is the "trigger byte" — the first byte that would
         // push us over the inclusive cap.
@@ -125,7 +125,7 @@ where
                 if total_read > max_bytes {
                     // Boundary: the newline pushed us over by exactly
                     // one byte. Treat as Overflow per the inclusive
-                    // cap contract. Council R3: truncate buf back to
+                    // cap contract. Truncate buf back to
                     // start_len so the caller doesn't see leaked
                     // bytes if they reuse the buffer.
                     buf.truncate(start_len);
@@ -140,7 +140,7 @@ where
                 // leaves remaining_cap intact, we just need more
                 // bytes — loop.
                 //
-                // Council R2: the previous `safe_take == chunk.len()
+                // The previous `safe_take == chunk.len()
                 // && safe_take < remaining_cap + 1` second clause was
                 // redundant. `safe_take = remaining_cap.min(chunk.len())`
                 // means `safe_take == chunk.len()` ⇒ `chunk.len() ≤
@@ -156,8 +156,8 @@ where
                     continue;
                 }
                 // Chunk extends past cap. Record up to the (cap+1)-th
-                // byte to trigger Overflow, then truncate per
-                // Council R3.
+                // byte to trigger Overflow, then truncate per the
+                // inclusive-cap contract above.
                 let trigger_take = cap_plus_one.min(chunk.len());
                 buf.extend_from_slice(&chunk[..trigger_take]);
                 reader.consume(trigger_take);

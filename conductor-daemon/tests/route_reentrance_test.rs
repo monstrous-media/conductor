@@ -10,7 +10,7 @@
 //!   - `DispatchGuard` rejects cycles and over-deep fan-out chains.
 //!
 //! Spec: `docs/routing-unification/ADR-036-037-implementation-spec.md`
-//! § 5 Slice 6, § 4.5. Closes #1664.
+//! § 5 Slice 6, § 4.5.
 
 use conductor_core::Config;
 use conductor_core::config::types::RouteConfig;
@@ -113,7 +113,7 @@ fn dispatch_guard_rejects_over_depth() {
 fn dispatch_guard_reports_cycle_over_depth_when_both_apply() {
     // When the chain is already at max_depth AND the next alias is a
     // repeat, the cycle is the more informative diagnosis — `enter` must
-    // report CycleDetected, not DepthExceeded (Copilot review on #1685).
+    // report CycleDetected, not DepthExceeded (Copilot review).
     let mut guard = DispatchGuard::new(2);
     guard.enter("a").unwrap();
     guard.enter("b").unwrap();

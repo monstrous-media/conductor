@@ -1,14 +1,14 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-027 D7 (issue #1178) — capture truncated stdout/stderr from
+//! ADR-027 D7 — capture truncated stdout/stderr from
 //! shell actions.
 //!
 //! Spec text: "Truncated stdout/stderr (4 KB cap) is logged to audit."
 //!
-//! PR #1174 (D7 timeout half) wires the SIGTERM→grace→SIGKILL
+//! The D7 timeout half wires the SIGTERM→grace→SIGKILL
 //! watchdog but spawns the child with default stdio (inherit from
-//! parent). This issue adds bounded capture: the watcher thread
+//! parent). This adds bounded capture: the watcher thread
 //! reads up to `CAPTURE_CAP_BYTES = 4096` from each stream into a
 //! `CapturedOutput` payload, draining past the cap so the child
 //! doesn't block on a full pipe, then surfaces the captured bytes

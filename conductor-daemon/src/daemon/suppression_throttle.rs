@@ -1,9 +1,9 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #2397: coalesce per-kind `midi_*_suppressed` MonitorEvents.
+//! Coalesce per-kind `midi_*_suppressed` MonitorEvents.
 //!
-//! From the stuck-notes investigation (epic #2395, symptom (i)): the recursion
+//! From the stuck-notes investigation (symptom (i)): the recursion
 //! guard emits one `midi_echo_suppressed` / `midi_cascade_suppressed`
 //! MonitorEvent for **every** suppressed input event. A tight feedback loop or
 //! chord storm therefore floods the monitor broadcast stream 1:1, saturating

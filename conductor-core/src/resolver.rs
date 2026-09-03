@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Port resolver for binding MIDI ports to device identities (ADR-009 Phase 1;
-//! ADR-035 Slice 9.5 — consumes the unified endpoint set natively).
+//! ADR-035 — consumes the unified endpoint set natively).
 //!
 //! Pure logic: `(Vec<PortInfo>, Vec<EndpointConfig>) → Vec<BindingResult>`.
 //! Only endpoints that participate in INPUT — `direction ∈ {Input,
@@ -218,7 +218,7 @@ pub fn resolve_candidates<C: ResolvableCandidate>(
         let mut best_match: Option<(&EndpointConfig, u32)> = None;
 
         for identity in endpoints {
-            // Skip disabled endpoints (v4.25.0 - ADR-009 Gap 4).
+            // Skip disabled endpoints (ADR-009 Gap 4).
             if !identity.enabled {
                 continue;
             }

@@ -2,25 +2,25 @@
 // SPDX-License-Identifier: MIT
 
 //! Startup-time config-path resolution honouring the GUI's profile
-//! state (issue #957).
+//! state.
 //!
 //! When the daemon launches without `--config <path>`, it restores the
 //! active profile from its OWN durable identity record,
-//! `<state_dir>/active_profile.json` (#2564) — the GUI's
+//! `<state_dir>/active_profile.json` — the GUI's
 //! `<config_dir>/profiles/profiles.json` `active_profile_id` is consulted
 //! only as a ONE-TIME migration source when that record is absent
-//! (first run / pre-#2564 upgrade), falling back to
+//! (first run / pre-upgrade), falling back to
 //! `<config_dir>/config.toml` otherwise.
 //!
 //! Precedence — see [`resolve_startup_identity_and_path`] for the current
-//! (#2564 D2) five-step order used by `main.rs`:
+//! five-step order used by `main.rs`:
 //! 1. `--config <explicit>` — the user's intent always wins (ephemeral: no
 //!    identity restore, never persisted)
 //! 2. `<state_dir>/active_profile.json` — the DAEMON's own durable identity
-//!    record (#2564), the authoritative source
+//!    record, the authoritative source
 //! 3. a corrupt daemon record → default config (never the manifest)
 //! 4. `profiles.json` `active_profile_id` — ONE-TIME migration when the
-//!    daemon record is absent (first run / pre-#2564 upgrade)
+//!    daemon record is absent (first run / pre-upgrade)
 //! 5. `<config_dir>/config.toml` — historical default
 //!
 //! The legacy [`resolve_startup_config_path`] (steps 1/4/5 only) is retained
@@ -78,7 +78,7 @@ pub fn resolve_startup_config_path(args_config: Option<PathBuf>, config_dir: &Pa
     default
 }
 
-/// #2564 (D2): resolve BOTH the startup user-config path and the active-profile
+/// Resolve BOTH the startup user-config path and the active-profile
 /// IDENTITY, with the daemon's own durable `active_profile.json` as the primary
 /// source. Precedence (highest first):
 ///
@@ -91,7 +91,7 @@ pub fn resolve_startup_config_path(args_config: Option<PathBuf>, config_dir: &Pa
 ///    with a warn and falls through to the DEFAULT config — not the manifest.
 /// 3. `Corrupt` file — falls through to the DEFAULT config, deliberately NOT
 ///    the GUI-manifest migration: a corrupt daemon file must not hand identity
-///    authority back to the GUI (Council, #2564 design note).
+///    authority back to the GUI.
 /// 4. `Absent` (strictly first-run / pre-upgrade) — one-time MIGRATION from
 ///    the GUI's `profiles.json` `active_profile_id`: the resolved entry is
 ///    written into `active_profile.json` so subsequent boots take path (2).
@@ -164,9 +164,9 @@ struct ManifestEntry {
 }
 
 /// Shared validation for a profile config path — from the GUI manifest or the
-/// daemon's own `active_profile.json` (#2564). The daemon must never refuse to
+/// daemon's own `active_profile.json`. The daemon must never refuse to
 /// start over a broken pointer: absolute + `.toml` (case-insensitive) + regular
-/// file, exactly the #958/#964 rules.
+/// file.
 fn validate_profile_config_path(candidate: &Path) -> bool {
     if !candidate.is_absolute() {
         warn!(
@@ -250,16 +250,16 @@ fn active_profile_manifest_entry(config_dir: &Path) -> Option<ManifestEntry> {
         .unwrap_or(active_id)
         .to_string();
 
-    // #958 review bug 2 — validate the candidate before honouring it.
+    // Validate the candidate before honouring it.
     // Module docs promise the daemon never refuses to start because
     // the profile state file is broken; without these checks, a
     // manifest that points at a missing / wrong-extension / relative
     // path would propagate to `main` and trigger a hard exit on
     // `!config_path.exists()`. Fall back to the default in any of
     // those cases so the daemon still launches. (Validation rules —
-    // absolute, `.toml` case-insensitive per Copilot #964, `is_file()`
-    // per Copilot #964 — live in `validate_profile_config_path`, shared
-    // with the #2564 daemon-identity restore.)
+    // absolute, `.toml` case-insensitive, `is_file()`
+    // — live in `validate_profile_config_path`, shared
+    // with the daemon-identity restore.)
     if !validate_profile_config_path(&candidate) {
         return None;
     }
@@ -306,7 +306,7 @@ mod tests {
         let active_path = tmp.path().join("profiles").join("studio.toml");
         let default_path = tmp.path().join("default.toml");
         // Materialise both files so the new path-existence check
-        // (#958 review) is satisfied. Switched to `manifest()` helper
+        // is satisfied. Switched to `manifest()` helper
         // so the JSON is correctly escaped on Windows.
         fs::create_dir_all(active_path.parent().unwrap()).unwrap();
         fs::write(&active_path, "").unwrap();
@@ -390,7 +390,7 @@ mod tests {
     fn handles_legacy_bare_array_manifest_by_falling_back() {
         // Legacy manifests had no active_profile_id (bare array of profiles).
         // Returning the default rather than guessing at an active id is the
-        // safe thing — users on legacy manifests get pre-#957 behaviour.
+        // safe thing — users on legacy manifests get the pre-fix behaviour.
         let tmp = TempDir::new().unwrap();
         write_manifest(tmp.path(), r#"[{"id":"p1","config_path":"/p1.toml"}]"#);
         assert_eq!(
@@ -400,7 +400,7 @@ mod tests {
     }
 
     // -------------------------------------------------------------------
-    // #958 post-merge review (Copilot): three real defects in the
+    // Three real defects in the
     // initial implementation. Module docs promise "must never refuse to
     // start because the profile state file is broken", but pre-fix any
     // of these scenarios produced a hard exit on `!config_path.exists()`
@@ -416,8 +416,7 @@ mod tests {
 
     fn manifest(active_id: &str, entries: Vec<(&str, &Path)>) -> String {
         // Use serde_json::json! so paths get JSON-escaped properly.
-        // The previous `format!`+`display()` pattern broke on Windows
-        // (#958 review bug 3).
+        // The previous `format!`+`display()` pattern broke on Windows.
         let profiles: Vec<serde_json::Value> = entries
             .into_iter()
             .map(|(id, path)| {
@@ -436,7 +435,7 @@ mod tests {
 
     #[test]
     fn falls_back_when_profile_path_does_not_exist() {
-        // #958 review bug 2: profile points at a missing file. Module
+        // Profile points at a missing file. Module
         // docs say startup must not fail because of broken profile
         // state, so we must fall back to the default.
         let tmp = TempDir::new().unwrap();
@@ -451,7 +450,7 @@ mod tests {
 
     #[test]
     fn falls_back_when_profile_path_has_wrong_extension() {
-        // #958 review bug 2: a manifest entry pointing at /etc/passwd
+        // A manifest entry pointing at /etc/passwd
         // or some other non-.toml file should not be honoured even
         // if it exists — defence against typos and against profile
         // entries that got corrupted to point at unrelated files.
@@ -468,7 +467,7 @@ mod tests {
 
     #[test]
     fn falls_back_when_profile_path_is_relative() {
-        // #958 review bug 2: relative paths can resolve to anywhere
+        // Relative paths can resolve to anywhere
         // depending on the daemon's CWD at launch (often `/` for
         // launchd / systemd). The manifest format requires absolute
         // paths; reject relatives and fall back.
@@ -488,7 +487,7 @@ mod tests {
 
     #[test]
     fn falls_back_when_profile_path_extension_uses_uppercase_toml() {
-        // Copilot #964 review: case-insensitive filesystems (HFS+ on
+        // Case-insensitive filesystems (HFS+ on
         // macOS, NTFS default on Windows) routinely round-trip the
         // same file with mixed casing. Rejecting `.TOML` because the
         // matcher was case-sensitive would surprise users who renamed
@@ -504,7 +503,7 @@ mod tests {
 
     #[test]
     fn falls_back_when_profile_path_is_a_directory() {
-        // Copilot #964 review: `Path::exists()` returns true for
+        // `Path::exists()` returns true for
         // directories too. A user (or corrupted manifest) with a
         // directory named `something.toml` would pass validation,
         // then `main` would fail trying to read it as a config —
@@ -534,7 +533,7 @@ mod tests {
     }
 
     // -------------------------------------------------------------------
-    // #2564 D2 — resolve_startup_identity_and_path precedence matrix.
+    // resolve_startup_identity_and_path precedence matrix.
     // Primary source is the daemon's own active_profile.json; the GUI
     // manifest is strictly a one-time migration for the Absent case.
     // -------------------------------------------------------------------
@@ -552,7 +551,7 @@ mod tests {
     #[test]
     fn identity_file_wins_over_manifest() {
         // Both sources present and DIVERGENT: the daemon's own record wins —
-        // a hand-edited manifest must not reintroduce the split-brain (#2561).
+        // a hand-edited manifest must not reintroduce the split-brain.
         let config_dir = TempDir::new().unwrap();
         let state_dir = TempDir::new().unwrap();
         let daemon_choice = state_dir.path().join("daemon-profile.toml");
@@ -580,7 +579,7 @@ mod tests {
 
     #[test]
     fn corrupt_identity_file_falls_back_to_default_not_manifest() {
-        // Council (#2564): a present-but-corrupt daemon file must NOT hand
+        // A present-but-corrupt daemon file must NOT hand
         // authority back to the GUI manifest — default config, no identity.
         let config_dir = TempDir::new().unwrap();
         let state_dir = TempDir::new().unwrap();
@@ -651,7 +650,7 @@ mod tests {
 
     #[test]
     fn explicit_config_is_ephemeral_no_identity_no_persist() {
-        // Council (#2564): `--config` wins for the path but carries no
+        // `--config` wins for the path but carries no
         // identity and never writes active_profile.json.
         let config_dir = TempDir::new().unwrap();
         let state_dir = TempDir::new().unwrap();
@@ -704,7 +703,7 @@ mod tests {
 
     #[test]
     fn manifest_with_paths_containing_backslashes_parses_cross_platform() {
-        // #958 review bug 3: when this test file used `format!` +
+        // When this test file used `format!` +
         // `Path::display()` to embed paths into JSON, Windows runners
         // saw backslash-separated paths that broke `from_str`. The
         // production code parses `serde_json::Value`, so we must

@@ -4,7 +4,7 @@
 //! Config versioning IPC handlers (`handle_reload`, `handle_validate_config`,
 //! `handle_mark_known_good`, `handle_rollback_config`,
 //! `handle_rollback_config_force`, `handle_config_drift_status`), extracted
-//! from `engine_manager::ipc_config` (refactor #2073).
+//! from `engine_manager::ipc_config`.
 
 use super::*;
 
@@ -52,7 +52,7 @@ impl EngineManager {
             .map(PathBuf::from)
             .unwrap_or_else(|| self.config_path.clone());
 
-        // v4.14.0: Properly handle non-UTF8 paths (LLM Council feedback v4.13.3)
+        // Properly handle non-UTF8 paths
         let path_str = match pathbuf_to_str_or_err(&path, "ValidateConfig path") {
             Ok(s) => s,
             Err(e) => {
@@ -99,7 +99,7 @@ impl EngineManager {
     }
 
     pub(crate) async fn handle_mark_known_good(&mut self, id: String) -> IpcResponse {
-        // ADR-034 §D1.2.1 / D4.B.4 (#1291) — promote the current
+        // ADR-034 §D1.2.1 / D4.B.4 — promote the current
         // LiveConfig snapshot's `revision` to `known_good_revision`.
         // The underlying ConfigOp::MarkKnownGood routes through the
         // mutate seam: CAS-checked, per-op persist matrix writes
@@ -142,7 +142,7 @@ impl EngineManager {
     }
 
     pub(crate) async fn handle_rollback_config(&mut self, id: String) -> IpcResponse {
-        // ADR-034 §D1.2.1 / D4.B.4 (#1291) — CAS-checked rollback
+        // ADR-034 §D1.2.1 / D4.B.4 — CAS-checked rollback
         // routed through `live_config.mutate(ConfigOp::Rollback)`.
         // Replaces the legacy `fs::copy + reload_config` flow.
         //
@@ -218,14 +218,14 @@ impl EngineManager {
         id: String,
         caller_ctx: &Option<crate::security::CallerContext>,
     ) -> IpcResponse {
-        // ADR-034 §D1.2.1 + §D6 / D4.B.4 (#1291) — break-glass
+        // ADR-034 §D1.2.1 + §D6 / D4.B.4 — break-glass
         // non-CAS rollback. CLI-only per spec; Gui/Untrusted
         // peers get rejected before reaching the mutate seam.
         //
         // `reason` is a required non-empty string in `args`;
         // re-validated here (in addition to the IPC-framer
         // check per KI-B3 and `compute_candidate`'s defence
-        // in depth per Council R4).
+        // in depth).
         if let Some(ctx) = caller_ctx
             && !matches!(ctx.trust_level, crate::security::TrustLevel::CliTrusted)
         {

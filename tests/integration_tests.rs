@@ -21,7 +21,7 @@ use std::time::{Duration, Instant};
 
 // Helper to skip wall-clock-sensitive tests on CI. Loaded/virtualized runners
 // (not just macOS) stall the scheduler enough to blow strict timing bounds with
-// no product regression, so skip on ANY CI, not macOS alone (#1538/#1539).
+// no product regression, so skip on ANY CI, not macOS alone.
 fn should_skip_timing_test() -> bool {
     std::env::var("CI").is_ok()
 }
@@ -154,8 +154,7 @@ fn test_long_press_simulation() {
     // Assert only the lower bound: the gesture must actually hold for at least
     // hold_ms (proves long-press behavior). The previous `< hold_ms + 200ms`
     // upper bound was brittle — scheduler stalls on loaded CI can exceed the
-    // tolerance with no product regression, flaking `cargo test --workspace`
-    // (#1538).
+    // tolerance with no product regression, flaking `cargo test --workspace`.
     let duration = start.elapsed();
     assert!(duration >= Duration::from_millis(hold_ms));
 

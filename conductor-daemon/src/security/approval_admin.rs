@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase B-early Slice B.4 — `conductorctl listener`/`security`
+//! ADR-042 Phase B-early — `conductorctl listener`/`security`
 //! administration logic.
 //!
 //! The CLI surface (`conductorctl listener approve/deny/list/status`,

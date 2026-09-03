@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Comment-preserving config migrations (ADR-036 Slice 8).
+//! Comment-preserving config migrations (ADR-036).
 //!
 //! These migrations operate on a [`toml_edit::DocumentMut`] so that
 //! untouched parts of the user's config (comments, whitespace, key

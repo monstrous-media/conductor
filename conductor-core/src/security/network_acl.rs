@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase A — network ACL primitive (Slice A.1).
+//! ADR-042 Phase A — network ACL primitive.
 //!
 //! A [`NetworkAcl`] is a compiled set of CIDR entries that gates which source
 //! IPs a network listener will accept. It is a pure, std/`ipnet`-only value
@@ -16,7 +16,7 @@
 //!   the **aggregate** host count across all entries is checked against a `/24`
 //!   (IPv4) / `/64` (IPv6) budget. Aggregate — not per-entry — so an operator
 //!   (or an attacker editing config) cannot shard a broad range into smaller
-//!   blocks to slip under a per-entry check (Council #1912).
+//!   blocks to slip under a per-entry check.
 //! - IPv6 link-local (`fe80::/10`) entries emit a deprecation warning.
 //!
 //! [`NetworkAcl::contains`] normalizes IPv4-mapped IPv6 (`::ffff:a.b.c.d`) to

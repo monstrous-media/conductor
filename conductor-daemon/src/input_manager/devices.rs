@@ -8,7 +8,7 @@ use conductor_core::identity::DeviceId;
 use tracing::info;
 
 impl InputManager {
-    /// Enable or disable a device (mute/unmute) (v4.20.0 - ADR-009 Phase 2, D8)
+    /// Enable or disable a device (mute/unmute) (ADR-009 Phase 2, D8)
     pub fn set_device_enabled(&mut self, device_id: &DeviceId, enabled: bool) {
         if enabled {
             self.muted_devices.remove(device_id);
@@ -19,15 +19,15 @@ impl InputManager {
         }
     }
 
-    /// Check if a device is enabled (not muted) (v4.20.0 - ADR-009 Phase 2, D8)
+    /// Check if a device is enabled (not muted) (ADR-009 Phase 2, D8)
     pub fn is_device_enabled(&self, device_id: &DeviceId) -> bool {
         !self.muted_devices.contains(device_id)
     }
 
-    /// Get device bindings for status reporting (v4.20.0 - ADR-009 Phase 2)
+    /// Get device bindings for status reporting (ADR-009 Phase 2)
     ///
     /// Returns (device_id, port_name, connected) for each managed device.
-    /// Get device bindings with connection and configuration status (v4.26.0 - D19)
+    /// Get device bindings with connection and configuration status (D19)
     ///
     /// Returns `(device_id, port_name, connected, is_configured)` tuples.
     /// `is_configured` is `true` when the DeviceId was resolved from a `[[devices]]` identity.

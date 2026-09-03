@@ -3,14 +3,14 @@
 
 //! ADR-027 **D9** — plugin signing-key rotation with a verifiable trust chain.
 //!
-//! v2.7 pins one Ed25519 key per plugin; rotating it forces every user to
+//! Plugin signing pins one Ed25519 key per plugin; rotating it forces every user to
 //! re-trust out of band. D9 publishes an ordered *rotation chain* where each new
 //! key is cryptographically endorsed by its predecessor, so trusting the root
 //! **transitively** trusts every validly-rotated successor — no prompt (users
 //! can't verify continuity by eye; the chain proves it). This is the **pure
 //! validation core** (no I/O); the loader supplies parsed bytes + the trust set.
 //!
-//! ## Cryptographic scheme (LLM-Council reviewed, high tier)
+//! ## Cryptographic scheme
 //!
 //! Each non-root entry's `rotation_signature` is an Ed25519 signature **by the
 //! predecessor** over a **domain-separated fixed-width binary** payload (never
@@ -26,7 +26,7 @@
 //! lifting; `seq` blocks reordering/dropping interior entries. Chains are capped
 //! at [`MAX_CHAIN_LENGTH`] to bound signature-verification work (DoS).
 //!
-//! Anti-rollback (Council Phase 5) is **enforced** here: [`validate_chain_pinned`]
+//! Anti-rollback is **enforced** here: [`validate_chain_pinned`]
 //! rejects a chain whose head `seq` is below the caller's persisted high-water
 //! mark. The **revocation list (CRL)** is enforced by [`validate_chain_full`]:
 //! any chain containing a revoked fingerprint (root through head) is refused.
@@ -118,7 +118,7 @@ pub struct PluginKeyManifest {
 
 impl PluginKeyManifest {
     /// A non-rotating, root-only manifest — the migration shape for a legacy
-    /// v2.7 single-key plugin.
+    /// single-key plugin.
     pub fn single_key(public_key: PublicKeyBytes, valid_from_unix: i64) -> Self {
         Self {
             keys: vec![SigningKeyEntry {
@@ -226,7 +226,7 @@ impl std::fmt::Display for RotationError {
 
 impl std::error::Error for RotationError {}
 
-/// Validate a rotation chain (Council Phases 1–4) and resolve active windows.
+/// Validate a rotation chain and resolve active windows.
 ///
 /// `trusted` is the set of fingerprints the user directly trusts. On success the
 /// returned [`VerifiedChain`] carries every key with its active window; use
@@ -243,7 +243,7 @@ pub fn validate_chain(
     validate_chain_pinned(manifest, trusted, None)
 }
 
-/// [`validate_chain`] plus **anti-rollback** enforcement (Council Phase 5).
+/// [`validate_chain`] plus **anti-rollback** enforcement.
 ///
 /// `pinned_max_seq` is the highest chain head `seq` this host has previously
 /// accepted for this chain — the caller's persisted high-water mark. A manifest
@@ -267,8 +267,8 @@ pub fn validate_chain_pinned(
 /// fingerprint on it is invalid **for all purposes** — signing *or* parenting —
 /// so a chain containing any revoked key (root through head) is rejected with
 /// [`RotationError::Revoked`]. Rotation chains handle ordinary updates; the CRL
-/// is the separate, fast path for burning a compromised key (ADR-027 §D9,
-/// Council R1). The list is supplied by the caller (this core does no I/O).
+/// is the separate, fast path for burning a compromised key (ADR-027 §D9).
+/// The list is supplied by the caller (this core does no I/O).
 pub fn validate_chain_full(
     manifest: &PluginKeyManifest,
     trusted: &HashSet<Fingerprint>,
@@ -508,7 +508,7 @@ impl VerifiedChain {
 // ── Transport: JSON manifest → engine types ─────────────────────────────────
 //
 // The on-disk/over-the-wire manifest carries hex strings and ISO-8601
-// timestamps. Per the Council scheme, transport encoding is decoded to raw
+// timestamps. Per the scheme, transport encoding is decoded to raw
 // bytes / Unix seconds *before* any cryptographic check — the signed payload is
 // pure binary, so the JSON layer can never introduce signature malleability.
 

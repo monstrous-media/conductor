@@ -420,7 +420,7 @@ fn lower_recurses_into_repeat_inner() {
 }
 
 // Field extractors that PANIC on the wrong variant (no silent fallthrough),
-// returning the inner pieces so the #1553 tests assert exact FIELD VALUES of
+// returning the inner pieces so these tests assert exact FIELD VALUES of
 // the lowered nodes — not just the enum discriminant. A regression that lowers
 // a branch/default to a Conditional with the WRONG condition fields or inner
 // action is then caught, not just a regression that leaves raw sugar.
@@ -467,7 +467,7 @@ fn expect_shell(action: &Action) -> &str {
 
 #[test]
 fn lower_recurses_into_pc_context_switch_branch() {
-    // #1553: every other switch test uses Shell leaves for branch actions, so
+    // Every other switch test uses Shell leaves for branch actions, so
     // recursion INTO a context-switch branch was unpinned. A branch action that
     // is itself sugar (here a CcContextSwitch) must be recursively lowered to
     // the CORRECT CcValueInRange Conditional — not left as sugar, and not a
@@ -515,7 +515,7 @@ fn lower_recurses_into_pc_context_switch_branch() {
 
 #[test]
 fn lower_recurses_into_cc_context_switch_range() {
-    // #1553: a CC RANGE action that is itself sugar (here a PcContextSwitch)
+    // A CC RANGE action that is itself sugar (here a PcContextSwitch)
     // must be recursively lowered to the correct ActivePcIs Conditional.
     let mut inner_pc_map: IndexMap<u8, Box<ActionConfig>> = IndexMap::new();
     inner_pc_map.insert(3, boxed_shell("echo pc3"));
@@ -558,7 +558,7 @@ fn lower_recurses_into_cc_context_switch_range() {
 
 #[test]
 fn lower_recurses_into_context_switch_default() {
-    // #1553: a switch DEFAULT that is itself sugar must be lowered (the default
+    // A switch DEFAULT that is itself sugar must be lowered (the default
     // becomes the innermost else of the chain). Here a CcContextSwitch whose
     // default is a PcContextSwitch.
     let mut inner_pc_map: IndexMap<u8, Box<ActionConfig>> = IndexMap::new();

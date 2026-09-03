@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-025 Phase 2 — end-to-end acceptance tests (#868).
+//! ADR-025 Phase 2 — end-to-end acceptance tests.
 //!
 //! Covers the testable subset of the spec §2.7 acceptance checklist.
 //! Hardware-dependent items (real FCB1010, GUI authoring flow, LLM

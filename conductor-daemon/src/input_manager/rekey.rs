@@ -1,10 +1,10 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Two-phase rekey apply for [`super::InputManager`] (#955, council bug_003 / bug_005).
+//! Two-phase rekey apply for [`super::InputManager`].
 //!
 //! Split out from [`super::rescan`] so each submodule stays under the
-//! LLM Council per-file ceiling (#1684). Holds `compute_rekeys` (pure
+//! per-file size ceiling. Holds `compute_rekeys` (pure
 //! helper), the `StagedRekey` work item, and the `drain_rekeys_for_apply`
 //! impl method that phase 2 of `rescan_ports` consumes.
 
@@ -37,8 +37,7 @@ impl InputManager {
     ///    `HashMap::insert` would silently overwrite a live entry on
     ///    `alias_a ↔ alias_b` swap; `MidiDeviceManager::Drop` then
     ///    closes the orphaned midir port. By draining all old keys
-    ///    *before* any reapply, no collision is possible. (Council
-    ///    bug_005, PR #960 review.)
+    ///    *before* any reapply, no collision is possible.
     /// 2. **Hot-swap not possible**: the converter task spawned in
     ///    `open_port_with_device_id` captures DeviceId by clone at
     ///    task-start time and can't be hot-swapped — so close+reopen
@@ -47,7 +46,6 @@ impl InputManager {
     ///    keyed by DeviceId. Without explicit migration the mute
     ///    orphans under the old key and `is_device_enabled(&new_key)`
     ///    silently returns true, subverting the user's choice.
-    ///    (Council bug_003.)
     pub(crate) fn drain_rekeys_for_apply(
         &mut self,
         rekeys: Vec<(DeviceId, DeviceId)>,
@@ -59,7 +57,7 @@ impl InputManager {
             let Some(port_name) = current_port_names.get(&old_key).cloned() else {
                 continue;
             };
-            // #1478: look up the port_index by the *new* DeviceId, not by
+            // Look up the port_index by the *new* DeviceId, not by
             // port_name — duplicate names would otherwise return the wrong
             // sibling's index.
             let Some(port_index) = desired_ports
@@ -93,14 +91,14 @@ impl InputManager {
 /// `from_port_instance(name, n)` for unbound ports — including the
 /// `#2`/`#3` suffix used to keep duplicate port names from colliding
 /// — so the rekeys this returns will never propose collapsing
-/// `"X #2"` onto `"X"`. (Copilot #960 review.)
+/// `"X #2"` onto `"X"`.
 ///
 /// Used by `rescan_ports` and by `reload_config` to handle the case
 /// where a port stays open but its desired DeviceId changes — e.g.
 /// adding a `[[bindings]]` for an existing raw port flips it from
 /// `DeviceId::raw("X")` to `DeviceId::from_alias("alias")`. Without
 /// this re-key step, `midi_managers` keeps the stale key and
-/// `get_device_bindings` returns the wrong DeviceId (#955).
+/// `get_device_bindings` returns the wrong DeviceId.
 ///
 /// Returns only entries where the DeviceId actually changed. Ports
 /// missing from `desired_ports` (e.g. unplugged between rescans) are
@@ -108,7 +106,7 @@ impl InputManager {
 /// Match current managers to desired ports and emit `(old_id, new_id)`
 /// pairs for ports whose DeviceId must change.
 ///
-/// #1478: matching is two-pass so duplicate port names don't collapse:
+/// Matching is two-pass so duplicate port names don't collapse:
 ///
 ///   1. **Exact DeviceId match → stable.** A current port whose id is
 ///      already in the desired set keeps it (no rekey). This is what
@@ -173,7 +171,7 @@ mod tests {
     use std::collections::{HashMap, HashSet};
 
     // -------------------------------------------------------------------
-    // compute_rekeys — pure helper backing the #955 fix.
+    // compute_rekeys — pure helper backing the rekey fix.
     //
     // The bug: when `[[bindings]]` is added/removed/edited at runtime,
     // `rescan_ports` re-runs PortResolver but only opens new and closes
@@ -188,7 +186,7 @@ mod tests {
         }
     }
 
-    // ADR-035 Slice 9.5: PortResolver consumes the unified endpoint set; build
+    // ADR-035: PortResolver consumes the unified endpoint set; build
     // an input `EndpointConfig` (Matcher/Input) — the shape a legacy binding
     // lowers to.
     fn binding_for(
@@ -333,11 +331,11 @@ mod tests {
 
     #[test]
     fn rekeys_use_disambiguated_device_id_for_duplicate_port_names() {
-        // #1478 (was a #960-review workaround): two ports named "X" under
+        // Two ports named "X" under
         // listen_mode=All resolve to instance-disambiguated DeviceIds
         // (`X` instance 0, `X #2` instance 1). With the duplicate-
         // preserving Vec representation, `desired_for_test` mints both
-        // entries (pre-#1478 the name-keyed map kept only the second).
+        // entries (previously the name-keyed map kept only the second).
         // A stable pair already open under those ids must emit ZERO
         // rekeys — exact-DeviceId matches are recognised as unchanged,
         // so neither port collapses onto the other's id.
@@ -361,8 +359,7 @@ mod tests {
     // -------------------------------------------------------------------
     // drain_rekeys_for_apply — phase 1 of the two-phase rekey apply.
     //
-    // Council found two correctness bugs in the original single-pass
-    // rekey loop (PR #960 review):
+    // The original single-pass rekey loop had two correctness bugs:
     //
     //   bug_003 — `muted_devices: HashSet<DeviceId>` not migrated when
     //             DeviceId changes. User mutes a port → adds binding →

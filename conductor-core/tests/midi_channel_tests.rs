@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! MIDI Channel Pipeline Tests (Issues #434, #437 — Phases 1 & 4)
+//! MIDI Channel Pipeline Tests (Phases 1 & 4)
 //!
 //! Verifies that MIDI channel information is preserved and propagated through
 //! the entire event pipeline: MidiEvent → InputEvent → ProcessedEvent → Trigger matching.
@@ -664,7 +664,7 @@ fn config_channel_serialization_includes_some() {
     );
 }
 
-/// #1514: config TOML channels are 0-indexed (valid 0-15), so config
+/// Config TOML channels are 0-indexed (valid 0-15), so config
 /// validation must reject `channel > 15`. This pins the 0-indexed contract
 /// from the side of the range bound — together with the round-trip tests above
 /// (which pin pass-through with no off-by-one) it makes the contract explicit,
@@ -863,7 +863,7 @@ fn gamepad_input_events_have_no_channel() {
 }
 
 // ────────────────────────────────────────────────────────────────
-// 8. End-to-end: raw MIDI bytes → trigger matching (#437 Phase 4)
+// 8. End-to-end: raw MIDI bytes → trigger matching (Phase 4)
 //    Tests use MappingEngine for convenience; Section 9 below
 //    verifies the daemon's actual hot path via CompiledRuleSet.
 // ────────────────────────────────────────────────────────────────
@@ -1130,7 +1130,7 @@ fn e2e_raw_bytes_channel_none_matches_all() {
 }
 
 // ────────────────────────────────────────────────────────────────
-// 9. CompiledRuleSet — daemon hot path channel matching (#437)
+// 9. CompiledRuleSet — daemon hot path channel matching
 //    The daemon uses CompiledRuleSet (via ArcSwap) for lock-free
 //    event matching, not MappingEngine. This section verifies
 //    channel filtering works through that code path.
@@ -1210,7 +1210,7 @@ fn compiled_rule_set_channel_match_and_reject() {
 }
 
 // ============================================================
-// 10. Channel-filter coverage for EVERY channel-bearing trigger (#1513)
+// 10. Channel-filter coverage for EVERY channel-bearing trigger
 //
 // Previously only Note (+ CC) had channel-filter match/reject tests, and
 // the CompiledRuleSet hot path covered Note only — a regression in any
@@ -1470,12 +1470,12 @@ fn channel_filter_accept_reject_for_all_channel_bearing_triggers() {
 }
 
 // ────────────────────────────────────────────────────────────────
-// #2125 — held-note (long-press) tracking is channel-isolated
+// Held-note (long-press) tracking is channel-isolated
 // ────────────────────────────────────────────────────────────────
 
-/// #2125: the held-note map is keyed by `(channel, note)`, so the SAME note
+/// The held-note map is keyed by `(channel, note)`, so the SAME note
 /// number held on two different MIDI channels is tracked independently. This
-/// pins that invariant — pre-#434 (channel preservation) the held-note tracking
+/// pins that invariant — before channel preservation landed, the held-note tracking
 /// keyed by note alone, so the second NoteOn overwrote the first and one hold
 /// was lost (a cross-channel collision). With note-only keying this asserts
 /// 1 hold instead of 2 and fails.

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1312: `conductor-sign verify` returns exit 0 for untrusted
+//! `conductor-sign verify` returns exit 0 for untrusted
 //! signatures.
 //!
 //! Pre-fix: the verify command catches the "untrusted key" error
@@ -42,7 +42,7 @@ fn conductor_sign_path() -> PathBuf {
         .join("conductor-sign")
 }
 
-/// THE regression test for #1312. End-to-end: generate a key, sign
+/// THE regression test. End-to-end: generate a key, sign
 /// a plugin with it, then verify the plugin without ever trusting
 /// the key. The CLI MUST exit with non-zero status.
 #[test]
@@ -112,10 +112,10 @@ fn verify_with_untrusted_key_exits_non_zero() {
         .output()
         .expect("run verify");
 
-    // THE FIX (#1312): exit status MUST be exactly 1. Council R1
-    // tightened this from `!status.success()` to `code() == Some(1)`
+    // THE FIX: exit status MUST be exactly 1. This tightened the check
+    // from `!status.success()` to `code() == Some(1)`
     // so a panic (which gives 101) or a different early-exit (e.g.
-    // 2 for missing .sig) wouldn't masquerade as the #1312 fix.
+    // 2 for missing .sig) wouldn't masquerade as the fix.
     let stdout = String::from_utf8_lossy(&out.stdout);
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(
@@ -128,7 +128,7 @@ fn verify_with_untrusted_key_exits_non_zero() {
 
     // Defensive: confirm the failure was the "untrusted key" branch
     // (not e.g. a missing .sig file), so a regression that broke
-    // signing wouldn't masquerade as a #1312 fix.
+    // signing wouldn't masquerade as the fix.
     assert!(
         stdout.contains("not trusted") || stdout.contains("untrusted"),
         "expected 'untrusted/not trusted' messaging on stdout (the warning text \
@@ -136,7 +136,7 @@ fn verify_with_untrusted_key_exits_non_zero() {
     );
 }
 
-/// Council R3 companion: the happy-path positive test. After
+/// Companion test: the happy-path positive test. After
 /// trusting the signing key, `verify` must exit 0. Catches a
 /// fail-open regression where the fix in `verify_plugin` started
 /// over-rejecting (e.g. exiting non-zero even for trusted keys).

@@ -104,7 +104,7 @@ async fn persist_atomically_sets_0600_permissions() {
     // ADR-034 §"Persistence file layout" requires `live.toml` and
     // `live.toml.known_good` at mode 0600. NamedTempFile defaults to
     // 0600 on Unix, but `persist.rs` sets it explicitly to harden
-    // against future default changes (Council #1293 round 2 fix).
+    // against future default changes.
     use std::os::unix::fs::PermissionsExt;
     let dir = TempDir::new().unwrap();
     let target = dir.path().join("live.toml");
@@ -258,7 +258,7 @@ async fn mark_known_good_persists_to_known_good_only() {
     // serialization of the current snapshot (mirrors the ReplaceWhole
     // byte round-trip above). An empty / stale / wrong known_good would
     // otherwise satisfy the existence check while breaking rollback
-    // durability (#1497).
+    // durability.
     let persisted_known_good = std::fs::read(&paths.known_good).unwrap();
     let expected = conductor_core::config::canonical::serialise(&live.load().config)
         .expect("canonical serialise");
@@ -311,7 +311,7 @@ async fn mark_known_good_does_not_overwrite_existing_live_toml() {
     // config is exactly the one just published, those bytes are also
     // identical to the (untouched) live.toml — so a wrong/stale
     // known_good can't hide behind the existence + live-untouched
-    // checks (#1497).
+    // checks.
     let persisted_known_good = std::fs::read(&paths.known_good).unwrap();
     let expected = conductor_core::config::canonical::serialise(&live.load().config)
         .expect("canonical serialise");
@@ -437,10 +437,10 @@ async fn mutate_persist_failure_appends_failed_marker() {
 
 #[tokio::test]
 async fn mutate_refused_when_audit_outbox_fails_to_open() {
-    // ADR-034 §D8 sub-slice C (#2296): if audit recording was requested but the
+    // ADR-034 §D8 sub-slice C: if audit recording was requested but the
     // outbox can't be opened (corrupt chain), the daemon must run audit-unavailable
     // and refuse config mutations fail-closed — NOT silently commit un-recorded
-    // changes (the pre-#2296 bug, where an open-failure left `audit_outbox = None`
+    // changes (the prior bug, where an open-failure left `audit_outbox = None`
     // and the mutation proceeded). Mirrors the at-cap refusal.
     let dir = TempDir::new().unwrap();
     let paths = LivePaths::from_state_dir(dir.path().to_path_buf());
@@ -483,12 +483,12 @@ async fn mutate_refused_when_audit_outbox_fails_to_open() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// ADR-034 §D8 / #2380 — `conductorctl audit resume` recovery
+// ADR-034 §D8 — `conductorctl audit resume` recovery
 // ────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn resume_audit_recovers_corrupt_outbox_and_clears_gate() {
-    // #2380: a corrupt outbox bricks config writes (audit-unavailable). The
+    // A corrupt outbox bricks config writes (audit-unavailable). The
     // operator-gated `resume_audit` must rotate the corrupt file aside, open a
     // fresh chain with a ChainReset attestation, clear the gate, and let
     // mutations proceed again.
@@ -552,7 +552,7 @@ async fn resume_audit_recovers_corrupt_outbox_and_clears_gate() {
 
 #[tokio::test]
 async fn resume_audit_on_healthy_outbox_is_noop() {
-    // #2380: resume on an already-healthy (or never-corrupt) outbox is a no-op.
+    // Resume on an already-healthy (or never-corrupt) outbox is a no-op.
     let dir = TempDir::new().unwrap();
     let paths = LivePaths::from_state_dir(dir.path().to_path_buf());
     let lc = LiveConfig::new_with_paths(Config::default_config(), paths, Arc::new(StubCompiler))

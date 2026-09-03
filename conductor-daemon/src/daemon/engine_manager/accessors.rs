@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager` methods extracted from `engine_manager::mod` (refactor #2073).
+//! `EngineManager` methods extracted from `engine_manager::mod`.
 
 use super::*;
 
@@ -23,7 +23,7 @@ impl EngineManager {
     /// Get current engine info for state persistence
     pub async fn get_engine_info(&self) -> EngineInfo {
         let device_status = self.device_status.read().await.clone();
-        // Lock-free mode read (v4.21.0 - ADR-009 Phase 3)
+        // Lock-free mode read (ADR-009 Phase 3)
         let mode = self.current_mode.load();
 
         EngineInfo {
@@ -73,21 +73,21 @@ impl EngineManager {
     pub fn get_config_path(&self) -> &PathBuf {
         &self.config_path
     }
-    /// Get the event broadcast sender for push-based event monitoring (#394)
+    /// Get the event broadcast sender for push-based event monitoring
     ///
     /// The IPC server uses this to subscribe clients that send `SubscribeEvents`.
     /// Call `tx.subscribe()` to get a new receiver for each subscriber.
     pub fn event_broadcast_tx(&self) -> broadcast::Sender<MonitorEvent> {
         self.event_broadcast_tx.clone()
     }
-    /// Audit logger handle (ADR-027 D13a, #1167). The IPC server
+    /// Audit logger handle (ADR-027 D13a). The IPC server
     /// uses this to serve `SubscribeAudit` streams off the audit
     /// broadcast channel. `None` when audit init failed at startup.
     #[cfg(feature = "audit-db")]
     pub fn audit_logger(&self) -> Option<Arc<crate::daemon::audit::AuditLogger>> {
         self.audit_logger.clone()
     }
-    /// ADR-045 D5 (#2493): the write-side audit seam (SQLite in `audit-db`
+    /// ADR-045 D5: the write-side audit seam (SQLite in `audit-db`
     /// builds, JSONL otherwise). The IPC server serves `SubscribeAudit`
     /// off this sink's broadcast channel in every composition.
     pub fn audit_sink(&self) -> Option<Arc<dyn crate::daemon::audit::AuditSink>> {
@@ -111,7 +111,7 @@ impl EngineManager {
         sink.log_pending_at_crash_batch(self.live_config.pending_at_crash())
     }
 
-    /// Set the ConfigWatcher retarget channel (Phase 2 - Issue #353)
+    /// Set the ConfigWatcher retarget channel
     pub fn set_watcher_retarget_tx(&mut self, tx: mpsc::Sender<PathBuf>) {
         self.watcher_retarget_tx = Some(tx);
     }
@@ -120,19 +120,19 @@ impl EngineManager {
     /// user file (`config.toml`), distinct from the `live.toml` authority
     /// (`config_path`). Called from `service.rs` when the two paths differ so
     /// the Overwrite action writes the user file rather than the authority
-    /// (#2553). Defaults to `config_path` if never called.
+    /// Defaults to `config_path` if never called.
     pub fn set_user_file_path(&mut self, path: PathBuf) {
         self.user_file_path = path;
     }
 
-    /// #2564: point identity persistence at the daemon state dir (where
+    /// Point identity persistence at the daemon state dir (where
     /// `active_profile.json` lives). Wired from `service.rs`; `None` (unwired,
     /// e.g. unit tests) means switches update the in-memory identity only.
     pub fn set_active_profile_persist_dir(&mut self, dir: PathBuf) {
         self.active_profile_persist_dir = Some(dir);
     }
 
-    /// #2564: seed the in-memory active-profile identity restored at BOOT from
+    /// Seed the in-memory active-profile identity restored at BOOT from
     /// `active_profile.json` (or the one-time manifest migration). ArcSwap
     /// store ONLY — deliberately no re-persist: the identity just came FROM
     /// disk, and an explicit `--config` boot (which passes no identity) must
@@ -141,7 +141,7 @@ impl EngineManager {
         self.active_profile.store(Arc::new(Some(info)));
     }
 
-    /// #2564 (Council D4): the single choke point BOTH profile-switch sites
+    /// The single choke point BOTH profile-switch sites
     /// (`execute_profile_switch`, the run_loop `ProfileSwitch` handler) commit
     /// through, so in-memory identity and the durable `active_profile.json`
     /// can never take different code paths. Called ONLY after the switch
@@ -174,10 +174,10 @@ impl EngineManager {
     /// same path. Single source of truth so `user_file_path` — what
     /// [`armed_profile_write`](EngineManager::handle_overwrite_config_file)
     /// writes and where §D9 self-write suppression applies — never diverges from
-    /// the file the watcher watches (#2553, Copilot). Both profile-switch sites
+    /// the file the watcher watches. Both profile-switch sites
     /// (`execute_profile_switch`, `run_loop`) route their retarget through here.
     ///
-    /// Ordering matters (Council #2553): `user_file_path` is moved ONLY once the
+    /// Ordering matters: `user_file_path` is moved ONLY once the
     /// watcher retarget is successfully queued. If the retarget send fails (the
     /// watcher task's receiver is gone), the watcher is still watching the
     /// PREVIOUS file, so we leave `user_file_path` there too — keeping Overwrite
@@ -194,7 +194,7 @@ impl EngineManager {
         }
         self.user_file_path = path;
     }
-    /// Initialize and start the app detector for automatic profile switching (Phase 2 - Issue #353)
+    /// Initialize and start the app detector for automatic profile switching
     ///
     /// Loads profile-to-app mappings from the profiles manifest and begins
     /// monitoring the frontmost macOS application.
@@ -212,7 +212,7 @@ impl EngineManager {
 
         let mut detector = DaemonAppDetector::new(self.command_tx.clone(), 500);
 
-        // ADR-040 §4.3 (Slice 6): enable focused-window-title polling ONLY when
+        // ADR-040 §4.3: enable focused-window-title polling ONLY when
         // `[per_app_modes].window_rules` are present — lazy, so a config without
         // window rules never invokes the macOS Accessibility APIs / requires
         // Accessibility permission (no system dialog is shown; an ungranted
@@ -281,8 +281,8 @@ impl EngineManager {
 
         // Get input mode from input manager
         // Return None when input_manager is not initialized
-        // (LLM Council feedback v4.13.3: don't falsely report "MidiOnly")
-        // v4.21.0: Extract raw data under lock, do JSON conversion after release
+        // Don't falsely report "MidiOnly" here.
+        // Extract raw data under lock, do JSON conversion after release
         let (input_mode, hid_devices) = {
             let raw_data = {
                 let guard = self.input_manager.lock().await;

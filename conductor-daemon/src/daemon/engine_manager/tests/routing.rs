@@ -3,7 +3,7 @@
 
 use super::*;
 
-// ── #836: Suppress action dispatch during MIDI Learn ───────────────
+// ── Suppress action dispatch during MIDI Learn ───────────────
 //
 // Pre-fix: pressing a mapped pad while Learn was active both
 // captured the event AND dispatched the mapped action (keystroke,
@@ -12,7 +12,7 @@ use super::*;
 // a strict bug: surprises the user with side effects mid-learning.
 //
 // Fix sites — two dispatch paths in engine_manager.rs both check
-// `midi_learn_active` before dispatching (post-#885 the legacy
+// `midi_learn_active` before dispatching (the legacy
 // `process_input_event` path was consolidated into `process_device_event`):
 //   1. process_device_event (the unified hot path)
 //   2. process_timer_tick (hold dispatch — `check_holds()`
@@ -27,7 +27,7 @@ use super::*;
 // event spawned via check_holds — flagged as a coverage gap rather
 // than overstating what's actually tested.
 
-// #885: these two tests originally exercised `process_input_event` (the
+// These two tests originally exercised `process_input_event` (the
 // legacy single-device hot path). After consolidation, the same suppression
 // guard lives on `process_device_event` and is fed via a synthesised
 // `DeviceEvent` — analogous to what the legacy converter task now emits
@@ -101,7 +101,7 @@ async fn test_process_device_event_dispatches_normally_when_learn_inactive_legac
     );
 }
 
-/// #1499: the mute gate in `process_device_event` (D8) must actually
+/// The mute gate in `process_device_event` (D8) must actually
 /// DROP events from a muted device, not merely flip the `InputManager`
 /// flag. The pre-existing `test_device_mute_drops_events` only asserted
 /// `is_device_enabled` toggled — a regression that ignored the flag in
@@ -181,17 +181,17 @@ async fn test_process_device_event_drops_muted_device() {
     );
 }
 
-// ── #1301 slice 1: stage-9 route dispatch wiring ──────────────────
+// ── Stage-9 route dispatch wiring ──────────────────
 //
 // `RouteEngine::route_destinations()` is now invoked from
 // `process_device_event` after the 8-stage rule matcher misses.
-// Before this slice the engine compiled fine and was hot-swapped
+// Previously the engine compiled fine and was hot-swapped
 // on config reload but was never called in production — declared
 // `[[routes]]` did nothing at runtime. Tests below pin the wiring.
 
-/// AC #1 of #1301 slice 1: an event on a source connector with no
+/// An event on a source connector with no
 /// matching trigger but a configured route MUST emit a
-/// `route_forwarded` monitor event. The pre-slice behavior was
+/// `route_forwarded` monitor event. The previous behavior was
 /// silent drop (route_destinations never called in production).
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
@@ -226,8 +226,8 @@ async fn test_stage9_route_dispatches_when_no_trigger_matches() {
         "stage 9 must fire route_forwarded when no trigger matches but a route is configured",
     );
 
-    // Payload shape check — slice 3 enriches with more fields; the
-    // contract slice 1 establishes is {from, to, bytes_in}.
+    // Payload shape check — later work enriches with more fields; the
+    // base contract is {from, to, bytes_in}.
     let payload = route_event
         .payload
         .as_ref()
@@ -288,7 +288,7 @@ async fn test_stage9_silent_when_no_route_matches() {
 //
 // These live in-file (not an external integration test) so
 // `RouteDisposition` stays `pub(crate)` / pump-internal per its doc
-// comment (Copilot review on PR #1875). The behavioural pump tests
+// comment. The behavioural pump tests
 // (`test_stage9_*`) exercise the gate end-to-end; these pin the decision
 // logic directly.
 
@@ -331,7 +331,7 @@ fn route_disposition_is_dispatch_independent() {
     assert!(!RouteDisposition::from_envelope(Some(&consumed)).allows_route());
 }
 
-/// ADR-038 Slice 4: the dispatch trace's (matched_mapping, let_through) is
+/// ADR-038: the dispatch trace's (matched_mapping, let_through) is
 /// derived from the disposition, never a bool — so NoMatch and LetThrough
 /// route entries stay distinguishable (and Consumed carries its id too,
 /// even though it never reaches the route trace).

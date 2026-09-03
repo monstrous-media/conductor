@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Plugin signing and verification (v2.7)
+//! Plugin signing and verification
 //!
 //! This module provides Ed25519-based cryptographic signing and verification
 //! for WASM plugins to ensure authenticity and integrity.
@@ -378,7 +378,7 @@ pub fn load_trusted_keys() -> Result<Vec<String>, EngineError> {
 /// Sibling of [`load_trusted_keys`] (which uses the default location). The
 /// runtime calls this when a `WasmConfig.trusted_keys_path` override is set,
 /// so a caller-supplied trust store is actually consulted rather than
-/// silently ignored (#1447 / #1596). Returns an empty list when the file
+/// silently ignored. Returns an empty list when the file
 /// does not exist, matching `load_trusted_keys`.
 pub fn load_trusted_keys_from(keys_path: &Path) -> Result<Vec<String>, EngineError> {
     if !keys_path.exists() {
@@ -405,7 +405,7 @@ pub fn load_trusted_keys_from(keys_path: &Path) -> Result<Vec<String>, EngineErr
         .collect())
 }
 
-/// #1315: load the full `TrustedKey` records (with name / email /
+/// Load the full `TrustedKey` records (with name / email /
 /// added_at metadata), not just the public-key strings.
 ///
 /// Sibling of [`load_trusted_keys`] which intentionally returns
@@ -440,7 +440,7 @@ pub fn load_trusted_keys_full() -> Result<Vec<TrustedKey>, EngineError> {
     Ok(keys_file.keys)
 }
 
-/// #1315: save the full `TrustedKey` records as-is, preserving
+/// Save the full `TrustedKey` records as-is, preserving
 /// existing metadata. Sibling of [`save_trusted_keys`] which
 /// reconstructs records from `Vec<String>` (lossy for mutation
 /// paths; safe only for callers that explicitly accept the empty
@@ -611,8 +611,8 @@ mod tests {
 
     #[test]
     fn load_trusted_keys_from_parses_explicit_path() {
-        // The runtime calls this when WasmConfig.trusted_keys_path is set
-        // (#1447 / #1596); a caller-supplied trust store must actually be
+        // The runtime calls this when WasmConfig.trusted_keys_path is set;
+        // a caller-supplied trust store must actually be
         // consulted rather than silently ignored.
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("trusted_keys.toml");

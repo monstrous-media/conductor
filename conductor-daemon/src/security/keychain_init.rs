@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase B-early Slice B.7 — keychain init-race protection + escalating
+//! ADR-042 Phase B-early — keychain init-race protection + escalating
 //! HMAC-key rotation cadence.
 //!
 //! Two responsibilities:

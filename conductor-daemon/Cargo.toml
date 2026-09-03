@@ -73,7 +73,7 @@ name = "reload_benchmark"
 path = "benches/reload_benchmark.rs"
 harness = false
 
-# ADR-036 / ADR-037 Slice 9 (#1667): unified routing passthrough latency
+# ADR-036 / ADR-037: unified routing passthrough latency
 # gate. Lives in conductor-daemon (not conductor-core per spec §7) because
 # it measures the rule engine (core) AND the post-mapping RouteEngine
 # (daemon) together — the "rule engine + route engine" passthrough per
@@ -137,7 +137,7 @@ lru = "0.18"
 # tauri's 0.23.1 → muda 0.19.2) links two copies of muda's
 # `MudaMenuItem` ObjC class and breaks the macOS universal LTO build
 # ("__CLASS_MudaMenuItem: symbol multiply defined" → "failed to load
-# bitcode of module muda…rcgu.o"). See #1686.
+# bitcode of module muda…rcgu.o").
 tray-icon = "0.23"
 dirs = "6.0"
 
@@ -154,8 +154,8 @@ tempfile = "3.27"  # Atomic file writes (mcp_registry save: temp + rename)
 getrandom = "0.4"  # OS-RNG nonce generation (gui_handshake — ADR-027 D19)
 base64 = "0.22"  # URL-safe nonce transport over stdin/IPC (ADR-027 D19)
 subtle = "2.6"  # Constant-time comparison for authentication nonces (ADR-027 D19)
-hmac = "0.12"  # ADR-042 Phase B-early: HMAC-SHA256 over the network-approval envelope (#1899)
-serde_jcs = "=0.2.0"  # ADR-042 Phase B-early: RFC 8785 canonical JSON for the envelope `data` (spec §4.7.1 P0d — exact pin, no semver range. Spec named "=0.1.1" but that version never existed on crates.io; pinned =0.2.0; #1899)
+hmac = "0.12"  # ADR-042 Phase B-early: HMAC-SHA256 over the network-approval envelope
+serde_jcs = "=0.2.0"  # ADR-042 Phase B-early: RFC 8785 canonical JSON for the envelope `data` (spec §4.7.1 P0d — exact pin, no semver range. Spec named "=0.1.1" but that version never existed on crates.io; pinned =0.2.0)
 
 # Database (P4-04: Audit logging) — optional since ADR-045 D1: only the
 # `audit-db` feature pulls SQLite into the binary; the OSS default profile
@@ -227,7 +227,7 @@ plugin-signing = ["conductor-core/plugin-signing", "dep:ed25519-dalek", "dep:ran
 # `test-helpers` exposes intentionally-bypass-the-CAS-protocol seams
 # (`LiveConfig::install_test_snapshot`, `LiveConfig::with_compiler`)
 # that integration tests in `tests/` need to drive overflow paths and
-# count compiler invocations directly. The default-off gate (#1608)
+# count compiler invocations directly. The default-off gate
 # stops a downstream lib consumer from accidentally reaching for these
 # helpers — their docstrings warn that misuse silently corrupts the
 # LiveConfig state. CI and pre-push gates use `cargo test

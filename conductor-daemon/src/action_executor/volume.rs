@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! System volume control for the `VolumeControl` action (#1684 split from
+//! System volume control for the `VolumeControl` action (split from
 //! `action_executor.rs`). Platform-specific: AppleScript on macOS,
 //! PulseAudio on Linux, unimplemented on Windows.
 

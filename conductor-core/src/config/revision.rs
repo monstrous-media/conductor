@@ -80,9 +80,9 @@ impl<'de> Deserialize<'de> for ConfigRevision {
         //       UTF-8 boundary and panic),
         //   (3) rejects `u8::from_str_radix`-accepted edge cases like
         //       `+` prefixes that would otherwise sneak through.
-        // Caught by Council R1: a 64-byte string with multi-byte UTF-8
-        // chars (e.g. `aé` + 61×`a`) is 64 bytes but <64 chars; the
-        // prior implementation panicked → DoS.
+        // A 64-byte string with multi-byte UTF-8 chars (e.g. `aé` +
+        // 61×`a`) is 64 bytes but <64 chars; the prior implementation
+        // panicked → DoS.
         if s.len() != 64 || !s.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')) {
             return Err(serde::de::Error::custom(
                 "ConfigRevision must be exactly 64 lowercase hex chars",

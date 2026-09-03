@@ -1,11 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase A — rate-limit edge at the listener (Slice A.4).
+//! ADR-042 Phase A — rate-limit edge at the listener.
 //!
 //! [`RateLimitEdge`] is the second stage of the listener edge: it runs after
-//! the ACL filter (Slice A.3) and before the audit edge (A.5). It enforces two
-//! buckets per the reasoning-tier Council decision (spec §4.3, R6):
+//! the ACL filter and before the audit edge. It enforces two
+//! buckets (spec §4.3, R6):
 //!
 //! 1. **Per-sender** bucket, checked *first*. `governor`'s `check()` consumes a
 //!    token on success, so checking the shared `total` bucket first would let
@@ -31,8 +31,8 @@ use std::sync::Mutex;
 
 use governor::{DefaultDirectRateLimiter, Quota, RateLimiter};
 
-/// Hard cap on distinct per-sender rate-limit buckets per listener (spec §4.3,
-/// Council reasoning-tier P0). Bounds the spoofed-source OOM surface.
+/// Hard cap on distinct per-sender rate-limit buckets per listener (spec §4.3).
+/// Bounds the spoofed-source OOM surface.
 const MAX_PER_SENDER_BUCKETS: usize = 8_192;
 
 /// Two-bucket rate limiter for a single network listener.
@@ -88,7 +88,7 @@ impl RateLimitEdge {
     pub fn check(&self, sender: IpAddr) -> Result<(), RateLimitError> {
         // Normalize IPv4-mapped IPv6 first so a dual-stack peer can't get two
         // per-sender buckets (one per address form) and evade the limit
-        // (Copilot review on #1953). The error still reports the original.
+        // The error still reports the original.
         let key = crate::listeners::normalize_mapped_ip(sender);
         {
             let mut buckets = self.per_sender.lock().unwrap();
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn ipv4_mapped_shares_per_sender_bucket_with_ipv4() {
-        // Copilot #1953: a dual-stack peer must not get two buckets by alternating
+        // A dual-stack peer must not get two buckets by alternating
         // 127.0.0.1 and ::ffff:127.0.0.1. per_sender = 1 → the second form is
         // rejected because it hits the same (normalized) bucket.
         let edge = RateLimitEdge::for_osc(10_000, 1);

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-040 Slice 5 (#1768) — app/window → mode auto-switch + lock reconciliation.
+//! ADR-040 — app/window → mode auto-switch + lock reconciliation.
 //!
 //! Exercises the two `EngineManager` halves of the mode auto-switch path:
 //! [`resolve_context_mode`] (compile `[per_app_modes]` → resolve → lock-aware
@@ -120,7 +120,7 @@ async fn no_per_app_modes_is_a_noop() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
 async fn auto_switch_to_already_active_mode_is_a_noop() {
-    // Copilot review #2317: resolving to the CURRENT mode (e.g. an unmapped app
+    // Resolving to the CURRENT mode (e.g. an unmapped app
     // falling to the same default on every app change) must not persist — that
     // would write the config file + mutate LiveConfig on every focus change.
     // `apply_auto_switch` reports `false` (no switch) for the already-active mode.
@@ -177,8 +177,7 @@ async fn lock_dropped_when_mode_absent_in_new_profile() {
         .unwrap();
     // Reload a profile WITHOUT "Edit" — the lock now points at a vanished mode.
     // It carries its OWN `[per_app_modes]` (default "Solo") so the re-resolve
-    // below actually exercises the auto-switch path rather than no-opping
-    // (Copilot review #2317).
+    // below actually exercises the auto-switch path rather than no-opping.
     std::fs::write(
         &p,
         "[[modes]]\nname = \"Mix\"\n\n[[modes]]\nname = \"Solo\"\n\n\

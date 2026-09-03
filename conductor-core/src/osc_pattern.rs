@@ -1,11 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! OSC 1.0 address pattern matching (ADR-039-A Slice 2, #2325).
+//! OSC 1.0 address pattern matching (ADR-039-A).
 //!
 //! Implements the OSC 1.0 "OSC Message Dispatching and Pattern Matching"
 //! semantics for `Trigger::OscAddressPattern` — deliberately **not regex**
-//! (Council-mandated: no ReDoS surface on attacker-supplied addresses):
+//! (deliberately avoiding any ReDoS surface on attacker-supplied addresses):
 //!
 //! - `?` matches any single character except `/`
 //! - `*` matches any sequence of zero or more characters except `/`
@@ -143,8 +143,7 @@ impl OscPattern {
         // Track `[...]` class state exactly as the validation pass above does,
         // so a `{` *inside* a character class is a literal — not an
         // alternation opener. Without this, `/f/[{]/x` passes validation (the
-        // `{` is in a class) but `rest.find('}')` finds no close and panics
-        // (Copilot review, PR #2377).
+        // `{` is in a class) but `rest.find('}')` finds no close and panics.
         let mut alternatives = vec![String::new()];
         let mut in_class = false;
         let mut chars = pattern.char_indices().peekable();
@@ -166,8 +165,8 @@ impl OscPattern {
                     // Find the matching close — class-aware, so a `}` *inside*
                     // a `[...]` within the brace body (e.g. `/{a,[}]}/x`) is a
                     // literal, not the closer. A naive `find('}')` would stop at
-                    // the in-class `}` and misparse the alternation (Council
-                    // review, PR #2377). Validated above to exist.
+                    // the in-class `}` and misparse the alternation.
+                    // Validated above to exist.
                     let rest = &pattern[idx + 1..];
                     let close = find_brace_close(rest).expect("validated");
                     let body = &rest[..close];
@@ -416,7 +415,7 @@ mod tests {
 
     #[test]
     fn brace_close_and_comma_are_class_aware() {
-        // Council review (PR #2377): the alternation close-finder and the
+        // The alternation close-finder and the
         // comma-splitter must skip `}` / `,` that sit inside a `[...]` class.
         // `/{a,[}]}/x`: options are "a" and "[}]" (a class matching literal }).
         let p = OscPattern::compile("/{a,[}]}/x").expect("compiles");
@@ -440,7 +439,7 @@ mod tests {
 
     #[test]
     fn brace_inside_char_class_is_literal_not_alternation() {
-        // Copilot review (PR #2377): `{` inside `[...]` must be a literal —
+        // `{` inside `[...]` must be a literal —
         // compile must not panic, and the class must match a literal `{`.
         let p = OscPattern::compile("/f/[{]/x").expect("compiles, no panic");
         assert!(p.matches("/f/{/x"), "class [{{]] matches a literal '{{'");

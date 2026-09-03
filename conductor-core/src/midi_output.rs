@@ -74,7 +74,7 @@ pub struct VirtualMidiPort {
     created_at: Instant,
 }
 
-/// Outcome of [`MidiOutputManager::sync_virtual_ports`] (#2063).
+/// Outcome of [`MidiOutputManager::sync_virtual_ports`].
 ///
 /// All three lists are empty on a no-op (and on Windows). `failed` carries the
 /// port name plus a human-readable error for logging/audit — sync never returns
@@ -208,7 +208,7 @@ impl MidiOutputManager {
         Ok(())
     }
 
-    /// Reconcile the set of created virtual ports to exactly `desired` (#2063).
+    /// Reconcile the set of created virtual ports to exactly `desired`.
     ///
     /// Creates any desired port not yet present and tears down any created port
     /// no longer desired (so a config reload that adds/removes/disables a
@@ -265,7 +265,7 @@ impl MidiOutputManager {
     /// ports there). The result is probed once and cached for the process.
     ///
     /// Tests that create real virtual ports use this to skip gracefully on
-    /// headless runners instead of panicking (FU-9 / #1888), which lets the
+    /// headless runners instead of panicking, which lets the
     /// macOS test job run on the self-hosted pool. Set the
     /// `CONDUCTOR_DISABLE_VIRTUAL_MIDI` environment variable to force `false`
     /// (useful for exercising the skip path locally, or disabling virtual-MIDI
@@ -402,7 +402,7 @@ impl MidiOutputManager {
             .collect()
     }
 
-    /// Connect to a MIDI output port by name (v4.10.9)
+    /// Connect to a MIDI output port by name
     ///
     /// Finds the port with the given name and connects to it.
     /// If already connected, returns Ok immediately.
@@ -435,7 +435,7 @@ impl MidiOutputManager {
             return Ok(());
         }
 
-        // macOS slow path: port not found, try with Core MIDI cache warmup (#108, #110)
+        // macOS slow path: port not found, try with Core MIDI cache warmup
         // Apps started after the daemon won't appear in the cached port list.
         // Keep warmup alive during sleep so Core MIDI can deliver "device added"
         // notifications to this active client. Called from sync ActionExecutor.
@@ -459,7 +459,7 @@ impl MidiOutputManager {
     /// Find a port by name and connect using a single MidiOutput instance.
     ///
     /// This avoids port index instability by enumerating and connecting
-    /// within the same MidiOutput instance (#108).
+    /// within the same MidiOutput instance.
     fn find_and_connect_port(&mut self, port_name: &str) -> Result<(), EngineError> {
         let midi_out = MidiOutput::new("Conductor Port Connect")
             .map_err(|e| EngineError::MidiInit(format!("Failed to create MIDI output: {}", e)))?;
@@ -792,7 +792,7 @@ mod tests {
 
     #[test]
     fn test_sync_virtual_ports_empty_is_noop() {
-        // #2063: reconciling to an empty desired set on a fresh manager creates
+        // Reconciling to an empty desired set on a fresh manager creates
         // and removes nothing (CI-safe — no real port I/O on this path).
         let mut manager = MidiOutputManager::new();
         let report = manager.sync_virtual_ports(&[]);
@@ -806,7 +806,7 @@ mod tests {
     #[ignore] // Requires ALSA /dev/snd/seq (Linux) or CoreMIDI (macOS) — not available in CI
     #[cfg(not(target_os = "windows"))]
     fn test_sync_virtual_ports_creates_and_tears_down() {
-        // #2063: sync creates desired ports, then a second sync to a different
+        // Sync creates desired ports, then a second sync to a different
         // desired set removes the dropped one and adds the new one.
         let mut manager = MidiOutputManager::new();
 

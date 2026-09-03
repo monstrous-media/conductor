@@ -18,7 +18,7 @@
 //! literal prefix → declaration order.
 //!
 //! Spec: `docs/context-consolidation/ADR-040-implementation-spec.md`
-//! §4.3, §4.5, §5 Slice 3. Closes #1766.
+//! §4.3, §4.5, §5 Slice 3.
 
 use conductor_core::config::types::{PerAppModes, WindowRule};
 use conductor_daemon::daemon::mode_resolver::{
@@ -241,7 +241,7 @@ fn glob_question_and_charclass_match() {
 
 #[test]
 fn glob_charclass_range_and_negation() {
-    // Range `[0-9]` (Copilot review on #2275: cover ranges, not just plain sets).
+    // Range `[0-9]` (Copilot review: cover ranges, not just plain sets).
     let range = pam(None, &[], vec![wr("App", Some("v[0-9].log"), None, "Num")]);
     assert_eq!(
         resolve_mode(None, &snap(Some("App"), Some("v3.log")), &range).map(|(m, _)| m),
@@ -260,7 +260,7 @@ fn glob_charclass_range_and_negation() {
 
 #[test]
 fn inverted_range_is_normalised() {
-    // Council review on #2275: `[z-a]` must not silently match nothing — it is
+    // `[z-a]` must not silently match nothing — it is
     // normalised to `[a-z]`.
     let rules = pam(None, &[], vec![wr("App", Some("[z-a]"), None, "Hit")]);
     assert_eq!(

@@ -21,8 +21,8 @@
 //! `RouteEngine::compile()` admits each transform once its runtime ships and
 //! EXCLUDES the rest with `ExclusionReason::CrossProtocolTransformUnsupported`.
 //! All eight `SignalTransform` variants are now admitted: `Midi`, `MidiToOsc`,
-//! `OscToMidi` (ADR-039-A Slice 1, #1361), `OscToArtNet` (ADR-039-A Slice 1b,
-//! #2324), `MidiToArtNet`, `HidToArtNet`, `HidToMidi`, `HidToOsc`. The
+//! `OscToMidi` and `OscToArtNet` (ADR-039-A),
+//! `MidiToArtNet`, `HidToArtNet`, `HidToMidi`, `HidToOsc`. The
 //! structured HID/OSC transforms read the original event threaded via
 //! `RouteEvalContext` (ADR-039-B §6.2.1).
 

@@ -168,7 +168,7 @@ fn test_rate_limiter_cleanup() {
     assert_eq!(limiter.client_count(), 2);
 }
 
-/// #1472 — without an external `cleanup_all()` scheduler, expired
+/// Without an external `cleanup_all()` scheduler, expired
 /// one-shot clients used to accumulate in the `clients` map forever:
 /// thousands of unique client IDs that each make one request and never
 /// return are a memory-growth vector against the daemon rate limiter.
@@ -206,7 +206,7 @@ fn test_expired_idle_clients_evicted_on_activity() {
     );
 }
 
-/// #1474 — a sub-second remaining window must round UP. The pre-fix
+/// A sub-second remaining window must round UP. The pre-fix
 /// `(window - elapsed).as_secs()` truncated, so a client with ~0.4s left
 /// was told "retry after 0s" while still rate-limited.
 #[test]
@@ -240,7 +240,7 @@ fn test_retry_after_never_reports_zero_while_limited() {
     }
 }
 
-/// #1699 — `Instant::now() - window` panics when system uptime is shorter
+/// `Instant::now() - window` panics when system uptime is shorter
 /// than the window (e.g. a daemon serving requests in its first minute
 /// after boot). A window larger than the process lifetime must not panic;
 /// every recorded entry is simply within the window.

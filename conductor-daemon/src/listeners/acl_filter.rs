@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase A — ACL filter at the listener edge (Slice A.3).
+//! ADR-042 Phase A — ACL filter at the listener edge.
 //!
 //! An [`AclFilter`] is the per-packet source-IP gate for a network listener.
 //! It wraps a compiled [`NetworkAcl`] (CIDR allow-list) plus an optional

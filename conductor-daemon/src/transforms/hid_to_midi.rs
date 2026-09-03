@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! HID → MIDI structured transform (ADR-039-B, #1762 step 2).
+//! HID → MIDI structured transform (ADR-039-B, step 2).
 //!
 //! Maps a gamepad trigger (button/axis) to a MIDI **Control Change** on a
 //! configured channel: the trigger's canonical name (see

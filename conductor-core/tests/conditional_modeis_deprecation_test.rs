@@ -210,7 +210,7 @@ fn dispatch_nested_in_repeat_warns() {
 
 // ── Severity contract ──────────────────────────────────────────────────────
 
-// ── Copilot #2334: nested dispatch inside a chain link + deep-chain safety ──
+// ── Nested dispatch inside a chain link + deep-chain safety ──
 
 #[test]
 fn nested_dispatch_inside_a_chain_link_then_branch_is_caught() {
@@ -245,7 +245,7 @@ fn modeis_chain_within_depth_bound_warns_once_and_is_valid() {
     // A reasonably deep (well under the cap) pure-ModeIs chain is the deprecated
     // shape: it warns exactly once and the config still validates. This pins the
     // deprecation BOUNDARY (vs. the overflow test below, which only proves the
-    // bound stops recursion) — Council #2334.
+    // bound stops recursion).
     let cfg = config_with_action(modeis_chain(WITHIN_DEPTH_CAP));
     assert_eq!(modeis_warnings(&cfg), 1, "one warning for the whole chain");
     assert!(validate_config(&cfg).is_valid(), "within depth — no error");

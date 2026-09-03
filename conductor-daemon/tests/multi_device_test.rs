@@ -271,7 +271,7 @@ fn test_timer_tick_fires_hold_without_input() {
         "hold must not fire immediately after press, got {before:?}"
     );
 
-    // Positive case (#1500): drop the threshold to zero so the still-held note
+    // Positive case: drop the threshold to zero so the still-held note
     // is now past threshold, then assert check_holds() actually emits
     // HoldDetected — without this, an implementation that never emits a hold
     // would pass the negative-only test. (Deterministic: no sleeping.)
@@ -485,7 +485,7 @@ action = { type = "Keystroke", keys = "v", modifiers = ["cmd"] }
         channel: Some(0),
     };
 
-    // #1498: inspect the SELECTED action, not just that *something* matched.
+    // Inspect the SELECTED action, not just that *something* matched.
     // A regression that returns the pads mapping for the keys device (or vice
     // versa) while still matching a known device would pass an is_some() check.
     let action_pads = engine.get_action_for_processed_with_device(&event_36, 0, Some("pads"));
@@ -536,7 +536,7 @@ action = { type = "Keystroke", keys = "v", modifiers = ["cmd"] }
         velocity_level: conductor_core::event_processor::VelocityLevel::Hard,
         channel: Some(0),
     };
-    // #1498: the unfiltered mapping must select cmd+v regardless of device.
+    // The unfiltered mapping must select cmd+v regardless of device.
     let action_any = engine.get_action_for_processed_with_device(&event_37, 0, Some("pads"));
     match action_any {
         Some(Action::Keystroke { keys, modifiers }) => {

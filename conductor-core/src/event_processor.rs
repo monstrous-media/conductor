@@ -1,13 +1,13 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-use crate::events::InputEvent; // Protocol-agnostic event processing (v3.0)
+use crate::events::InputEvent; // Protocol-agnostic event processing
 use midi_msg::{ChannelVoiceMsg, ControlChange, MidiMsg};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tracing::{debug, trace};
 
-/// Default Short→Medium press classification boundary in ms (#2385). This is
+/// Default Short→Medium press classification boundary in ms. This is
 /// only the *default* — the runtime boundary is `EventProcessor::short_press_threshold`,
 /// set from `advanced_settings.short_press_ms` via `EventTimings`. The const is
 /// kept so `EventProcessor::new()` has a named source for its initial value.
@@ -107,7 +107,7 @@ impl MidiEvent {
                 },
                 consumed,
             )) => {
-                // #2131: `MidiMsg::from_midi` reports how many bytes it consumed.
+                // `MidiMsg::from_midi` reports how many bytes it consumed.
                 // A channel-voice message is a fixed length (2 bytes for
                 // ProgramChange/ChannelPressure, 3 for the rest), so any extra
                 // trailing byte the caller handed us is NOT part of this message.
@@ -230,7 +230,7 @@ pub enum ProcessedEvent {
         /// MIDI channel (None for gamepad events)
         channel: Option<u8>,
     },
-    /// Hold detected while note is still held (v4.26.0: enriched with velocity/duration - D22)
+    /// Hold detected while note is still held (enriched with velocity/duration - D22)
     HoldDetected {
         note: u8,
         /// Velocity of the original press that started this hold
@@ -261,14 +261,14 @@ pub enum ProcessedEvent {
         /// MIDI channel (None for gamepad events)
         channel: Option<u8>,
     },
-    /// Raw CC event received (v4.10.9 - for pedals/buttons that send fixed CC values)
+    /// Raw CC event received (for pedals/buttons that send fixed CC values)
     CCReceived {
         cc: u8,
         value: u8,
         /// MIDI channel (None for gamepad events)
         channel: Option<u8>,
     },
-    /// Double-tap detected (v4.26.0: enriched with velocity/timing - D22)
+    /// Double-tap detected (enriched with velocity/timing - D22)
     DoubleTap {
         note: u8,
         /// Velocity of the first tap
@@ -280,7 +280,7 @@ pub enum ProcessedEvent {
         /// MIDI channel (None for gamepad events)
         channel: Option<u8>,
     },
-    /// Chord detected (v4.26.0: enriched with per-note velocities - D22)
+    /// Chord detected (enriched with per-note velocities - D22)
     ChordDetected {
         notes: Vec<u8>,
         /// Per-note velocities (same order as notes)
@@ -293,7 +293,7 @@ pub enum ProcessedEvent {
         /// MIDI channel (None for gamepad events)
         channel: Option<u8>,
     },
-    /// Polyphonic aftertouch — per-note pressure (#575).
+    /// Polyphonic aftertouch — per-note pressure.
     ///
     /// Distinct from `AftertouchChanged` (channel-wide pressure):
     /// `PolyAftertouchChanged` carries a `note` field and is matched
@@ -320,12 +320,12 @@ pub enum ProcessedEvent {
         /// MIDI channel (None for gamepad/non-MIDI sources)
         channel: Option<u8>,
     },
-    /// Raw input event passthrough (v4.26.0 - D23)
+    /// Raw input event passthrough (D23)
     ///
     /// Emitted before gesture detection for forward-compatibility with
     /// future raw trigger types. Does not match existing triggers.
     Raw(InputEvent),
-    /// Inbound OSC message (ADR-039-A Slice 2, #2325).
+    /// Inbound OSC message (ADR-039-A).
     ///
     /// Produced directly from a decoded `OscInbound` — OSC has no press/hold
     /// gesture semantics, so it bypasses gesture detection. Matched only by
@@ -342,7 +342,7 @@ pub enum ProcessedEvent {
 }
 
 impl ProcessedEvent {
-    /// Extract the MIDI channel from any variant (#751).
+    /// Extract the MIDI channel from any variant.
     /// Returns None for Raw passthrough (and gamepad events which set channel=None).
     pub fn channel(&self) -> Option<u8> {
         match self {
@@ -366,7 +366,7 @@ impl ProcessedEvent {
 
     /// Returns true if this event originated from a MIDI source (not gamepad).
     /// Raw triggers only match MIDI events — gamepad events have their own
-    /// trigger types. (v4.27.0 - ADR-030 D3)
+    /// trigger types. (ADR-030 D3)
     pub fn is_midi(&self) -> bool {
         match self {
             // Gamepad events have note IDs >= 128
@@ -404,7 +404,7 @@ impl ProcessedEvent {
     /// Returns `None` for non-MIDI events and for `ProcessedEvent::Raw`
     /// (the passthrough variant has no derived classification — its inner
     /// `InputEvent` is the source if a future caller needs per-Raw
-    /// filtering). (v4.27.0 - ADR-030 D3)
+    /// filtering). (ADR-030 D3)
     pub fn midi_message_type(&self) -> Option<crate::config::MidiMessageType> {
         use crate::config::MidiMessageType;
         match self {
@@ -452,11 +452,11 @@ pub enum EncoderDirection {
 const GAMEPAD_CHANNEL_KEY: u8 = 0xFF;
 
 /// The configurable [`EventProcessor`] timing knobs, sourced from
-/// `advanced_settings` (#2490). A single named surface so the daemon applies
+/// `advanced_settings`. A single named surface so the daemon applies
 /// chord / double-tap / hold / short-press uniformly at processor creation
 /// and on config reload — instead of each knob being wired (chord) or
 /// silently ignored (hold/double-tap) independently. `short_press_threshold`
-/// was added in #2385; `LONG_PRESS_MS` remains a hardcoded constant.
+/// is configurable; `LONG_PRESS_MS` remains a hardcoded constant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EventTimings {
     /// Chord-detection window (Learn-aware: the daemon passes the Learn window
@@ -466,7 +466,7 @@ pub struct EventTimings {
     pub double_tap_timeout: Duration,
     /// Hold-detection threshold for `HoldDetected`.
     pub hold_threshold: Duration,
-    /// Short→Medium press classification boundary (#2385): a press shorter than
+    /// Short→Medium press classification boundary: a press shorter than
     /// this is `ShortPress`, at/above it (and below `LONG_PRESS_MS`) is
     /// `MediumPress`. Exposed as the "Medium Press Threshold" setting. Distinct
     /// from `hold_threshold` (the `HoldDetected` while-held event).
@@ -555,7 +555,7 @@ impl EventProcessor {
     }
 
     /// Construct an `EventProcessor` with all configurable timing knobs set from
-    /// `timings` (#2490). The daemon uses this at processor creation so every
+    /// `timings`. The daemon uses this at processor creation so every
     /// knob — not just chord — reflects `advanced_settings`.
     pub fn with_timings(timings: EventTimings) -> Self {
         Self {
@@ -568,7 +568,7 @@ impl EventProcessor {
     }
 
     /// Re-apply all configurable timing knobs from `timings` to an existing
-    /// processor (#2490). The daemon calls this on config reload so a slider
+    /// processor. The daemon calls this on config reload so a slider
     /// change reaches already-created processors, not just new ones. (The
     /// chord-only `set_chord_timeout` remains for the MIDI Learn start/stop
     /// path, which toggles only the chord window.)
@@ -579,7 +579,7 @@ impl EventProcessor {
         self.short_press_threshold = timings.short_press_threshold;
     }
 
-    /// Returns the current Short→Medium press classification boundary (#2385).
+    /// Returns the current Short→Medium press classification boundary.
     pub fn short_press_threshold(&self) -> Duration {
         self.short_press_threshold
     }
@@ -600,7 +600,7 @@ impl EventProcessor {
                 self.held_notes
                     .insert((ch_key, note), (time, velocity, Some(channel)));
 
-                // Check for double-tap (v4.26.0: enriched with velocities/interval - D22)
+                // Check for double-tap (enriched with velocities/interval - D22)
                 if let Some(&(last_tap_time, first_velocity)) =
                     self.last_note_tap.get(&(ch_key, note))
                 {
@@ -636,7 +636,7 @@ impl EventProcessor {
                     channel: ch,
                 });
 
-                // Add to chord buffer (v4.26.0: enriched with velocity - D22)
+                // Add to chord buffer (enriched with velocity - D22)
                 self.chord_buffer.push((ch_key, note, time, velocity));
 
                 // Check for chord (multiple notes on same channel pressed within chord_timeout)
@@ -705,7 +705,7 @@ impl EventProcessor {
             } => {
                 let ch = Some(channel);
                 let cc_key = (channel, cc);
-                // v4.10.9: Always emit CCReceived for pedals/buttons that send fixed values
+                // Always emit CCReceived for pedals/buttons that send fixed values
                 results.push(ProcessedEvent::CCReceived {
                     cc,
                     value,
@@ -766,7 +766,7 @@ impl EventProcessor {
                 });
             }
 
-            // #1458: the raw-MidiEvent `process` path dropped ProgramChange via
+            // The raw-MidiEvent `process` path dropped ProgramChange via
             // the `_` arm, so callers parsing raw MIDI into `MidiEvent` and using
             // this public path produced no event for program/bank changes and
             // `Trigger::ProgramChange` mappings could not route. Mirror
@@ -784,7 +784,7 @@ impl EventProcessor {
         results
     }
 
-    /// Process a protocol-agnostic InputEvent (v3.0)
+    /// Process a protocol-agnostic InputEvent
     ///
     /// This method mirrors `process()` but handles InputEvent instead of MidiEvent,
     /// enabling support for multiple input protocols (MIDI, HID gamepad, etc.) through
@@ -820,7 +820,7 @@ impl EventProcessor {
     pub fn process_input(&mut self, event: InputEvent) -> Vec<ProcessedEvent> {
         let mut results = Vec::new();
 
-        // v4.26.0 (D23): Emit Raw event before gesture detection
+        // D23: Emit Raw event before gesture detection
         results.push(ProcessedEvent::Raw(event.clone()));
 
         match event {
@@ -835,7 +835,7 @@ impl EventProcessor {
                 self.held_notes
                     .insert((ch_key, pad), (time, velocity, channel));
 
-                // Check for double-tap (v4.26.0: enriched - D22)
+                // Check for double-tap (enriched - D22)
                 if let Some(&(last_tap_time, first_velocity)) =
                     self.last_note_tap.get(&(ch_key, pad))
                 {
@@ -871,7 +871,7 @@ impl EventProcessor {
                     channel,
                 });
 
-                // Add to chord buffer (v4.26.0: enriched with velocity - D22)
+                // Add to chord buffer (enriched with velocity - D22)
                 self.chord_buffer.push((ch_key, pad, time, velocity));
 
                 // Check for chord (multiple pads on same channel pressed within chord_timeout)
@@ -991,7 +991,7 @@ impl EventProcessor {
                 ..
             } => {
                 let cc_key = (channel.unwrap_or(GAMEPAD_CHANNEL_KEY), control);
-                // v4.10.9: Always emit CCReceived for pedals/buttons that send fixed values
+                // Always emit CCReceived for pedals/buttons that send fixed values
                 results.push(ProcessedEvent::CCReceived {
                     cc: control,
                     value,
@@ -1178,7 +1178,7 @@ mod tests {
 
     #[test]
     fn with_timings_sets_every_knob() {
-        // #2490 + #2385: construction sets ALL configurable knobs — not just
+        // Construction sets ALL configurable knobs — not just
         // chord — so a fresh processor reflects advanced_settings.
         let p = EventProcessor::with_timings(timings(80, 250, 1500, 175));
         assert_eq!(p.chord_timeout(), Duration::from_millis(80));
@@ -1189,7 +1189,7 @@ mod tests {
 
     #[test]
     fn apply_timings_updates_existing_processor() {
-        // #2490 + #2385: reload re-applies all knobs to an existing processor so
+        // Reload re-applies all knobs to an existing processor so
         // a runtime slider change reaches already-created devices.
         let mut p = EventProcessor::new();
         // new() defaults: chord 50, double-tap 300, hold 2000, short-press 200.
@@ -1204,7 +1204,7 @@ mod tests {
 
     #[test]
     fn short_press_threshold_drives_short_vs_medium_classification() {
-        // #2385: a press whose duration is below the configured short-press
+        // A press whose duration is below the configured short-press
         // threshold is a ShortPress; at/above it (and below LONG_PRESS_MS) it is
         // a MediumPress. Lowering the threshold to 50ms reclassifies a press
         // that the default 200ms threshold would call Short.

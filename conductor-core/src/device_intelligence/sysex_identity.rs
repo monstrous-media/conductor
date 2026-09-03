@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! SysEx Identity probing and parsing (ADR-022 Phase 5A, #752)
+//! SysEx Identity probing and parsing (ADR-022 Phase 5A)
 //!
 //! Sends MIDI Identity Request (F0 7E 7F 06 01 F7) and parses the reply
 //! into a structured SysExIdentity.

@@ -28,8 +28,8 @@
 use crate::events::InputEvent;
 use std::time::Instant;
 
-// Stream-quality filters moved to their own module (#599 / PR #2337
-// cloud-review); re-exported here so existing import paths keep working.
+// Stream-quality filters moved to their own module; re-exported here so
+// existing import paths keep working.
 pub use crate::gamepad_filters::{AXIS_ZERO_SUPPRESS_WINDOW, AxisZeroFilter, TriggerNoiseGate};
 
 /// Gamepad button ID ranges (128-255, non-overlapping with MIDI 0-127)
@@ -312,7 +312,7 @@ pub fn button_released_to_input(button: gilrs::Button) -> Option<InputEvent> {
     })
 }
 
-/// Convert a gilrs ButtonChanged event for an analog trigger to InputEvent (#599)
+/// Convert a gilrs ButtonChanged event for an analog trigger to InputEvent
 ///
 /// On several gilrs backends (notably macOS IOKit), analog trigger travel is
 /// delivered as `EventType::ButtonChanged(LeftTrigger2 | RightTrigger2, value)`
@@ -347,7 +347,7 @@ pub fn trigger_button_changed_to_input(
         encoder,
         value: normalize_trigger(value, trigger_deadzone),
         channel: None,
-        // #599: preserve the raw value for high-precision value bars.
+        // Preserve the raw value for high-precision value bars.
         analog: Some(value),
         time: Instant::now(),
     })
@@ -401,7 +401,7 @@ pub fn axis_changed_to_input_with_deadzone(
         encoder,
         value: normalized,
         channel: None,
-        // #599: preserve the raw gilrs value (pre-deadzone, pre-quantise) so
+        // Preserve the raw gilrs value (pre-deadzone, pre-quantise) so
         // the GUI can render high-precision value bars.
         analog: Some(value),
         time: Instant::now(),

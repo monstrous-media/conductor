@@ -33,8 +33,8 @@ pub fn anonymize_capture(capture: &StoredCapture) -> AnonymizedCapture {
         privacy: capture.privacy,
 
         // Capture creation time is intentionally dropped: a hash of it cannot
-        // preserve ordering and a low-entropy timestamp hash is reversible
-        // (#1588). Events retain only relative offsets.
+        // preserve ordering and a low-entropy timestamp hash is reversible.
+        // Events retain only relative offsets.
         metadata: anonymize_metadata(&capture.metadata),
         events: anonymize_events(&capture.events),
     }
@@ -365,7 +365,7 @@ mod tests {
 
     #[test]
     fn test_anonymized_capture_carries_no_creation_timestamp() {
-        // #1588: a SHA-256 of the capture timestamp neither preserves ordering
+        // A SHA-256 of the capture timestamp neither preserves ordering
         // (hashes do not preserve input order) nor resists brute-force reversal
         // (timestamps are low-entropy). The anonymized output must therefore
         // carry no creation-time-derived field at all.

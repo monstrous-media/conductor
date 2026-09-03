@@ -72,7 +72,7 @@ enum Commands {
     #[command(name = "list-devices")]
     ListDevices,
 
-    /// Show resolved binding state from the daemon (#944)
+    /// Show resolved binding state from the daemon
     ///
     /// Reuses the existing IpcCommand::Status payload. Useful for headless
     /// operators who can't open the GUI Bindings panel and need to see
@@ -168,7 +168,7 @@ enum Commands {
         #[arg(long)]
         no_backup: bool,
         /// Migrate legacy Trigger::Raw + MidiForward mappings to [[routes]]
-        /// (ADR-036 Slice 8), preserving TOML comments.
+        /// (ADR-036), preserving TOML comments.
         #[arg(long)]
         routing: bool,
         /// Preview the result without writing or creating a backup.
@@ -176,7 +176,7 @@ enum Commands {
         dry_run: bool,
     },
 
-    /// Validate config against protocol schemas with coverage report (v4.26.66)
+    /// Validate config against protocol schemas with coverage report
     #[command(name = "validate-schema")]
     ValidateSchema {
         /// Path to config file (defaults to ~/.conductor/config.toml)
@@ -184,12 +184,12 @@ enum Commands {
         config: Option<PathBuf>,
     },
 
-    /// Rollback config to last known-good version (v4.26.77)
+    /// Rollback config to last known-good version
     #[command(name = "rollback-config")]
     RollbackConfig,
 
     /// Break-glass non-CAS rollback to last known-good version
-    /// (ADR-034 §D6 / D4.B.4 — #1291). Bypasses CAS at both
+    /// (ADR-034 §D6 / D4.B.4). Bypasses CAS at both
     /// step 2 and step 11 of the LiveConfig mutate seam. CLI-only:
     /// the daemon rejects this command from Gui / Llm peers.
     /// `--reason` is required and must be non-empty (it is audited
@@ -201,7 +201,7 @@ enum Commands {
         reason: String,
     },
 
-    /// Config IPC surface (ADR-034 §D4.C / §D9, #1903): operate the daemon's
+    /// Config IPC surface (ADR-034 §D4.C / §D9): operate the daemon's
     /// new config commands. Wraps the SaveConfig / ReloadFromDisk / ImportConfig
     /// / ConfigDriftStatus / MarkKnownGood IPC surface.
     Config {
@@ -209,7 +209,7 @@ enum Commands {
         action: ConfigAction,
     },
 
-    /// Profile management (Issue #331)
+    /// Profile management
     Profile {
         #[command(subcommand)]
         action: ProfileAction,
@@ -221,19 +221,19 @@ enum Commands {
         action: ModeAction,
     },
 
-    /// LED feedback control (Issue #324)
+    /// LED feedback control
     Led {
         #[command(subcommand)]
         action: LedAction,
     },
 
-    /// Plugin management (Issue #328)
+    /// Plugin management
     Plugin {
         #[command(subcommand)]
         action: PluginAction,
     },
 
-    /// Monitor input events in real-time (Issue #325/#326)
+    /// Monitor input events in real-time
     Events {
         /// Follow mode — continuous live tail
         #[arg(short, long)]
@@ -453,7 +453,7 @@ enum BudgetsAction {
     },
 }
 
-/// `conductorctl mcp` subcommands (ADR-027 §D18, #1214). Storage is
+/// `conductorctl mcp` subcommands (ADR-027 §D18). Storage is
 /// a local JSON file (`~/.local/share/conductor/mcp_registry.json`
 /// on macOS / Linux); these subcommands are file ops with no IPC
 /// round-trip.
@@ -496,8 +496,7 @@ enum McpAction {
 /// - snake_case serde wire names: `read_only`, `stateful`,
 ///   `config_change`, `hardware_io` — what `conductorctl mcp list
 ///   --json` emits via `AuditRiskTier::as_str()`, so piping that
-///   output back into `register` works without explicit conversion
-///   (Copilot review on PR #1217).
+///   output back into `register` works without explicit conversion.
 ///
 /// `Internal` is intentionally NOT accepted from the CLI — it's a
 /// system-only tier for daemon-originated operations.
@@ -515,7 +514,7 @@ fn parse_audit_tier(s: &str) -> Result<conductor_daemon::daemon::audit::AuditRis
     }
 }
 
-/// `conductorctl audit` subcommands (ADR-027 §D13a, #1167).
+/// `conductorctl audit` subcommands (ADR-027 §D13a).
 #[derive(Subcommand, Debug)]
 enum AuditAction {
     /// Tail the audit log — recent entries, optionally followed live.
@@ -546,7 +545,7 @@ enum AuditAction {
     },
 
     /// Recover the daemon from the fail-closed audit-unavailable state
-    /// (ADR-034 §D8 / #2380). When the audit outbox failed to open (corrupt
+    /// (ADR-034 §D8). When the audit outbox failed to open (corrupt
     /// chain / I/O), config mutations are refused (`AuditDegraded`). This
     /// reopens it — rotating a corrupt file aside to
     /// `audit-outbox.log.corrupt-<ms>` and starting a fresh chain whose first
@@ -555,8 +554,8 @@ enum AuditAction {
     Resume,
 }
 
-/// `conductorctl config <action>` — the ADR-034 §D4.C / §D9 config IPC surface
-/// (#1903). The remaining `save` action lands in a follow-up slice.
+/// `conductorctl config <action>` — the ADR-034 §D4.C / §D9 config IPC surface.
+/// The remaining `save` action lands in a follow-up slice.
 #[derive(Subcommand, Debug)]
 enum ConfigAction {
     /// Show config-drift status: whether the on-disk user config has diverged
@@ -777,7 +776,7 @@ async fn execute_command(cli: &Cli) -> Result<()> {
             check,
             open_input_monitoring,
         } => {
-            // PR #997 round-9: handler is now async because it tries
+            // The handler is async because it tries
             // IPC first (to ask the running daemon for its real grant
             // state) before falling back to a local probe. The
             // existing dispatch above handles non-IPC commands
@@ -933,7 +932,7 @@ async fn execute_command(cli: &Cli) -> Result<()> {
             duration,
             profiling,
         } => {
-            // Build filter from CLI args (Issue #325)
+            // Build filter from CLI args
             // CLI uses 1-16 for channels (human-friendly), internal uses 0-15
             let since_ms = match since.as_deref() {
                 Some(s) => {
@@ -1233,7 +1232,7 @@ async fn handle_ping(client: &mut IpcClient, json: bool) -> Result<()> {
     Ok(())
 }
 
-/// #944: Print resolved bindings derived from the daemon's Status payload.
+/// Print resolved bindings derived from the daemon's Status payload.
 ///
 /// The data is already exposed via `IpcCommand::Status` →
 /// `device_status.devices` — each entry's `is_configured` flag distinguishes
@@ -1267,7 +1266,7 @@ async fn handle_bindings(
     let filtered: Vec<&Value> = filter_bindings(&devices, alias_filter.as_deref(), unbound_only);
 
     if json {
-        // #944 review: keep both counts so consumers using `--alias` /
+        // Keep both counts so consumers using `--alias` /
         // `--unbound-only` can validate against either the response set
         // (`bindings_count`) or the daemon's full enumeration
         // (`total_ports`). Misleading consumers with a single ambiguous
@@ -1289,7 +1288,7 @@ async fn handle_bindings(
         println!("Listen mode:    {}", mode);
     }
 
-    // #944 review: single-pass partition replaces the two-filter idiom.
+    // Single-pass partition replaces the two-filter idiom.
     let (configured, opportunistic): (Vec<&Value>, Vec<&Value>) =
         filtered.iter().copied().partition(|d| {
             d.get("is_configured")
@@ -1335,7 +1334,7 @@ async fn handle_bindings(
     Ok(())
 }
 
-/// #944: pure filter — separated from `handle_bindings` so it's exercisable
+/// A pure filter — separated from `handle_bindings` so it's exercisable
 /// by unit tests without spinning up an IPC client. `alias_filter` matches
 /// the device's `device_id` field **exactly** — for configured ports this is
 /// the `[[bindings]]` alias, but for opportunistic ports the daemon prefixes
@@ -1372,9 +1371,8 @@ fn filter_bindings<'a>(
 
 /// Pretty-print one row of the bindings table.
 ///
-/// Layout aligned with the issue's mock-up. Output handles missing optional
-/// fields (output_port_name / direction) gracefully so callers don't panic on
-/// daemon payload changes.
+/// Output handles missing optional fields (output_port_name / direction)
+/// gracefully so callers don't panic on daemon payload changes.
 fn print_binding_row(dev: &Value) {
     let id = dev.get("device_id").and_then(|v| v.as_str()).unwrap_or("?");
     let port = dev.get("port_name").and_then(|v| v.as_str()).unwrap_or("?");
@@ -1404,7 +1402,7 @@ fn print_binding_row(dev: &Value) {
             suffix.push_str(" [auto-paired]");
         }
     }
-    // #944 review: widened device_id column from 12 to 24 chars to fit
+    // Widened device_id column from 12 to 24 chars to fit
     // `raw:<port_name>` IDs without breaking the port-column alignment.
     // Real-world examples like `raw:IAC Driver Bus 1` are 20+ chars.
     println!("  {} {:<24} {:<32} ← {}", dot, id, port, suffix);
@@ -1453,7 +1451,7 @@ async fn handle_list_devices(client: &mut IpcClient, json: bool) -> Result<()> {
             }
         }
 
-        // Display HID/gamepad devices (v3.0)
+        // Display HID/gamepad devices
         if let Some(hid_devices) = data.get("hid_devices").and_then(|v| v.as_array()) {
             println!(
                 "\n{}",
@@ -2224,7 +2222,7 @@ fn handle_disable(json: bool) -> Result<()> {
 /// `~/Library/Application Support/conductor`), so the old home-based default
 /// pointed `migrate-config` at a file that doesn't exist — it errored/no-op'd
 /// and the user's real config (the one the daemon loaded) was never migrated,
-/// breaking the migration path ADR-035's deprecation warning advertises (#1947).
+/// breaking the migration path ADR-035's deprecation warning advertises.
 fn resolve_migrate_config_path(config_path: &Option<PathBuf>) -> Result<PathBuf> {
     match config_path {
         Some(p) => Ok(p.clone()),
@@ -2235,7 +2233,7 @@ fn resolve_migrate_config_path(config_path: &Option<PathBuf>) -> Result<PathBuf>
     }
 }
 
-/// Handle the `migrate-config --routing` subcommand (ADR-036 Slice 8).
+/// Handle the `migrate-config --routing` subcommand (ADR-036).
 ///
 /// Rewrites legacy `Trigger::Raw` + `MidiForward` mappings into top-level
 /// `[[routes]]` entries, preserving TOML comments via `toml_edit`. (ADR-036
@@ -2298,7 +2296,7 @@ fn handle_migrate_routing(
     }
 
     // True no-op (no rewrites, no errors): leave the file untouched and skip
-    // the backup — there's nothing to migrate (issue #1666 acceptance).
+    // the backup — there's nothing to migrate.
     if report.rewrites.is_empty() && report.errors.is_empty() {
         return Ok(());
     }
@@ -2409,7 +2407,7 @@ fn handle_service_status(json: bool) -> Result<()> {
 /// deep-links to System Settings. On non-macOS, prints a short
 /// "no consent gate required" message.
 ///
-/// PR #997 round-9 review: the daemon's grant is what users actually
+/// The daemon's grant is what users actually
 /// care about, but a local gilrs probe in conductorctl's process
 /// only tells us about *conductorctl's* identity (which TCC may
 /// attribute to the parent terminal app, not the daemon). To get
@@ -2475,7 +2473,7 @@ async fn handle_permissions(check: bool, open: bool, json: bool) -> Result<()> {
         let outcome = open_input_monitoring_settings()
             .map_err(|e| anyhow::anyhow!("Failed to open System Settings: {}", e))?;
 
-        // PR #997 round-11 review: the daemon caches its probe
+        // The daemon caches its probe
         // result for 30 s. Without telling the daemon to bypass
         // that cache, a `conductorctl permissions --check`
         // immediately after the user grants permission would still
@@ -2524,7 +2522,7 @@ async fn force_daemon_probe_invalidation() -> Option<()> {
 
 /// Try to connect to the running daemon and ask for its real
 /// Input Monitoring grant state via the IpcCommand::CheckPermissions
-/// handler (added in #997 Phase 4). Returns None on connection or
+/// handler. Returns None on connection or
 /// IPC failure — caller falls back to a local probe.
 async fn query_daemon_permission() -> Option<conductor_daemon::permissions::PermissionStatus> {
     use conductor_daemon::permissions::PermissionStatus;
@@ -2562,7 +2560,7 @@ async fn query_daemon_permission() -> Option<conductor_daemon::permissions::Perm
     })
 }
 
-/// PR #997 round-12 review: `--json` output keeps `input_monitoring`
+/// `--json` output keeps `input_monitoring`
 /// to a stable enum (`granted | not_granted | unknown |
 /// not_applicable`) and emits any human-readable detail in a
 /// separate `detail` field. The previous shape (`"unknown: <reason>"`)
@@ -2590,7 +2588,7 @@ fn print_human_check_output(
     if cfg!(target_os = "macos") {
         println!("[macOS] Input Monitoring grants are required for both Conductor binaries:");
         println!();
-        // PR #997 round-13 review: previously hard-coded paths
+        // Previously hard-coded paths
         // misled users on non-default installs (custom Homebrew
         // prefix, dev builds, non-`/Applications` GUI). Resolve the
         // daemon's actual location from conductorctl's own path —
@@ -2694,7 +2692,7 @@ fn print_human_check_output(
     }
 }
 
-/// PR #997 round-13 review: try to find the daemon binary that lives
+/// Try to find the daemon binary that lives
 /// next to this conductorctl. Works for any install layout where the
 /// two binaries ship in the same directory:
 ///   - Homebrew (any prefix): `<prefix>/bin/{conductor,conductorctl}`
@@ -2725,7 +2723,7 @@ fn print_grant_instructions() {
     println!("    conductorctl permissions --open-input-monitoring");
 }
 
-/// Handle validate-schema subcommand — local validation, no daemon needed (v4.26.66)
+/// Handle validate-schema subcommand — local validation, no daemon needed
 fn handle_validate_schema(config_path: &Option<PathBuf>, json: bool) -> Result<()> {
     let path = config_path.clone().unwrap_or_else(|| {
         dirs::home_dir()
@@ -2921,7 +2919,7 @@ fn print_coverage(name: &str, metric: &conductor_core::config::validator::Covera
     }
 }
 
-/// Handle `conductorctl events` — real-time event monitoring (Issue #326)
+/// Handle `conductorctl events` — real-time event monitoring
 #[allow(clippy::too_many_arguments)]
 async fn handle_events(
     client: &mut IpcClient,
@@ -2935,7 +2933,7 @@ async fn handle_events(
     debounce_ms: Option<u64>,
     _profiling: bool,
 ) -> Result<()> {
-    // #1425: validate --duration BEFORE starting the monitor, so a typo like
+    // Validate --duration BEFORE starting the monitor, so a typo like
     // `--duration nope` fails immediately instead of silently capturing the 2s
     // default. Omitted → 2s default (used only by the snapshot/export branch).
     let capture_secs = resolve_capture_secs(duration.as_deref())?;
@@ -2970,7 +2968,7 @@ async fn handle_events(
 
     let mut all_events: Vec<serde_json::Value> = Vec::new();
 
-    // Wrap event collection in a block so StopEventMonitor is always sent (council review fix)
+    // Wrap event collection in a block so StopEventMonitor is always sent
     let result: Result<()> = async {
         if follow {
             // Follow mode: poll continuously
@@ -2995,7 +2993,7 @@ async fn handle_events(
                         if !event_passes_filter(event, &filter) {
                             continue;
                         }
-                        // Debounce: skip events too close together (R923)
+                        // Debounce: skip events too close together
                         if let Some(db) = debounce_ms {
                             let ts = event
                                 .get("timestamp_ms")
@@ -3022,7 +3020,7 @@ async fn handle_events(
                 tokio::time::sleep(Duration::from_millis(200)).await;
             }
         } else {
-            // Snapshot/export mode — capture window validated up front (#1425).
+            // Snapshot/export mode — capture window validated up front.
             tokio::time::sleep(Duration::from_secs(capture_secs)).await;
 
             let response = client
@@ -3040,7 +3038,7 @@ async fn handle_events(
                 for event in events {
                     // --limit bounds terminal display only; a file export (--output)
                     // must capture the whole window, otherwise a high-rate burst is
-                    // silently truncated to the default 50 events (#2368).
+                    // silently truncated to the default 50 events.
                     if output.is_none() && count >= limit {
                         break;
                     }
@@ -3057,7 +3055,7 @@ async fn handle_events(
                     count += 1;
                 }
 
-                // Export to file if --output specified (Issue #325: R907, R929)
+                // Export to file if --output specified
                 if let Some(ref output_path) = output {
                     export_events(&all_events, output_path)?;
                     println!(
@@ -3079,7 +3077,7 @@ async fn handle_events(
     }
     .await;
 
-    // Always stop event monitoring, even on error (council review fix)
+    // Always stop event monitoring, even on error
     let _ = client
         .send_command(IpcCommand::StopEventMonitor, Value::Null)
         .await;
@@ -3116,7 +3114,7 @@ fn load_config_for_filter() -> Result<Config> {
     Ok(config)
 }
 
-// ── ADR-042 Phase B-early: network-listener approval CLI (Slice B.4) ──────
+// ── ADR-042 Phase B-early: network-listener approval CLI ──────────────────
 
 /// `~/.conductor/network_approvals.json` — the HMAC-signed approval registry.
 #[cfg(unix)]
@@ -3366,7 +3364,7 @@ fn parse_duration_str(s: Option<&str>) -> Option<u64> {
 
 /// Resolve the snapshot/export capture window (seconds) from `--duration`.
 ///
-/// #1425: an OMITTED duration uses the 2-second default, but an explicit
+/// An OMITTED duration uses the 2-second default, but an explicit
 /// unparsable value (e.g. `--duration 10seconds`) is an ERROR — matching the
 /// `--since` behaviour — rather than silently falling back to 2 seconds and
 /// producing an incomplete export without warning.
@@ -3378,7 +3376,7 @@ fn resolve_capture_secs(duration: Option<&str>) -> Result<u64> {
     }
 }
 
-/// Export events to file (JSON or CSV based on extension) (Issue #325: R907, R929)
+/// Export events to file (JSON or CSV based on extension)
 /// CSV-safe string escaping: wraps in quotes if value contains comma, quote, or newline
 fn csv_escape(s: &str) -> String {
     if s.contains(',') || s.contains('"') || s.contains('\n') {
@@ -3416,7 +3414,7 @@ fn format_event_csv_row(event: &serde_json::Value) -> String {
     )
 }
 
-/// Export events to file (JSON or CSV based on extension) (Issue #325: R907, R929)
+/// Export events to file (JSON or CSV based on extension)
 fn export_events(events: &[serde_json::Value], path: &Path) -> Result<()> {
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("json");
 
@@ -3623,7 +3621,7 @@ async fn handle_playback_events(
         }
 
         // Only update prev_ts if this event has a timestamp, to avoid
-        // erasing the time gap for subsequent events (council review).
+        // erasing the time gap for subsequent events.
         if let Some(ts) = event.get("timestamp_ms").and_then(|v| v.as_u64()) {
             prev_ts = Some(ts);
         }
@@ -3644,7 +3642,7 @@ async fn handle_playback_events(
     Ok(())
 }
 
-/// ADR-027 D13a (#1167) — observe the security audit log.
+/// ADR-027 D13a — observe the security audit log.
 ///
 /// Always prints the recent backlog (`QueryAudit`). In `--follow`
 /// mode, the live subscription is opened FIRST and the backlog is
@@ -3656,7 +3654,7 @@ async fn handle_playback_events(
 /// a stderr warning telling the operator to backfill from the
 /// persistent log.
 /// `conductorctl audit resume` — recover from the fail-closed
-/// audit-unavailable brick (ADR-034 §D8 / #2380).
+/// audit-unavailable brick (ADR-034 §D8).
 ///
 /// Sends `ResumeAudit`, which asks the daemon to reopen the audit outbox:
 /// a corrupt chain is rotated aside to `audit-outbox.log.corrupt-<ms>` and a
@@ -3896,7 +3894,7 @@ fn print_audit_entry(entry: &Value, json_output: bool) {
     println!("{line}");
 }
 
-/// ADR-027 §D18 (#1214) — `conductorctl mcp register`. Adds or
+/// ADR-027 §D18 — `conductorctl mcp register`. Adds or
 /// updates a registration in the on-disk table. Idempotent: same
 /// `exe-path` overwrites name + tier rather than duplicating.
 fn handle_mcp_register(
@@ -3909,7 +3907,7 @@ fn handle_mcp_register(
         McpRegistration, McpRegistry, default_registry_path,
     };
 
-    // Council review on PR #1217 + Copilot follow-up: canonicalize
+    // Canonicalize
     // the user-supplied `--exe-path` (resolve symlinks, normalise
     // `..`/`.`) so the stored key matches what the kernel will
     // report at connect time. `PinnedPeer::initial_exe` is always
@@ -3976,7 +3974,7 @@ fn handle_mcp_register(
     Ok(())
 }
 
-/// ADR-027 §D18 (#1214) — `conductorctl mcp list`.
+/// ADR-027 §D18 — `conductorctl mcp list`.
 fn handle_mcp_list(json_output: bool) -> Result<()> {
     use conductor_daemon::daemon::mcp_registry::{McpRegistry, default_registry_path};
 
@@ -4014,18 +4012,18 @@ fn handle_mcp_list(json_output: bool) -> Result<()> {
     Ok(())
 }
 
-/// ADR-027 §D18 (#1214) — `conductorctl mcp revoke`. Idempotent:
+/// ADR-027 §D18 — `conductorctl mcp revoke`. Idempotent:
 /// revoking a non-registered exe is a no-op (exit 0).
 ///
-/// #1317: canonicalize `--exe-path` the same way `handle_mcp_register`
+/// Canonicalize `--exe-path` the same way `handle_mcp_register`
 /// does, so revoking through a symlink / `..`-bearing path that
 /// resolves to the registered canonical entry actually removes it.
 /// Pre-fix the literal user path was looked up against the canonical
 /// stored entry and silently no-op'd — a permission-grant gap when
 /// the operator believed they had revoked.
 ///
-/// #1317's canonicalize-or-die introduced a *second* gap, fixed in
-/// #1430: a deleted/moved binary can't be canonicalized, so revocation
+/// That canonicalize-or-die approach introduced a *second* gap: a
+/// deleted/moved binary can't be canonicalized, so revocation
 /// failed outright and the stale grant survived. Canonicalization is
 /// now best-effort — see the body — so revocation by exe path works
 /// whether or not the binary still exists on disk.
@@ -4041,7 +4039,7 @@ fn handle_mcp_revoke(exe_path: &Path, json_output: bool) -> Result<()> {
         );
     }
 
-    // #1430: canonicalize ONLY when the binary still exists. Pre-fix this
+    // Canonicalize ONLY when the binary still exists. Pre-fix this
     // handler canonicalized unconditionally and bailed when the registered
     // client binary had been deleted/moved/was temporarily absent — so a
     // stale grant could *never* be revoked, and a future binary dropped at
@@ -4049,7 +4047,7 @@ fn handle_mcp_revoke(exe_path: &Path, json_output: bool) -> Result<()> {
     // exe path" and must survive an absent binary.
     //
     //   - If the path resolves, revoke the canonical key — a symlinked /
-    //     `..`-bearing path still matches the canonical stored entry (#1317).
+    //     `..`-bearing path still matches the canonical stored entry.
     //   - If it does not resolve (deleted/moved), fall back to the literal
     //     absolute path, which matches an entry registered at an
     //     already-canonical path (the common case).
@@ -4068,7 +4066,7 @@ fn handle_mcp_revoke(exe_path: &Path, json_output: bool) -> Result<()> {
         // was somehow stored non-canonically: also try the literal path.
         || (revoke_key != literal.as_path() && registry.revoke(&literal));
     let exe_path: &Path = revoke_key;
-    // Copilot review on PR #1217: skip the write when nothing
+    // Skip the write when nothing
     // changed. A no-op revoke shouldn't touch the file's mtime,
     // shouldn't trigger config-watchers, and shouldn't cause an
     // atomic-rename round-trip for zero semantic effect.
@@ -4104,7 +4102,7 @@ fn handle_mcp_revoke(exe_path: &Path, json_output: bool) -> Result<()> {
     Ok(())
 }
 
-/// #1322: convert an IPC response into a Result so the caller can
+/// Convert an IPC response into a Result so the caller can
 /// propagate non-zero exit on daemon-reported errors. Pre-fix, both
 /// rollback handlers printed `response.error.message` to stderr and
 /// then returned `Ok(())` — automation invoking `conductorctl
@@ -4143,7 +4141,7 @@ async fn handle_rollback_config(client: &mut IpcClient, json: bool) -> Result<()
     if json {
         println!("{}", serde_json::to_string_pretty(&response)?);
     } else if let Some(data) = &response.data {
-        // D4.B.4 (#1291): handler returns state_generation +
+        // D4.B.4: handler returns state_generation +
         // previous_generation + revision now (not modes/mappings).
         println!(
             "Config rolled back to known-good snapshot: gen {} → {} (revision: {})",
@@ -4153,14 +4151,14 @@ async fn handle_rollback_config(client: &mut IpcClient, json: bool) -> Result<()
         eprintln!("Rollback failed: {}", error.message);
     }
 
-    // #1322: propagate daemon-reported errors as non-zero exit, in
+    // Propagate daemon-reported errors as non-zero exit, in
     // both JSON and non-JSON modes. Pre-fix, both modes returned
     // Ok(()) regardless — automation couldn't distinguish a failed
     // rollback from a successful one.
     check_ipc_response(&response, "rollback")
 }
 
-/// Break-glass non-CAS rollback (ADR-034 §D6 / D4.B.4 — #1291).
+/// Break-glass non-CAS rollback (ADR-034 §D6 / D4.B.4).
 /// Daemon-side enforces CLI-only + non-empty reason; we still echo
 /// the operator's stated reason locally so a copy lands in the
 /// shell scrollback alongside the daemon-log entry.
@@ -4189,12 +4187,12 @@ async fn handle_rollback_config_force(
         eprintln!("Force-rollback failed: {}", error.message);
     }
 
-    // #1322: same fix as plain rollback — propagate daemon errors.
+    // Same fix as plain rollback — propagate daemon errors.
     check_ipc_response(&response, "force-rollback")
 }
 
 // ============================================================================
-// Config IPC surface (ADR-034 §D4.C / §D9 — #1903)
+// Config IPC surface (ADR-034 §D4.C / §D9)
 // ============================================================================
 
 /// `conductorctl config drift` — query whether the on-disk user config has
@@ -4344,8 +4342,8 @@ async fn handle_config_import(
 }
 
 /// `conductorctl config save [--base-generation N]` — commit a config read from
-/// **stdin** via `SaveConfig` (ADR-034 §D4.C; design: Council reasoning-tier
-/// review). "save = bodies, import = paths": `save` sends a wholly
+/// **stdin** via `SaveConfig` (ADR-034 §D4.C).
+/// "save = bodies, import = paths": `save` sends a wholly
 /// client-constructed config body, so it never touches the daemon's §D2.2 path
 /// allowlist — a positional path is therefore rejected with a redirect to
 /// `config import`, which DOES apply the allowlist (no path-shaped bypass).
@@ -4406,7 +4404,7 @@ async fn handle_config_save(
 }
 
 // ============================================================================
-// Profile Management (Issue #331)
+// Profile Management
 // ============================================================================
 
 /// `conductorctl mode set <name> [--no-lock]` (ADR-040 D4 §4.2).
@@ -4428,8 +4426,7 @@ async fn handle_mode_set(
     if json {
         println!("{}", serde_json::to_string_pretty(&response)?);
     }
-    // Validate even in --json mode so daemon errors exit non-zero (#1322,
-    // Copilot review on #2283).
+    // Validate even in --json mode so daemon errors exit non-zero.
     check_ipc_response(&response, "set mode")?;
     if json {
         return Ok(());
@@ -4938,7 +4935,7 @@ async fn handle_led(client: &mut IpcClient, action: &LedAction, json: bool) -> R
             if json {
                 println!("{}", serde_json::to_string_pretty(&response)?);
             }
-            // #1424: JSON mode must change output shape, not success
+            // JSON mode must change output shape, not success
             // semantics — print the response (above), then return Err on a
             // daemon-error response so automation gets a non-zero exit.
             check_ipc_response(&response, "Set LED scheme")?;
@@ -4959,7 +4956,7 @@ async fn handle_led(client: &mut IpcClient, action: &LedAction, json: bool) -> R
             if json {
                 println!("{}", serde_json::to_string_pretty(&response)?);
             }
-            check_ipc_response(&response, "Set LED brightness")?; // #1424
+            check_ipc_response(&response, "Set LED brightness")?;
             if !json {
                 println!("{} LED brightness set to {}", "✓".green(), level);
             }
@@ -4974,7 +4971,7 @@ async fn handle_led(client: &mut IpcClient, action: &LedAction, json: bool) -> R
             if json {
                 println!("{}", serde_json::to_string_pretty(&response)?);
             }
-            check_ipc_response(&response, "Turn off LEDs")?; // #1424
+            check_ipc_response(&response, "Turn off LEDs")?;
             if !json {
                 println!("{} LEDs turned off", "✓".green());
             }
@@ -5066,7 +5063,7 @@ async fn handle_plugin(client: &mut IpcClient, action: &PluginAction, json: bool
             if json {
                 println!("{}", serde_json::to_string_pretty(&response)?);
             }
-            check_ipc_response(&response, "Enable plugin")?; // #1424
+            check_ipc_response(&response, "Enable plugin")?;
             if !json {
                 println!("{} Plugin '{}' enabled", "✓".green(), name);
             }
@@ -5081,7 +5078,7 @@ async fn handle_plugin(client: &mut IpcClient, action: &PluginAction, json: bool
             if json {
                 println!("{}", serde_json::to_string_pretty(&response)?);
             }
-            check_ipc_response(&response, "Disable plugin")?; // #1424
+            check_ipc_response(&response, "Disable plugin")?;
             if !json {
                 println!("{} Plugin '{}' disabled", "✓".green(), name);
             }
@@ -5095,7 +5092,7 @@ mod tests {
     use super::*;
 
     // ============================================================================
-    // Config IPC-surface CLI tests (ADR-034 §D4.C / §D9 — #1903)
+    // Config IPC-surface CLI tests (ADR-034 §D4.C / §D9)
     // ============================================================================
 
     #[test]
@@ -5212,7 +5209,7 @@ mod tests {
     }
 
     // ============================================================================
-    // Profile CLI tests (Issue #331)
+    // Profile CLI tests
     // ============================================================================
 
     #[test]
@@ -5327,7 +5324,7 @@ mod tests {
     }
 
     // =========================================================================
-    // Event monitoring tests (Issue #325)
+    // Event monitoring tests
     // =========================================================================
 
     #[test]
@@ -5390,7 +5387,7 @@ mod tests {
         assert_eq!(parse_duration_str(Some("abc")), None);
     }
 
-    /// #1425: an omitted `--duration` defaults to 2s, but an explicit invalid
+    /// An omitted `--duration` defaults to 2s, but an explicit invalid
     /// value must error (not silently fall back to 2s).
     #[test]
     fn test_resolve_capture_secs() {
@@ -5454,7 +5451,7 @@ mod tests {
     }
 
     // =========================================================================
-    // Profile create/delete/name-switch tests (Issue #354)
+    // Profile create/delete/name-switch tests
     // =========================================================================
 
     #[test]
@@ -5575,7 +5572,7 @@ mod tests {
 
     #[test]
     fn migrate_config_default_path_uses_config_dir_not_dot_conductor() {
-        // #1947: `migrate-config --routing`'s default config path must match the
+        // `migrate-config --routing`'s default config path must match the
         // daemon/GUI resolution (`dirs::config_dir()/conductor/config.toml`), NOT
         // `~/.conductor/config.toml`. On macOS those differ (config_dir =
         // ~/Library/Application Support/conductor), so the old home-based default
@@ -5688,7 +5685,7 @@ mod tests {
         assert!(validate_profile_name("DAW").is_ok());
     }
 
-    // ── #944: bindings filter ──────────────────────────────────────────
+    // ── bindings filter ──────────────────────────────────────────────────
     //
     // The handler reuses `IpcCommand::Status` and just filters/pretty-prints.
     // The filter is the only non-trivial logic; pin it with focused tests so
@@ -5785,7 +5782,7 @@ mod tests {
         );
     }
 
-    // ─── #1322: rollback CLI exit-code regression tests ────────────
+    // ─── Rollback CLI exit-code regression tests ───────────────────
 
     /// Helper test fixture: build an IpcResponse with a synthetic
     /// daemon-side error. Used to exercise `check_ipc_response`'s
@@ -5812,7 +5809,7 @@ mod tests {
         }
     }
 
-    /// THE regression test for #1322. An error response MUST yield
+    /// Regression test: an error response MUST yield
     /// `Err` from the helper so the caller can propagate non-zero
     /// exit. Pre-fix, both rollback handlers swallowed the error
     /// and returned Ok(()) → process exit 0.
@@ -5866,7 +5863,7 @@ mod tests {
         );
     }
 
-    /// #1424: the LED (scheme/brightness/off) and plugin (enable/disable)
+    /// The LED (scheme/brightness/off) and plugin (enable/disable)
     /// handlers now route daemon-error responses through
     /// `check_ipc_response` AFTER printing JSON, so `--json led scheme
     /// <invalid>` / `--json plugin enable <missing>` return `Err` (non-zero

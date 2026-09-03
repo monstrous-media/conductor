@@ -110,7 +110,7 @@ fn test_aftertouch_with_note_press() {
     // Ordering, not just counts: the captured stream must be exactly
     // note-on → 3 aftertouch → note-off. A pipeline that reordered the
     // middle (or lost note/continuous interleaving) would still satisfy
-    // the type counts above (#1521).
+    // the type counts above.
     let status: Vec<u8> = events.iter().map(|e| e[0]).collect();
     assert_eq!(
         status,
@@ -273,7 +273,7 @@ fn test_pitch_bend_with_notes() {
     assert_eq!(note_off_count, 1);
 
     // Ordering: note-on → 6 pitch-bend → note-off, in exact sequence —
-    // counts alone wouldn't catch a reordered or split stream (#1521).
+    // counts alone wouldn't catch a reordered or split stream.
     let status: Vec<u8> = events.iter().map(|e| e[0]).collect();
     assert_eq!(
         status,
@@ -342,7 +342,7 @@ fn test_aftertouch_and_pitch_bend_interleaved() {
     // Full ordering, not just first/last: note-on, then strictly
     // alternating aftertouch/pitch-bend, then note-off. Grouping all
     // aftertouch before all pitch bend (or any mid-stream reorder) would
-    // pass the counts + first/last checks but must fail this (#1521).
+    // pass the counts + first/last checks but must fail this.
     assert_eq!(
         types,
         vec![0x90, 0xD0, 0xE0, 0xD0, 0xE0, 0xD0, 0xE0, 0x80],

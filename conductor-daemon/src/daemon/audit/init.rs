@@ -3,8 +3,7 @@
 
 //! Production audit-logger construction.
 //!
-//! Issue #1038 (2026-05-03 install test): D13b (#1031) and D13c
-//! (#1032) shipped with all unit tests passing because tests
+//! D13b and D13c shipped with all unit tests passing because tests
 //! constructed their own loggers, often via
 //! `AuditLogger::in_memory()`. NO production code path called
 //! [`AuditLogger::new`] with a disk-backed config — the daemon's
@@ -97,7 +96,7 @@ mod tests {
     use crate::daemon::audit::{AuditQuery, AuditRiskTier, UserContext};
     use std::time::Duration;
 
-    /// Issue #1038 install-test repro: when the daemon initialises
+    /// When the daemon initialises
     /// the audit logger, the DB file MUST appear on disk at the
     /// expected path. Pre-fix the daemon never called
     /// `AuditLogger::new`, so this file never appeared and D13b/D13c

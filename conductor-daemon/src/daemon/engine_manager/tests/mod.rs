@@ -1,8 +1,8 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Engine-manager test suite, split into themed child modules
-//! (refactor #2073). Shared `use`s + helper fns live here and are
+//! Engine-manager test suite, split into themed child modules.
+//! Shared `use`s + helper fns live here and are
 //! re-exported to the child files via `pub(crate) use super::*;`.
 
 pub(crate) use super::*;
@@ -45,7 +45,7 @@ fn make_output_map(
 }
 
 /// Build a minimal MIDI `Matcher` endpoint with the given direction —
-/// `resolve_device_io` only reads `alias` + `direction` (ADR-035 Slice 9.5).
+/// `resolve_device_io` only reads `alias` + `direction` (ADR-035).
 fn test_endpoint(
     alias: &str,
     direction: conductor_core::config::types::ConnectorDirection,
@@ -174,7 +174,7 @@ async fn create_simulate_manager(config: Config) -> EngineManager {
     .expect("Failed to create EngineManager for simulate test")
 }
 
-/// #2404: the timer-tick (D12) + hot-plug (Phase 4) tasks are daemon-lifetime
+/// The timer-tick (D12) + hot-plug (Phase 4) tasks are daemon-lifetime
 /// and `connect_multi_device` re-runs on every MIDI `DeviceReconnected`, so the
 /// spawn must be idempotent — otherwise each reconnect leaked a fresh task pair.
 #[tokio::test]
@@ -199,7 +199,7 @@ async fn background_tasks_spawn_at_most_once_across_reconnects() {
 ///
 /// Note: the existing `create_simulate_test_config()` maps note 36
 /// → `Keystroke "c" cmd`. The simulate-tests use `execute: false`
-/// so the action never reaches the OS. The #836 tests below DO
+/// so the action never reaches the OS. The Learn-suppression tests below DO
 /// fire real dispatches through `process_device_event`, so they
 /// must use a benign action that doesn't synthesise input events
 /// (ModeChange just toggles a flag — no Enigo invocation when the
@@ -263,7 +263,7 @@ fn drain_for_mapping_matched(rx: &mut tokio::sync::broadcast::Receiver<MonitorEv
     found
 }
 
-/// #1135 helper: same as `drain_for_mapping_matched` but returns the first
+/// Helper: same as `drain_for_mapping_matched` but returns the first
 /// matched event so callers can assert on its fields (e.g. `device_id`).
 fn drain_first_mapping_matched(
     rx: &mut tokio::sync::broadcast::Receiver<MonitorEvent>,

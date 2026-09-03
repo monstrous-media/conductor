@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Type-safe event and pattern type definitions (v4.9.0 - ADR-004)
+//! Type-safe event and pattern type definitions (ADR-004)
 //!
 //! This module provides strongly-typed enums for event types and pattern types,
 //! replacing stringly-typed matching across daemon and GUI layers.
@@ -40,7 +40,7 @@ pub enum EventType {
     /// foot-controller bank stomps and similar can be detected directly).
     ProgramChange,
 
-    // Gamepad Events (v3.0+)
+    // Gamepad Events
     /// Gamepad button press (IDs 128-255)
     GamepadButton,
     /// Gamepad button release

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-039 §4.2 — protocol lifecycle coverage matrix + enforcement (#1761).
+//! ADR-039 §4.2 — protocol lifecycle coverage matrix + enforcement.
 //!
 //! The matrix below is the **structured source of truth** for "which lifecycle
 //! stage is implemented for which protocol" (ADR-039 §D1). Per the R2 revision
@@ -139,7 +139,7 @@ fn lifecycle() -> Vec<(Protocol, Stage, Coverage)> {
             TypedTriggers,
             done!(conductor_core::config::types::Trigger),
         ),
-        // ADR-039-B #1762 (step 4d): HID is now first-class across the input
+        // ADR-039-B (step 4d): HID is now first-class across the input
         // lifecycle. Catch-all HID routes evaluate through the same
         // `RouteEngine` as MIDI (steps 1-3); the `HidForward` action shipped in
         // step 4b; the `HidToMidi`/`HidToOsc`/`HidToArtNet` cross-protocol
@@ -162,8 +162,8 @@ fn lifecycle() -> Vec<(Protocol, Stage, Coverage)> {
             done!(conductor_core::config::types::SignalTransform),
         ),
         // ── OSC: input listener + catch-all + OscToMidi shipped in ADR-039-A
-        //    Slice 1 (#1361); typed triggers (2) shipped in Slice 2 (#2325,
-        //    with D17 taint gating); forward action (4) is Slice 3. ──
+        //    Slice 1; typed triggers (2) shipped in Slice 2,
+        //    with D17 taint gating; forward action (4) is Slice 3. ──
         (
             Osc,
             InputListener,
@@ -172,7 +172,7 @@ fn lifecycle() -> Vec<(Protocol, Stage, Coverage)> {
         (
             Osc,
             TypedTriggers,
-            // #2325: OscMessage/OscAddressPattern/OscArgRange — the pattern
+            // OscMessage/OscAddressPattern/OscArgRange — the pattern
             // type is the compile-proof (its module exists only for these).
             done!(conductor_core::osc_pattern::OscPattern),
         ),
@@ -184,7 +184,7 @@ fn lifecycle() -> Vec<(Protocol, Stage, Coverage)> {
         (
             Osc,
             ForwardAction,
-            // #2326: OscForward action — compile-proven on the Action enum.
+            // OscForward action — compile-proven on the Action enum.
             done!(conductor_core::actions::Action),
         ),
         (
@@ -262,8 +262,7 @@ fn render_markdown(matrix: &[(Protocol, Stage, Coverage)]) -> String {
 
     // Coverage table. The header + separator rows are DERIVED from `PROTOCOLS`
     // (not hard-coded) so they cannot silently misalign with the data columns —
-    // which iterate the same array — if the column set ever changes (Council
-    // review, PR #2245).
+    // which iterate the same array — if the column set ever changes.
     out.push_str("| Stage |");
     for p in PROTOCOLS {
         let _ = write!(out, " {} |", protocol_label(p));
@@ -339,7 +338,7 @@ fn non_done_cells_are_known_subadr_or_documented_na() {
 
 #[test]
 fn rendered_header_is_derived_from_protocols() {
-    // Council review (PR #2245): the table header must track `PROTOCOLS`, not a
+    // The table header must track `PROTOCOLS`, not a
     // hard-coded string, so it can't silently misalign with the data columns if
     // the column set changes. Assert the header row has exactly one column per
     // protocol (plus the leading "Stage" column) and names each protocol.

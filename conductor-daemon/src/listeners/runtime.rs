@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase A — async UDP listener runtime (Slice A.6b-2).
+//! ADR-042 Phase A — async UDP listener runtime.
 //!
 //! [`spawn_listener`] binds a loopback UDP socket for a [`ListenerEdge`] and
 //! runs a receive loop that applies the edge to every datagram's source IP in
@@ -17,7 +17,7 @@
 //!
 //! The loop exits on a shutdown broadcast (or when the packet sink closes). The
 //! [`EdgeAuditSink`] seam decouples this runtime from the daemon's `AuditLogger`
-//! so it is unit-testable; Slice A.6b-3 supplies the logger-backed sink (which
+//! so it is unit-testable; the engine wiring supplies the logger-backed sink (which
 //! also emits `NetworkListenerActivity` on the accept path) and wires
 //! `spawn_listener` into `EngineManager`.
 

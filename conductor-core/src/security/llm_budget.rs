@@ -39,13 +39,13 @@
 //!   `max_iterations_per_turn = 10`, the 11th iteration is refused; 10 are
 //!   allowed. The counter is **not** advanced on a rejected charge.
 //!
-//! ## Council R1 additions
+//! ## Burst-rate addition
 //!
 //! - **Token burst rate** ([`LlmBudgetConfig::max_tokens_per_60sec`]) — a
 //!   sliding-60s window that catches rapid-fire token exhaustion which evades
 //!   the per-session token cap.
 //!
-//! Two further Council R1 asks — a process-level wall-clock *watchdog* (a
+//! Two further asks — a process-level wall-clock *watchdog* (a
 //! dead-man-switch independent of the cooperative `max_wall_clock_*` checks)
 //! and *hierarchical daily* limits nested above the session — are deliberately
 //! out of scope for this module: both need cross-session / process-supervisor
@@ -102,7 +102,7 @@ pub enum BudgetDimension {
     MidiOutPerSession,
     /// `max_confirmations_requested_per_minute`
     ConfirmationsPerMinute,
-    /// `max_tokens_per_60sec` (Council burst-rate addition)
+    /// `max_tokens_per_60sec` (burst-rate addition)
     TokenBurst,
 }
 
@@ -194,7 +194,7 @@ pub struct LlmBudgetConfig {
     pub max_midi_out_per_session: u32,
     /// Max user confirmations requested per rolling minute (anti-fatigue).
     pub max_confirmations_requested_per_minute: u32,
-    /// Council burst-rate addition: max tokens (in + out) per rolling 60 s.
+    /// Burst-rate addition: max tokens (in + out) per rolling 60 s.
     pub max_tokens_per_60sec: u64,
     /// What to do when any dimension is exhausted.
     pub on_budget_exceeded: BudgetExceededBehaviour,
@@ -665,7 +665,7 @@ mod tests {
 
     #[test]
     fn token_charge_saturates_instead_of_overflowing() {
-        // Council R-high blocker: per-session token caps disabled, burst
+        // Per-session token caps disabled, burst
         // enabled. An attacker-supplied near-u64::MAX charge must SATURATE
         // (block), not wrap under the burst cap (fail-open) — and must not
         // panic (debug-mode DoS).
@@ -690,7 +690,7 @@ mod tests {
 
     #[test]
     fn disabled_burst_window_does_not_grow() {
-        // Council R-high blocker: with the burst dimension disabled (0), the
+        // With the burst dimension disabled (0), the
         // window must not buffer at all (unbounded-memory DoS otherwise).
         let mut st = LlmBudgetState::new(unlimited(), 0); // burst = 0
         for i in 0..10_000 {

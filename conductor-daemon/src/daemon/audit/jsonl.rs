@@ -1,13 +1,13 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-045 D5 (#2493) — the always-compiled append-only JSONL audit sink.
+//! ADR-045 D5 — the always-compiled append-only JSONL audit sink.
 //!
 //! The free (no-`audit-db`) composition still needs a durable, redacted,
 //! tamper-evident audit trail — ADR-042 made listener audit a security
 //! control, and ADR-045 D5 makes that control composition-independent.
 //!
-//! Design, per the four in-ADR invariants (ADR-045 D5, Council R1 #4):
+//! Design, per the four in-ADR invariants (ADR-045 D5):
 //!
 //! 1. **Single-writer serialization** — every write flows through one
 //!    dedicated writer THREAD fed by a bounded `sync_channel` (the pump
@@ -191,7 +191,7 @@ impl JsonlAuditSink {
         if self.config.redact_arguments {
             entry.arguments = redact_audit_field(entry.arguments.as_deref());
         }
-        // Council review on PR #2605: cap arguments like results — an
+        // Cap arguments like results — an
         // append-only file must bound every field (redact-then-truncate
         // ordering preserved; D13c).
         entry.arguments = entry.arguments.take().map(truncate_for_storage);
@@ -269,7 +269,7 @@ fn writer_pump(
             // Best-effort per D5 rule 3 (fail-open outside listener
             // startup): keep the daemon alive, keep the chain tail
             // UNCHANGED so the next successful append still chains.
-            // Council review on PR #2605: a disk-failed entry is as
+            // A disk-failed entry is as
             // dropped as a shed one — count it so `dropped_entries()`
             // reflects EVERY entry that did not reach disk.
             dropped.fetch_add(1, Ordering::Relaxed);
@@ -285,8 +285,8 @@ fn writer_pump(
         if let Ok(meta) = std::fs::metadata(&path)
             && meta.len() > cap
         {
-            // Windows `rename` fails when the destination exists (Copilot
-            // review on PR #2605); drop the previous rotated segment first.
+            // Windows `rename` fails when the destination exists;
+            // drop the previous rotated segment first.
             // Unix `rename` replaces atomically either way; NotFound is the
             // normal first-rotation case.
             let dest = rotated_path(&path);
@@ -1021,7 +1021,7 @@ mod drop_accounting_tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
-    /// Council on PR #2605: entries lost to disk-append failures must be
+    /// Entries lost to disk-append failures must be
     /// counted in `dropped_entries()` — silent loss is an observability gap.
     #[test]
     fn append_failures_are_counted_as_dropped() {

@@ -3,13 +3,12 @@
 
 //! `EngineManager` learn/capture/simulate helpers (`simulate_mapping`,
 //! `create_learn_event`, `capture_pattern_events`, `flush_pending_chord`,
-//! `flush_pending_chord_if_stale`), extracted from `engine_manager::monitor`
-//! (refactor #2073).
+//! `flush_pending_chord_if_stale`), extracted from `engine_manager::monitor`.
 
 use super::*;
 
 impl EngineManager {
-    /// Simulate a mapping execution (ADR-014 Phase 5A — Issue #488)
+    /// Simulate a mapping execution (ADR-014 Phase 5A)
     ///
     /// Looks up the mapping by mode name + index, compiles the action, optionally
     /// executes it, and emits a `mapping_fired` MonitorEvent so the GUI shows feedback.
@@ -374,7 +373,7 @@ impl EngineManager {
         timestamp: u64,
         device_id: Option<&DeviceId>,
     ) {
-        // #2486: the chord-detection window actually in effect, so the chord
+        // The chord-detection window actually in effect, so the chord
         // pattern pill reflects reality (chord_timeout_ms normally /
         // chord_learn_timeout_ms during Learn) instead of a hardcoded 100ms that
         // matched neither configured value.
@@ -503,10 +502,10 @@ impl EngineManager {
 
     /// Flush a pending chord once it has been waiting longer than the configured
     /// Learn chord window (`advanced_settings.chord_learn_timeout_ms`, default
-    /// 150ms — #2386). Called from the event polling path so chords aren't stuck
+    /// 150ms). Called from the event polling path so chords aren't stuck
     /// forever. Reads the SAME field the Learn `EventProcessor`s use, so the
     /// poll-side flush can't cap or split a chord before the configured window
-    /// elapses (Copilot review on PR #2481 — previously hardcoded 150ms).
+    /// elapses (previously hardcoded 150ms).
     pub(crate) async fn flush_pending_chord_if_stale(&self) {
         let learn_window = Duration::from_millis(
             self.live_config

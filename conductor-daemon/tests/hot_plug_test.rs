@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Integration tests for hot-plug detection (v4.22.0 - ADR-009 Phase 4a)
+//! Integration tests for hot-plug detection (ADR-009 Phase 4a)
 //!
 //! These tests verify the rescan behavior and command variants for hot-plug
 //! port detection. Since we can't create real MIDI ports in CI, tests focus
@@ -38,9 +38,9 @@ async fn test_rescan_not_multi_device_returns_zero() {
     let (command_tx, _command_rx) = tokio::sync::mpsc::channel::<DaemonCommand>(10);
 
     // Not in multi-device mode, should return (0, 0, 0).
-    // Third element is `rekeyed` — added in #955 to surface DeviceId
+    // Third element is `rekeyed` — surfaces DeviceId
     // changes (existing ports whose binding resolution flipped).
-    // #2390: rescan_ports now takes pre-enumerated ports; not-multi-device
+    // rescan_ports now takes pre-enumerated ports; not-multi-device
     // early-returns before using them.
     let result = manager.rescan_ports(vec![], &config, &event_tx, &command_tx);
     assert!(result.is_ok());
@@ -122,7 +122,7 @@ fn test_input_manager_not_multi_device_by_default() {
     assert!(!manager.is_multi_device());
 }
 
-/// Test lifecycle transition: Reloading → Stopping (v4.22.0)
+/// Test lifecycle transition: Reloading → Stopping
 #[test]
 fn test_lifecycle_reloading_to_stopping() {
     assert!(LifecycleState::Reloading.can_transition_to(LifecycleState::Stopping));
@@ -148,13 +148,13 @@ fn test_device_id_instance_disambiguation() {
     assert_ne!(id1.as_str(), id2.as_str());
 }
 
-/// Test lifecycle transition: Reloading → Reconnecting (v4.22.0)
+/// Test lifecycle transition: Reloading → Reconnecting
 #[test]
 fn test_lifecycle_reloading_to_reconnecting() {
     assert!(LifecycleState::Reloading.can_transition_to(LifecycleState::Reconnecting));
 }
 
-/// Test lifecycle transition: Reconnecting → Stopping (v4.22.0)
+/// Test lifecycle transition: Reconnecting → Stopping
 #[test]
 fn test_lifecycle_reconnecting_to_stopping() {
     assert!(LifecycleState::Reconnecting.can_transition_to(LifecycleState::Stopping));

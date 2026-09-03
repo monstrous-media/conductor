@@ -5,19 +5,17 @@
 //! character set AND length cap of plugin identifiers used
 //! across the codebase.
 //!
-//! Extracted from `plugin_registry::validate_plugin_id` (PR #1029
-//! round-2, 2026-05-02) so the WASM runtime (gated behind
-//! `plugin-wasm`, NOT behind `plugin-registry`) can apply the
+//! Extracted from `plugin_registry::validate_plugin_id` so the WASM runtime
+//! (gated behind `plugin-wasm`, NOT behind `plugin-registry`) can apply the
 //! same rules. Without this extraction, the install/discovery
-//! flow and the runtime sandbox flow could accept different ids,
-//! which Copilot review on PR #1029 flagged as a divergence
-//! risk.
+//! flow and the runtime sandbox flow could accept different ids —
+//! a divergence risk.
 //!
-//! PR #1029 round-3 follow-up (2026-05-02): the 128-byte length
+//! The 128-byte length
 //! cap moved from `plugin::wasm_runtime::is_safe_plugin_id` into
 //! this shared validator. Pre-fix install/discovery accepted
 //! 129+ char ids that the runtime then rejected — same install/
-//! runtime divergence the round-2 extraction was meant to close,
+//! runtime divergence the earlier extraction was meant to close,
 //! but for length rather than character set.
 //!
 //! Plugin ids are used as filesystem subdirectory names (D10c
@@ -112,7 +110,7 @@ mod tests {
 
     #[test]
     fn rejects_overly_long_ids() {
-        // PR #1029 round-3 review: install/discovery and runtime
+        // Install/discovery and runtime
         // need to agree on the length cap, not just the character
         // set. 128 bytes is the boundary — exactly 128 is fine,
         // 129 isn't. Both call sites delegate to this function

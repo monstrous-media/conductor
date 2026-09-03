@@ -226,7 +226,7 @@ fn test_multiple_matchers_on_identity_any_matches() {
     );
 }
 
-// ===== v4.25.0 - ADR-009 Gap 4: endpoint extra fields =====
+// ===== ADR-009 Gap 4: endpoint extra fields =====
 
 #[test]
 fn test_disabled_identity_skipped() {
@@ -263,7 +263,7 @@ fn test_disabled_identity_does_not_block_others() {
     );
 }
 
-// #753: UsbIdentifier matcher works in PortResolver when USB metadata provided
+// UsbIdentifier matcher works in PortResolver when USB metadata provided
 #[test]
 fn test_usb_identifier_matches_with_metadata() {
     let ports = vec![PortInfo::new_with_usb(
@@ -319,7 +319,7 @@ fn test_name_matcher_still_works_with_usb_fields() {
     );
 }
 
-// #752: SysExIdentity matcher works in PortResolver when identity data provided
+// SysExIdentity matcher works in PortResolver when identity data provided
 #[test]
 fn test_sysex_identity_matches_with_metadata() {
     use conductor_core::device_intelligence::sysex_identity::SysExIdentity;

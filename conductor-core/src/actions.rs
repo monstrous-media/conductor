@@ -109,7 +109,7 @@ pub enum MouseButton {
     Middle,
 }
 
-/// Condition for conditional action execution (v2.2)
+/// Condition for conditional action execution
 ///
 /// Represents conditions that can be evaluated at runtime to determine
 /// whether to execute an action. Supports time-based, app-based, mode-based,
@@ -276,7 +276,7 @@ pub enum Action {
     },
     Text(String),
     Launch(String),
-    /// Shell action runtime variant (ADR-027 D3 §3.1, issue #1037).
+    /// Shell action runtime variant (ADR-027 D3 §3.1).
     ///
     /// `args = None` is the legacy whitespace-split path — the executor
     /// runs `parse_command_line(&command)` to derive argv. `args =
@@ -286,7 +286,7 @@ pub enum Action {
     Shell {
         command: String,
         args: Option<Vec<String>>,
-        /// Per-action timeout (ADR-027 D7 / #1166). `None` → daemon
+        /// Per-action timeout (ADR-027 D7). `None` → daemon
         /// applies `DEFAULT_SHELL_TIMEOUT_MS` (30s). Validator clamps
         /// to [1000, 300000].
         timeout_ms: Option<u64>,
@@ -324,7 +324,7 @@ pub enum Action {
         channel: u8,
         params: MidiMessageParams,
     },
-    /// Plugin action (v2.3)
+    /// Plugin action
     ///
     /// Execute a custom action plugin with given parameters.
     /// The plugin must be installed and enabled for this to work.
@@ -334,7 +334,7 @@ pub enum Action {
         /// Plugin-specific parameters (JSON object)
         params: serde_json::Value,
     },
-    /// Forward MIDI data to an output port with optional transform (v4.25.0 - ADR-009 Gap 2)
+    /// Forward MIDI data to an output port with optional transform (ADR-009 Gap 2)
     ///
     /// Passes raw MIDI bytes from the triggering event through an optional
     /// transform pipeline and sends them to the named output port.
@@ -345,7 +345,7 @@ pub enum Action {
         transform: Option<MidiTransform>,
     },
     /// Forward a gamepad (HID) event to a cross-protocol output endpoint
-    /// (ADR-039-B, #1762 step 4b).
+    /// (ADR-039-B).
     ///
     /// Mapping-triggered analogue of a HID route. Translates the structured
     /// triggering gamepad `InputEvent` to MIDI via the required `transform`
@@ -360,7 +360,7 @@ pub enum Action {
         transform: crate::config::types::SignalTransform,
     },
     /// Forward an inbound OSC message to an OSC output endpoint
-    /// (ADR-039-A Slice 3, #2326).
+    /// (ADR-039-A).
     ///
     /// Re-sends the triggering `OscInbound` (from the dispatch's trigger
     /// context) to the target OSC output endpoint by alias. V1 is
@@ -376,7 +376,7 @@ pub enum Action {
         /// Reserved OSC→OSC transform; `None` in V1.
         transform: Option<crate::config::types::SignalTransform>,
     },
-    /// Send an OSC message over UDP (v4.26.0 - ADR-009 Gap H)
+    /// Send an OSC message over UDP (ADR-009 Gap H)
     ///
     /// Encodes and sends an OSC message to the specified host:port.
     OscSend {
@@ -429,10 +429,9 @@ pub enum Action {
     /// Observation action (ADR-038 §4.1).
     ///
     /// Carries a `message` template and completes with no signal side-effect.
-    /// In Slice 1 the daemon executor only debug-logs the raw template; the
-    /// `{value}`/`{note}`/`{cc}`/`{velocity}` substitution and the
-    /// event-stream / trace emission are performed by the Tap executor in
-    /// Slice 4. Pair with `let_through = true` to observe without consuming.
+    /// The `{value}`/`{note}`/`{cc}`/`{velocity}` substitution and the
+    /// event-stream / trace emission are performed by the Tap executor.
+    /// Pair with `let_through = true` to observe without consuming.
     Tap {
         /// Template emitted on each match.
         message: String,
@@ -474,7 +473,7 @@ pub enum ContextBranchTable {
 
 impl ContextBranchTable {
     /// ADR-042 D17: whether any branch action is or contains a sensitive
-    /// action (#2325 security review). Used by
+    /// action. Used by
     /// [`Action::contains_sensitive_action`] to recurse through a
     /// `ContextSwitchTable`'s branches.
     pub fn contains_sensitive_action(&self) -> bool {
@@ -504,7 +503,7 @@ pub struct LoweringSource {
     pub branch_index: Option<usize>,
 }
 
-/// OSC argument types for OscSend actions (v4.26.0 - ADR-009 Gap H)
+/// OSC argument types for OscSend actions (ADR-009 Gap H)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
 pub enum OscArg {
@@ -516,7 +515,7 @@ pub enum OscArg {
     String(String),
 }
 
-/// MIDI message type (v2.1)
+/// MIDI message type
 ///
 /// Represents the type of MIDI message to send.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -529,14 +528,14 @@ pub enum MidiMessageType {
     Aftertouch,
 }
 
-/// Velocity mapping mode for SendMIDI actions (v2.2)
+/// Velocity mapping mode for SendMIDI actions
 ///
 /// Defines how trigger velocity is mapped to output MIDI velocity.
 /// This enables dynamic velocity control where pad dynamics can be preserved,
 /// scaled, or transformed when sending MIDI notes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum VelocityMapping {
-    /// Fixed velocity (current behavior, v2.1 compatibility)
+    /// Fixed velocity (current behavior, kept for backward compatibility)
     /// Always send the same velocity regardless of trigger velocity
     Fixed {
         velocity: u8, // 0-127
@@ -582,7 +581,7 @@ pub enum VelocityCurve {
     SCurve,
 }
 
-/// MIDI message parameters (v2.2 - updated for variable velocity)
+/// MIDI message parameters (updated for variable velocity)
 ///
 /// Type-specific parameters for MIDI messages.
 /// Note messages now support velocity mapping instead of fixed velocity.
@@ -590,7 +589,7 @@ pub enum VelocityCurve {
 pub enum MidiMessageParams {
     Note {
         note: u8,
-        velocity_mapping: VelocityMapping, // v2.2: was `velocity: u8`
+        velocity_mapping: VelocityMapping, // was `velocity: u8`
     },
     CC {
         controller: u8,
@@ -709,7 +708,7 @@ impl From<ActionConfig> for Action {
                 let msg_type = parse_midi_message_type(&message_type);
                 let params = match msg_type {
                     MidiMessageType::NoteOn | MidiMessageType::NoteOff => {
-                        // v2.2: Use Fixed velocity mapping for backward compatibility
+                        // Use Fixed velocity mapping for backward compatibility
                         // If velocity is specified, create Fixed mapping with that value
                         let velocity_mapping = VelocityMapping::Fixed {
                             velocity: velocity.unwrap_or(100),
@@ -889,7 +888,7 @@ fn parse_volume_operation(operation: &str) -> VolumeOperation {
     }
 }
 
-/// Parse MIDI message type string into enum (v2.1)
+/// Parse MIDI message type string into enum
 ///
 /// Converts configuration string to MidiMessageType enum variant.
 fn parse_midi_message_type(message_type: &str) -> MidiMessageType {
@@ -921,7 +920,7 @@ impl Action {
     /// sensitive action class.
     ///
     /// "Sensitive" = an action an **unauthenticated network listener** (OSC
-    /// over UDP, loopback included — ADR-039-A Slice 2) must not be able to
+    /// over UDP, loopback included — ADR-039-A) must not be able to
     /// fire unless the listener opted in via `allow_sensitive_actions`. The
     /// set is every action that executes code or injects input into the host:
     ///
@@ -929,11 +928,10 @@ impl Action {
     /// - `Keystroke` — synthesize key events.
     /// - `Text` — synthesize keystrokes for arbitrary text. Gating `Keystroke`
     ///   but not `Text` would be a trivial bypass (type `…\n` into a terminal),
-    ///   so they share the class (#2325 security review).
+    ///   so they share the class.
     /// - `MouseClick` — synthesize pointer input (can drive any UI).
     /// - `Plugin` — execute a (native = arbitrary-code) plugin → RCE; the
-    ///   single most dangerous reach from a network packet (#2325 security
-    ///   review).
+    ///   single most dangerous reach from a network packet.
     ///
     /// Recurses into the static wrappers (`Sequence`, `Repeat`, `Conditional`
     /// branches) so a sensitive action nested in a sequence is detected and the
@@ -972,8 +970,7 @@ impl Action {
             // ContextSwitchTable dispatches one of its branch actions (or the
             // default) by physical state — so it is a wrapper and MUST recurse,
             // exactly like Conditional. Missing this was a gate bypass: an OSC
-            // event could fire a table whose branch is `Shell` (#2325 security
-            // review).
+            // event could fire a table whose branch is `Shell`.
             Action::ContextSwitchTable {
                 branches, default, ..
             } => {
@@ -987,7 +984,7 @@ impl Action {
             //    execution or input injection). Listed exhaustively — NO `_`
             //    arm — so a future Action variant fails the build here and
             //    forces an explicit sensitive/not decision (fail-closed by
-            //    construction, #2325 security review). MIDI/OSC output actions
+            //    construction). MIDI/OSC output actions
             //    (SendMidi/MidiForward/HidForward/OscSend) emit packets, not
             //    host effects; their loopback-re-entry risk is the D8
             //    feedback-loop guard's domain, not the action-class gate's. ──
@@ -1042,7 +1039,7 @@ mod tests {
 
     #[test]
     fn input_injection_and_plugin_actions_are_sensitive() {
-        // #2325 security review: an unauthenticated OSC datagram must not reach
+        // An unauthenticated OSC datagram must not reach
         // these without allow_sensitive_actions.
         // Text injects arbitrary keystrokes — gating Keystroke but not Text
         // would be a trivial bypass.
@@ -1071,7 +1068,7 @@ mod tests {
 
     #[test]
     fn sensitive_in_context_switch_table_branch_is_detected() {
-        // #2325 security review: ContextSwitchTable dispatches a branch action
+        // ContextSwitchTable dispatches a branch action
         // by physical state — a Shell branch must make the whole table
         // sensitive (it was a gate bypass before exhaustive recursion).
         use std::collections::HashMap;

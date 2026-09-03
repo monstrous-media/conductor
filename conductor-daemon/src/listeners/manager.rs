@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase A — listener manager + ordered edge (Slice A.6a).
+//! ADR-042 Phase A — listener manager + ordered edge.
 //!
 //! [`ListenerManager`] owns one [`ListenerEdge`] per enabled Input/Bidirectional
 //! OSC/Art-Net endpoint. Each edge bundles that listener's [`AclFilter`] (A.3),
@@ -10,15 +10,15 @@
 //!
 //! > **ACL filter FIRST, then the rate-limit edge.**
 //!
-//! That order is a security property (Council R1 G2): if the rate limiter ran
+//! That order is a security property: if the rate limiter ran
 //! first, an off-ACL attacker could drain a listener's rate-limit budget with
 //! packets the ACL would have rejected anyway, starving legitimate senders.
 //! [`ListenerEdge::admit`] therefore returns at the ACL stage for an off-ACL
 //! source, never touching the rate buckets.
 //!
-//! Socket binding, the receive loop, and audit emission are wired in Slice A.6b;
-//! this slice is the socket-free edge + manager so the ordering guarantee can be
-//! proven in isolation.
+//! Socket binding, the receive loop, and audit emission are wired in the
+//! listener runtime; this module is the socket-free edge + manager so the
+//! ordering guarantee can be proven in isolation.
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
@@ -120,7 +120,7 @@ impl ListenerEdge {
     pub fn port(&self) -> u16 {
         self.port
     }
-    /// D17 action-class gate flag for this listener (Slice A.6.6 reads this).
+    /// D17 action-class gate flag for this listener (the action-class gate reads this).
     pub fn allow_sensitive_actions(&self) -> bool {
         self.allow_sensitive_actions
     }
@@ -253,7 +253,7 @@ impl ListenerManager {
         self.edges.into_values()
     }
 
-    /// Listener aliases (for `GetListenerStatus` in Slice A.6b).
+    /// Listener aliases (for `GetListenerStatus`).
     pub fn aliases(&self) -> impl Iterator<Item = &str> {
         self.edges.keys().map(String::as_str)
     }

@@ -24,7 +24,7 @@
 //!
 //! ## Relationship to D20
 //!
-//! D20 (`conductor-gui/src-tauri/src/llm/redaction.rs`)
+//! D20 (the GUI's own LLM redaction module)
 //! redacts secrets headed TO the LLM. D13c redacts secrets
 //! headed TO the audit log. Same shape of problem, different
 //! output stream — both pre-process JSON values destined for a
@@ -32,32 +32,30 @@
 //! necessarily trust to keep secrets confidential.
 //!
 //! Why duplicate the logic instead of sharing? D20 lives in
-//! conductor-gui (Tauri-only). conductor-daemon would have to
-//! depend on conductor-gui's Tauri-bound code, or both would
+//! the GUI (Tauri-only). conductor-daemon would have to
+//! depend on the GUI's Tauri-bound code, or both would
 //! have to depend on a new shared crate. Both options carry
 //! more cost than maintaining ~80 lines of secret-detection
 //! patterns in two places. If a third consumer arrives the
 //! shared crate becomes worth it; for now, this module is
 //! self-contained.
 //!
-//! Closes part of audit Finding F-10 (audit log content
-//! exposure).
+//! Addresses audit log content exposure.
 
 use serde_json::Value;
 
 /// Case-insensitive substrings that mark a key as secret-shaped.
 /// Match anywhere in the key name.
 ///
-/// **D20 (`conductor-gui/src-tauri/src/llm/redaction.rs`)
+/// **D20 (the GUI's own LLM redaction module)
 /// shares most of this set but is currently MISSING
 /// `authorization` / `proxy-authorization`** — those were
-/// added here in PR #1032 round-2 to cover the documented
+/// added here to cover the documented
 /// motivating example (HTTP Authorization headers in tool
 /// arguments). D20 should be brought into sync in a follow-up
-/// PR; until then the two redactors diverge on those entries
+/// change; until then the two redactors diverge on those entries
 /// only. New entries added to either side should be added to
-/// both (PR #1032 round-3 review, 2026-05-02 — previous
-/// "Same set as D20" claim was outdated as of round-2).
+/// both.
 const SECRET_KEY_SUBSTRINGS: &[&str] = &[
     "api_key",
     "apikey",
@@ -79,7 +77,7 @@ const SECRET_KEY_SUBSTRINGS: &[&str] = &[
     "client_secret",
     "webhook_secret",
     "signing_key",
-    // PR #1032 review (2026-05-02): the module docs cite
+    // The module docs cite
     // `Authorization: Bearer ...` as a motivating example, but
     // pre-fix `is_secret_key("Authorization")` returned false
     // (no substring/suffix match), so the named header would
@@ -112,7 +110,7 @@ pub fn redact_audit_field(field: Option<&str>) -> Option<String> {
     };
     let mut modified = false;
     let redacted = redact_inner(parsed, false, &mut modified);
-    // PR #1032 review (2026-05-03): when no secret-shaped keys
+    // When no secret-shaped keys
     // were touched, skip the serde re-serialise and return the
     // input verbatim. Pre-fix the fast path always parsed +
     // re-serialised, which doubled memory peak for large
@@ -162,7 +160,7 @@ fn redact_inner(value: Value, parent_key_is_secret: bool, modified: &mut bool) -
                     .collect(),
             )
         }
-        // A string value under a NON-secret key (#2119): the field name doesn't
+        // A string value under a NON-secret key: the field name doesn't
         // mark it as a secret, but the VALUE may be a webhook URL carrying a
         // signing token in its query string (`...?token=...`). Key-based
         // redaction alone preserves it verbatim. Redact secret-shaped query
@@ -181,7 +179,7 @@ fn redact_inner(value: Value, parent_key_is_secret: bool, modified: &mut bool) -
 
 /// Query-parameter names whose VALUES should be treated as secret-shaped (e.g.
 /// a webhook signing token in `?token=...`). Combines the key-based secret
-/// detector with a few URL-specific short parameter names (#2119).
+/// detector with a few URL-specific short parameter names.
 fn is_secret_query_param(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     if is_secret_key(&lower) {
@@ -207,7 +205,7 @@ fn is_secret_query_param(name: &str) -> bool {
 
 /// If `s` is an http(s) URL carrying secret-shaped parameters in its query
 /// string OR its fragment, return a copy with those parameter VALUES redacted
-/// (#2119), preserving the base URL and non-secret params. The FRAGMENT is
+/// preserving the base URL and non-secret params. The FRAGMENT is
 /// covered as well: OAuth implicit-flow redirects deliver the token as
 /// `#access_token=...`, so a fragment is just as sensitive as the query string.
 /// Returns `None` when there is nothing to redact, so the caller keeps the
@@ -315,7 +313,7 @@ fn is_secret_key(key: &str) -> bool {
 /// multi-byte character and produce invalid UTF-8).
 ///
 /// **`RESULT_MAX_BYTES` is the hard cap on the FINAL stored
-/// string** (PR #1032 round-3 review, 2026-05-02). Pre-fix this
+/// string.** Pre-fix this
 /// truncated the input at `RESULT_MAX_BYTES` then APPENDED
 /// `"...[truncated]"`, so the stored string could exceed the
 /// cap by the marker length. Now the cut budget is reduced by
@@ -377,7 +375,7 @@ mod tests {
 
     #[test]
     fn redacts_http_authorization_header_key() {
-        // PR #1032 review (2026-05-02): the module docs cite
+        // The module docs cite
         // `Authorization: Bearer ...` as a motivating example,
         // but pre-fix the matcher didn't have an `authorization`
         // pattern entry. Regression: verify it's caught now.
@@ -585,7 +583,7 @@ mod tests {
 
     #[test]
     fn no_secrets_returns_input_verbatim_no_serde_roundtrip() {
-        // PR #1032 review (2026-05-03): when nothing is redacted,
+        // When nothing is redacted,
         // the function used to parse + re-serialize through
         // serde_json — doubling memory peak for large unchanged
         // payloads. Now the fast path skips the re-serialize and
@@ -627,7 +625,7 @@ mod tests {
 
     #[test]
     fn url_query_string_secret_is_redacted() {
-        // #2119 (clawpatch #2103): a webhook URL carrying a signing token in its
+        // A webhook URL carrying a signing token in its
         // query string must NOT be persisted verbatim, even though the field
         // key (`url`) is not itself secret-shaped.
         let input = json!({
@@ -689,7 +687,7 @@ mod tests {
 
     #[test]
     fn url_fragment_secret_is_redacted() {
-        // #2119 (Council): OAuth implicit-flow redirects carry the token in the
+        // OAuth implicit-flow redirects carry the token in the
         // URL FRAGMENT (`#access_token=...`), which must be redacted too — even
         // when there is no query string.
         let input = json!({

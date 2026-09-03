@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Action dispatch result types (v4.25.0 - ADR-009 Gap 1)
+//! Action dispatch result types (ADR-009 Gap 1)
 //!
 //! Provides structured return types for action execution, enabling the
 //! engine manager to handle mode changes and errors appropriately instead
@@ -14,7 +14,7 @@ use std::fmt;
 /// Result type for action dispatch
 pub type DispatchResult = Result<DispatchOutcome, DispatchError>;
 
-/// Envelope wrapping an action with provenance metadata (v4.26.0 - ADR-009 Gap K)
+/// Envelope wrapping an action with provenance metadata (ADR-009 Gap K)
 ///
 /// Tracks which rule matched, the device that triggered it, and the active mode,
 /// enabling richer debug logging and diagnostics in the engine manager.
@@ -30,16 +30,16 @@ pub struct ActionEnvelope {
     pub mode_name: Option<String>,
     /// ADR-038: whether the matched rule asked to let the event continue to the
     /// route stage after firing the action. Metadata copied from the winning
-    /// `CompiledRule`; consumed at the event pump's route-disposition gate
-    /// (Slice 3). Defaults to `false` (swallow) for envelopes not built from a
+    /// `CompiledRule`; consumed at the event pump's route-disposition gate.
+    /// Defaults to `false` (swallow) for envelopes not built from a
     /// rule match.
     pub let_through: bool,
     /// ADR-038: positional index of the winning mapping within its source list,
-    /// for the dispatch trace (Slice 4). `None` when the envelope was not built
+    /// for the dispatch trace. `None` when the envelope was not built
     /// from a rule match (e.g. constructed directly in tests). Positionally
     /// bound — see [`crate::rule_set::CompiledRule::mapping_id`].
     pub mapping_id: Option<usize>,
-    /// ADR-042 D17 (Slice A.6.6) — network-origin taint. `Some(listener_alias)`
+    /// ADR-042 D17 — network-origin taint. `Some(listener_alias)`
     /// when this action originates from a network listener (OSC/Art-Net,
     /// **including loopback**); `None` for MIDI/gamepad origins. **Copied, never
     /// cleared**, into envelopes derived from this one (sequence/plugin/
@@ -78,15 +78,15 @@ pub enum DispatchError {
     /// binary not on PATH, `open` exited non-zero, etc.). Distinct from
     /// `OsAutomation` because the failure path goes through
     /// `Command::spawn`/`status` rather than enigo, and the diagnostic
-    /// information is different (#938).
+    /// information is different.
     Launch(String),
     /// `Shell` action failed before a process started: missing binary
     /// (ENOENT), permission denied, unparseable/empty command, or
-    /// resource exhaustion at spawn. Parallels `Launch` (#1479) — the
+    /// resource exhaustion at spawn. Parallels `Launch` — the
     /// failure path is `Command::spawn` and previously a spawn error was
     /// only logged, so the action falsely reported as completed.
     Shell(String),
-    /// ADR-042 D17 (Slice A.6.6): a network-origin action was refused by the
+    /// ADR-042 D17: a network-origin action was refused by the
     /// action-class gate — a sensitive class (`Shell`/`Launch`/`Keystroke`) from
     /// the named network listener that did not set `allow_sensitive_actions`.
     /// `listener` is the origin alias (recorded as `NetworkActionClassBlocked`).
@@ -251,9 +251,9 @@ mod tests {
         let err = DispatchError::OscSend("connection refused".to_string());
         assert_eq!(format!("{}", err), "OSC send error: connection refused");
 
-        // #938 / #982 review 3169357558: cover the new Launch variant
-        // in the Display test matrix so future renames/changes can't
-        // silently regress the user-visible error wording.
+        // Cover the new Launch variant in the Display test matrix so
+        // future renames/changes can't silently regress the
+        // user-visible error wording.
         let err = DispatchError::Launch("'open -a Calculator' exited with status 1".to_string());
         assert_eq!(
             format!("{}", err),

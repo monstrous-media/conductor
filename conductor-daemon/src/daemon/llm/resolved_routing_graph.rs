@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Pure-function builder for the `conductor_get_resolved_routing_graph`
-//! MCP tool response (ADR-031 P6 / #1598 Phase 2 Step C).
+//! MCP tool response (ADR-031 P6, Phase 2 Step C).
 //!
 //! ## Why extracted
 //!
@@ -38,7 +38,7 @@
 //! the ActionExecutor hot path); the resolver tool just doesn't
 //! rely on its runtime fields.
 //!
-//! ## Caveats acknowledged in this PR
+//! ## Known caveats
 //!
 //! - **`auto_paired` is always `false`** in this response. The flat
 //!   `HashMap<String, String>` shared with ActionExecutor lost the
@@ -70,15 +70,13 @@ use std::collections::{HashMap, HashSet};
 /// 4. Call the helper. The registry guard stays alive across the
 ///    synchronous build.
 /// 5. Guard drops at end of scope. No `.await` between (2) and (5)
-///    or the lock-ordering invariant breaks (Copilot finding on PR
-///    #1633).
+///    or the lock-ordering invariant breaks.
 ///
 /// Alias is read via `alias()` — `config.alias.as_str()` — rather
-/// than carried as a separate field, so the two can't drift (Council
-/// finding on PR #1633: an earlier shape with both
-/// `alias: &'a str` and `config: &'a ConnectorConfig` let callers
-/// construct a view where the two disagreed, silently misrendering
-/// the response).
+/// than carried as a separate field, so the two can't drift (an
+/// earlier shape with both `alias: &'a str` and
+/// `config: &'a ConnectorConfig` let callers construct a view where
+/// the two disagreed, silently misrendering the response).
 pub struct ConnectorView<'a> {
     pub config: &'a ConnectorConfig,
 }
@@ -100,7 +98,7 @@ pub struct InputBindingEntry {
     pub connected: bool,
     /// Runtime mute state (ADR-009 Phase 4b — `InputManager::is_device_enabled`,
     /// inverted). In-memory only (not persisted, unlike config `enabled=false`);
-    /// surfaced so the routing canvas can render muted connectors (#1626).
+    /// surfaced so the routing canvas can render muted connectors.
     pub muted: bool,
 }
 
@@ -149,7 +147,7 @@ pub fn build_resolved_routing_graph_response(
             };
 
             // `connected` is OR — either side counts as connected.
-            // Output-side (#2203): presence in `device_output_map` is NOT
+            // Output-side: presence in `device_output_map` is NOT
             // sufficient — a `MidiVirtualPort` output is inserted into the
             // map unconditionally (output_resolver.rs), so a virtual port
             // that was never created (or a target that's input-only) would
@@ -171,7 +169,7 @@ pub fn build_resolved_routing_graph_response(
                 "protocol": c.config.protocol,
                 "enabled": c.config.enabled,
                 "connected": connected,
-                // #1626: runtime mute (in-memory, ADR-009 Phase 4b) — distinct
+                // Runtime mute (in-memory, ADR-009 Phase 4b) — distinct
                 // from persisted `enabled=false`. Only input/binding-derived
                 // connectors carry it; absent from `input_bindings` ⇒ false.
                 "muted": input_match.map(|b| b.muted).unwrap_or(false),
@@ -182,7 +180,7 @@ pub fn build_resolved_routing_graph_response(
         })
         .collect();
 
-    // #1634: emit a STABLE key derived from the route's shape + mode scope
+    // Emit a STABLE key derived from the route's shape + mode scope
     // rather than its array index. Index-based keys (`route-{idx}`) shift when a
     // mid-list route is deleted, so Svelte's keyed `#each` remounts the wrong
     // line and selection/hover/styling jumps to a neighbouring route. A
@@ -246,8 +244,7 @@ pub fn build_resolved_routing_graph_response(
 /// keys), NOT plain `serde_json::to_string` — several `SignalTransform` variants
 /// (`MidiToArtNet`, `HidToArtNet`, `HidToMidi`, `HidToOsc`) hold `HashMap`
 /// fields whose serialization order is otherwise nondeterministic, which would
-/// make the *same* route hash differently on each fetch (Copilot finding on
-/// #2330).
+/// make the *same* route hash differently on each fetch.
 fn route_identity_hash(route: &RouteConfig) -> u64 {
     const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
@@ -376,7 +373,7 @@ mod tests {
 
     #[test]
     fn muted_input_binding_reports_muted_true_on_its_connector() {
-        // #1626: runtime mute (in-memory) must surface per connector so the
+        // Runtime mute (in-memory) must surface per connector so the
         // routing canvas can render it, distinct from persisted enabled=false.
         let mpk = binding_connector("mpk_input");
         let other = binding_connector("other_input");
@@ -483,7 +480,7 @@ mod tests {
 
     #[test]
     fn output_in_map_but_absent_from_live_enumeration_reports_disconnected_with_bound_port() {
-        // #2203: a MidiVirtualPort output is inserted into device_output_map
+        // A MidiVirtualPort output is inserted into device_output_map
         // unconditionally, so a virtual port that was never created (or an
         // input-only / nonexistent target) used to report connected=true while
         // every dispatch failed `connect_by_name`. The resolved port must be
@@ -644,7 +641,7 @@ mod tests {
         let r = &response["routes"][0];
         assert_eq!(r["from_missing"], false);
         assert_eq!(r["to_missing"], false);
-        // #1634: key is now a stable content hash, not the array index.
+        // Key is now a stable content hash, not the array index.
         assert!(
             r["key"].as_str().unwrap().starts_with("route-"),
             "route key should be prefixed 'route-': {:?}",
@@ -652,7 +649,7 @@ mod tests {
         );
     }
 
-    // ─── #1634: route keys are stable across mid-list deletes ──────────
+    // ─── route keys are stable across mid-list deletes ──────────
     // Index-based `route-{idx}` keys shifted on every delete, remounting the
     // wrong Svelte `#each` node. Content keys survive.
     fn route_keys(response: &Value) -> Vec<String> {
@@ -741,9 +738,9 @@ mod tests {
     #[test]
     fn route_key_is_stable_for_hashmap_transforms_regardless_of_map_order() {
         // Several SignalTransform variants carry HashMap fields whose
-        // serialization order is nondeterministic; the key must still be stable
-        // (Copilot finding on #2330). Build the SAME logical transform with its
-        // map entries inserted in different orders and assert equal keys.
+        // serialization order is nondeterministic; the key must still be stable.
+        // Build the SAME logical transform with its map entries inserted in
+        // different orders and assert equal keys.
         use conductor_core::config::types::SignalTransform;
         let a = binding_connector("a");
         let b = output_connector("b");
@@ -804,7 +801,7 @@ mod tests {
         assert_eq!(r["to_missing"], true);
     }
 
-    // ─── modes on route entries (Slice 10 / #1668; ADR-036 Phase 3) ──
+    // ─── modes on route entries (ADR-036 Phase 3) ──
     //
     // ADR-036 D1 made `modes` first-class on RouteConfig. The
     // resolved-routing-graph response must surface it so the GUI can chip
@@ -889,10 +886,9 @@ mod tests {
 
     #[test]
     fn connector_view_alias_always_matches_config_alias() {
-        // Council finding on PR #1633 — an earlier shape carried
-        // `alias` and `config` independently, so a caller could
-        // construct a view where the two disagreed and silently
-        // misrender. The struct now reads `alias()` from
+        // An earlier shape carried `alias` and `config` independently,
+        // so a caller could construct a view where the two disagreed
+        // and silently misrender. The struct now reads `alias()` from
         // `config.alias` so they can't drift. This test pins the
         // invariant so a future shape change that reintroduces a
         // duplicate field is caught.

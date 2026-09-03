@@ -13,10 +13,10 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-# Minimum supported Rust version (#1436). Edition 2024 needs ≥1.85, but the
+# Minimum supported Rust version. Edition 2024 needs ≥1.85, but the
 # resolved dependency graph floor is 1.88 (e.g. `time` 0.3.x requires 1.88);
 # verified with `cargo +1.88.0 check`. The repo pins an exact toolchain in
-# rust-toolchain.toml (#1435) for reproducibility — this is the floor, not the
+# rust-toolchain.toml for reproducibility — this is the floor, not the
 # pin. Bump intentionally through a reviewed change.
 rust-version = "1.88"
 authors = ["Conductor Contributors"]
@@ -111,16 +111,16 @@ thiserror = "2.0"
 rand = "0.8"
 regex = "1.12"  # Security validation
 dirs = "6.0"  # Path handling
-libloading = "0.8"  # Plugin loading - native .dylib/.so/.dll (v2.3)
-gilrs = "0.11.2"  # Gamepad/HID input (v3.0; 0.11 toward macOS BT-HID #2229)
+libloading = "0.8"  # Plugin loading - native .dylib/.so/.dll
+gilrs = "0.11.2"  # Gamepad/HID input (0.11 toward macOS BT-HID support)
 dashmap = "6"  # Concurrent HashMap with sharded locking (used by PhysicalControlStateStore, per-device EventProcessors)
 indexmap = { version = "2", features = ["serde"] }  # Insertion-order map for PcContextSwitch branches (ADR-025 P2.D)
-sha2 = "0.10"  # Checksum verification (v2.3)
-ed25519-dalek = { version = "2.1", features = ["rand_core"] }  # Plugin signing (v2.7)
-hex = "0.4"  # Hex encoding for signatures (v2.7)
+sha2 = "0.10"  # Checksum verification
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }  # Plugin signing
+hex = "0.4"  # Hex encoding for signatures
 
-# WASM plugin runtime (v2.5 - sandboxed plugin execution)
-# Upgraded 26.0 → 45.0 (#1439): clears 18 ignored RustSec advisories,
+# WASM plugin runtime (sandboxed plugin execution)
+# Upgraded 26.0 → 45.0: clears 18 ignored RustSec advisories,
 # incl. RUSTSEC-2026-0149 (CVSS 7.5 path_open sandbox bypass).
 wasmtime = "45.0"
 wasmtime-wasi = "45.0"
@@ -146,12 +146,11 @@ proptest = "1.11"
 rstest = "0.26"
 
 # Dev/test build memory: the default `debug = 2` (full debuginfo) makes the
-# macOS linker hold several GB in ONE process when linking a wasmtime+tauri test
+# macOS linker hold several GB in ONE process when linking a wasmtime-heavy test
 # binary — macOS jetsam then SIGKILLs the foreground editor (VS Code, exit 137,
 # no dmesg OOM). `jobs = 2` (~/.cargo/config.toml) caps link PARALLELISM but not
 # the per-link memory; cutting debuginfo to line-tables-only cuts the spike at
 # the source (panics keep file:line for TDD) and shrinks the (huge) target/.
-# Tracking: conductor#1715.
 [profile.dev]
 debug = "line-tables-only"
 

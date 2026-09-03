@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Tests for the `mcp_tools` module family (moved verbatim in #2601).
+//! Tests for the `mcp_tools` module family.
 
 use crate::daemon::mcp_types::ToolRiskTier;
 use conductor_core::config::Config;
@@ -84,7 +84,7 @@ fn create_test_config() -> Config {
 
 #[test]
 fn test_security_status_schema_is_a_no_arg_readonly_tool() {
-    // ADR-042 #1899 B.7 — `conductor_security_status` exposes the
+    // ADR-042 B.7 — `conductor_security_status` exposes the
     // network-approval HMAC key's rotation status to LLM callers. Pin the
     // same invariants as the other ReadOnly status tools: object schema,
     // no required args, description mentions the key/rotation, ReadOnly
@@ -120,7 +120,7 @@ fn test_security_status_schema_is_a_no_arg_readonly_tool() {
 
 #[test]
 fn test_list_routes_schema_is_a_no_arg_readonly_tool() {
-    // ADR-031 § 3.7 P3 slice 3 — `conductor_list_routes` is a
+    // ADR-031 § 3.7 P3 — `conductor_list_routes` is a
     // ReadOnly routing-graph tool. Pin the
     // same invariants:
     //   - object schema with no required args (no-arg tool)
@@ -131,7 +131,7 @@ fn test_list_routes_schema_is_a_no_arg_readonly_tool() {
     //     slice and have their own ConfigChange tier).
     // Failure of any of these means a future edit silently broke
     // discoverability or quietly upgraded the tier — both are the
-    // class of regression PR #1130 was filed to catch.
+    // class of regression this test guards against.
     let tools = get_tool_definitions();
     let def = tools
         .iter()
@@ -174,7 +174,7 @@ fn test_list_routes_schema_is_a_no_arg_readonly_tool() {
 
 #[test]
 fn test_get_routing_graph_schema_is_a_no_arg_readonly_tool() {
-    // ADR-031 § 3.7 P3 slice 16 (gap A) — `conductor_get_routing_graph`
+    // ADR-031 § 3.7 P3 (gap A) — `conductor_get_routing_graph`
     // is a ReadOnly tool in the routing-graph family alongside
     // `conductor_list_routes`. It returns the COMBINED topology
     // (connectors + routes) so the LLM can answer "what does my
@@ -188,7 +188,7 @@ fn test_get_routing_graph_schema_is_a_no_arg_readonly_tool() {
     //   - response shape is documented as `{ connectors, routes,
     //     excluded, excluded_note }` with the same deferred-status
     //     caveat as list_routes (RouteEngine plumbing for live
-    //     exclusions is its own follow-up, not slice 16's scope).
+    //     exclusions is its own follow-up, out of scope here).
     let tools = get_tool_definitions();
     let def = tools
         .iter()
@@ -230,7 +230,7 @@ fn test_get_routing_graph_schema_is_a_no_arg_readonly_tool() {
 
 #[test]
 fn test_get_resolved_routing_graph_schema_is_a_no_arg_readonly_tool() {
-    // ADR-031 #1598 Phase 1 — `conductor_get_resolved_routing_graph`
+    // ADR-031 Phase 1 — `conductor_get_resolved_routing_graph`
     // returns the RUNTIME-RESOLVED view from the daemon's
     // `connector_registry` + resolved routes. Distinct from
     // `conductor_get_routing_graph` (declared/config view) — this
@@ -238,7 +238,7 @@ fn test_get_resolved_routing_graph_schema_is_a_no_arg_readonly_tool() {
     // replacing GUI-side `projectRoutingGraph` re-implementation.
     // Same invariant set as the sibling routing-graph tools:
     //   - object schema with no required args (Phase 1 takes no
-    //     params; Phase 2 / #1597 will add an optional mode_index)
+    //     params; Phase 2 will add an optional mode_index)
     //   - description mentions "resolved" + "routing graph" so the
     //     LLM picks this one for current-state questions
     //   - description distinguishes it from the declared view
@@ -279,7 +279,7 @@ fn test_get_resolved_routing_graph_schema_is_a_no_arg_readonly_tool() {
 
 #[test]
 fn test_get_connector_metrics_schema_is_a_no_arg_readonly_tool() {
-    // ADR-031 § 6.2 / #1144 P4 slice 4 — `conductor_get_connector_metrics`
+    // ADR-031 § 6.2 P4 — `conductor_get_connector_metrics`
     // reads the runtime connector_registry for live per-connector
     // throughput. Same invariant set as the other routing-graph
     // tools: no-arg object schema, ReadOnly tier, description
@@ -287,7 +287,7 @@ fn test_get_connector_metrics_schema_is_a_no_arg_readonly_tool() {
     // asked "how busy is connector X?" or "is connector Y idle?".
     // Failure of any of these means a future edit silently broke
     // discoverability or quietly upgraded the tier — both are the
-    // class of regression PR #1130 was filed to catch.
+    // class of regression this test guards against.
     let tools = get_tool_definitions();
     let def = tools
         .iter()
@@ -334,7 +334,7 @@ fn test_get_connector_metrics_schema_is_a_no_arg_readonly_tool() {
 #[cfg(feature = "mcp-write")]
 #[test]
 fn test_create_mapping_schema_does_not_advertise_raw_trigger() {
-    // ADR-036 Phase 2 (#1696): `Trigger::Raw` is removed and the parser
+    // ADR-036 Phase 2: `Trigger::Raw` is removed and the parser
     // rejects it. The create-mapping schema must NOT advertise Raw as a
     // valid trigger type, or the LLM would author configs the daemon
     // rejects on load. Regression guard.
@@ -372,12 +372,12 @@ fn test_create_mapping_schema_documents_midi_forward_action() {
 }
 
 // Mirror the above two for conductor_update_mapping so that descriptions
-// for both create and update tools are kept in sync (Copilot #5 on PR #1130).
+// for both create and update tools are kept in sync.
 
 #[cfg(feature = "mcp-write")]
 #[test]
 fn test_update_mapping_schema_does_not_advertise_raw_trigger() {
-    // ADR-036 Phase 2 (#1696) — mirror of the create-mapping guard.
+    // ADR-036 Phase 2 — mirror of the create-mapping guard.
     let tools = get_tool_definitions();
     let update = tools
         .iter()
@@ -411,8 +411,8 @@ fn test_update_mapping_schema_documents_midi_forward_action() {
     );
 }
 
-// Copilot #1 (mcp_tools:108) + #6 (chat.js:2600): ProgramChange.pc
-// is Option<u8>, but description showed `pc: 0-127` as required.
+// ProgramChange.pc is Option<u8>, but the description showed `pc: 0-127`
+// as required.
 // Pin the optional shape so future copy-paste doesn't regress.
 
 #[cfg(feature = "mcp-write")]
@@ -438,9 +438,9 @@ fn test_create_mapping_schema_marks_program_change_pc_optional() {
     );
 }
 
-// Copilot #2/#3 (mcp_tools:112,142): VolumeControl description used
-// `action: Up|Down|Mute|Set` but the actual ActionConfig variant
-// uses `operation` and includes `Unmute`. Pin both pieces.
+// VolumeControl description used `action: Up|Down|Mute|Set` but the actual
+// ActionConfig variant uses `operation` and includes `Unmute`. Pin both
+// pieces.
 
 #[cfg(feature = "mcp-write")]
 #[test]
@@ -469,7 +469,7 @@ fn test_create_mapping_schema_volume_control_uses_correct_field_name() {
 #[test]
 fn test_get_tool_definitions() {
     let tools = get_tool_definitions();
-    assert_eq!(tools.len(), 54); // ADR-035 Phase 2 #1748: −5 legacy tools (create_binding/create_connector/create_device_identity/update_device_identity/delete_device_identity); conductor_create_endpoint is the unified replacement; +1 ADR-042 #1899 B.7 conductor_security_status; −1 #2052 conductor_list_connectors removed; +3 ADR-040 4c (conductor_set_mode/unlock_mode/mode_status)
+    assert_eq!(tools.len(), 54); // ADR-035 Phase 2: −5 legacy tools (create_binding/create_connector/create_device_identity/update_device_identity/delete_device_identity); conductor_create_endpoint is the unified replacement; +1 ADR-042 B.7 conductor_security_status; −1 conductor_list_connectors removed; +3 ADR-040 4c (conductor_set_mode/unlock_mode/mode_status)
 
     let names: Vec<_> = tools.iter().map(|t| t.name.as_str()).collect();
     // ADR-040 4c mode-lock tools
@@ -497,18 +497,18 @@ fn test_get_tool_definitions() {
     assert!(names.contains(&"conductor_list_device_bindings"));
     assert!(names.contains(&"conductor_list_discovered_ports"));
     assert!(names.contains(&"conductor_get_workspace_state"));
-    assert!(names.contains(&"conductor_list_routes")); // ADR-031 P3 slice 3
-    assert!(names.contains(&"conductor_get_routing_graph")); // ADR-031 P3 slice 16 (gap A)
-    assert!(names.contains(&"conductor_get_resolved_routing_graph")); // ADR-031 #1598 Phase 1
-    assert!(names.contains(&"conductor_get_connector_metrics")); // ADR-031 P4 slice 4 (gap D)
-    // ConfigChange tools (Phase 2 + Gap 3 + ADR-031 P3 slice 12)
+    assert!(names.contains(&"conductor_list_routes")); // ADR-031 P3
+    assert!(names.contains(&"conductor_get_routing_graph")); // ADR-031 P3 (gap A)
+    assert!(names.contains(&"conductor_get_resolved_routing_graph")); // ADR-031 Phase 1
+    assert!(names.contains(&"conductor_get_connector_metrics")); // ADR-031 P4 (gap D)
+    // ConfigChange tools (Phase 2 + Gap 3 + ADR-031 P3)
     assert!(names.contains(&"conductor_create_mapping"));
     assert!(names.contains(&"conductor_update_mapping"));
     assert!(names.contains(&"conductor_delete_mapping"));
     assert!(names.contains(&"conductor_create_endpoint")); // ADR-035 — unified I/O endpoint authoring
     assert!(names.contains(&"conductor_set_context_mapping"));
-    assert!(names.contains(&"conductor_batch_changes")); // ADR-031 P3 slice 12 (gap F)
-    // ADR-035 Phase 2 #1748: legacy authoring tools removed (no longer registered)
+    assert!(names.contains(&"conductor_batch_changes")); // ADR-031 P3 (gap F)
+    // ADR-035 Phase 2: legacy authoring tools removed (no longer registered)
     for removed in [
         "conductor_create_binding",
         "conductor_create_connector",
@@ -521,18 +521,18 @@ fn test_get_tool_definitions() {
             "legacy tool '{removed}' must be removed in ADR-035 Phase 2"
         );
     }
-    // Stateful tools (Phase 2 + Phase 5 + Issue #323)
+    // Stateful tools (Phase 2 + Phase 5)
     assert!(names.contains(&"conductor_start_learn"));
     assert!(names.contains(&"conductor_stop_learn"));
     assert!(names.contains(&"conductor_set_device_enabled"));
     assert!(names.contains(&"conductor_scan_ports"));
     assert!(names.contains(&"conductor_switch_profile"));
-    // ReadOnly (Issue #323)
+    // ReadOnly
     assert!(names.contains(&"conductor_get_active_profile"));
     // HardwareIO tools (Phase 4)
     assert!(names.contains(&"conductor_send_sysex"));
     assert!(names.contains(&"conductor_device_reset"));
-    // Fingerprinting (ADR-022 #755)
+    // Fingerprinting (ADR-022)
     assert!(names.contains(&"conductor_suggest_binding"));
 }
 
@@ -549,7 +549,7 @@ fn test_batch_changes_schema_documents_route_ops() {
     // added to the executor must also land here or the LLM sees a stale
     // schema and is told to call an op the published tool doesn't promise.
     //
-    // ADR-035 Phase 2 #1748: the connector ops (create/update/delete_connector)
+    // ADR-035 Phase 2: the connector ops (create/update/delete_connector)
     // were removed alongside the legacy connector tools — endpoints are now
     // authored via the singleton conductor_create_endpoint tool. This test
     // also pins their ABSENCE so they can't silently reappear.
@@ -589,7 +589,7 @@ fn test_batch_changes_schema_documents_route_ops() {
             type_strs
         );
     }
-    // ADR-035 Phase 2 #1748 — connector ops removed; pin their absence so
+    // ADR-035 Phase 2 — connector ops removed; pin their absence so
     // they can't silently reappear in the published schema.
     for removed in &["create_connector", "update_connector", "delete_connector"] {
         assert!(
@@ -645,10 +645,10 @@ async fn test_list_routes_returns_empty_array_for_default_config() {
 async fn test_list_routes_serializes_route_fields() {
     // Inject a route that exercises every optional field
     // (filter + transform + description + modes) so the test fails if
-    // a future serde rename drops a field from the wire format. PR
-    // #1673 Copilot finding: an earlier shape used `modes: Vec::new()`
-    // and didn't assert modes, letting a serde regression slip
-    // through. (Phase 3 removed `phase`; all routes are post-mapping.)
+    // a future serde rename drops a field from the wire format. An earlier
+    // version of this test used `modes: Vec::new()` and didn't assert
+    // modes, letting a serde regression slip through. (Phase 3 removed
+    // `phase`; all routes are post-mapping.)
     use conductor_core::config::types::RouteConfig;
     let executor = McpToolExecutor::new();
     let mut config = create_test_config();
@@ -749,7 +749,7 @@ async fn test_get_binding_health_includes_new_fields() {
     let content = &result.content[0];
     if let ToolContent::Text { text } = content {
         let parsed: serde_json::Value = serde_json::from_str(text).unwrap();
-        // New fields from #747
+        // New fields
         assert_eq!(parsed["interaction_pattern"], "bidirectional");
         assert_eq!(parsed["auto_paired"], true);
         assert!(parsed.get("last_event_timestamp").is_some());
@@ -1021,7 +1021,7 @@ fn test_get_status_returns_lifecycle_state() {
     }
 }
 
-/// v4.17.0: Test get_status fallback includes daemon_running (#105)
+/// Test get_status fallback includes daemon_running
 #[test]
 fn test_get_status_fallback_includes_daemon_running() {
     let executor = McpToolExecutor::new();
@@ -1039,7 +1039,7 @@ fn test_get_status_fallback_includes_daemon_running() {
     }
 }
 
-/// v4.17.0: Test get_status with daemon_running field (#105)
+/// Test get_status with daemon_running field
 #[test]
 fn test_get_status_includes_daemon_running() {
     let executor = McpToolExecutor::new();
@@ -1310,7 +1310,7 @@ fn test_tool_risk_tiers() {
         ToolRiskTier::Stateful
     );
 
-    // ArtifactRender tools (#612, #621)
+    // ArtifactRender tools
     assert_eq!(
         get_tool_risk_tier("conductor_render_artifact"),
         ToolRiskTier::ArtifactRender
@@ -1330,7 +1330,7 @@ fn test_tool_risk_tiers() {
         ToolRiskTier::HardwareIO
     );
 
-    // Multi-device tools (v4.23.0 - ADR-009 Phase 5)
+    // Multi-device tools (ADR-009 Phase 5)
     assert_eq!(
         get_tool_risk_tier("conductor_list_device_bindings"),
         ToolRiskTier::ReadOnly
@@ -1345,7 +1345,7 @@ fn test_tool_risk_tiers() {
     );
 }
 
-/// v4.23.0: Test list_device_bindings with binding data
+/// Test list_device_bindings with binding data
 #[test]
 fn test_list_device_bindings_with_data() {
     let executor = McpToolExecutor::new();
@@ -1384,7 +1384,7 @@ fn test_list_device_bindings_with_data() {
     }
 }
 
-/// v4.23.0: Test list_device_bindings with empty data
+/// Test list_device_bindings with empty data
 #[test]
 fn test_list_device_bindings_empty() {
     let executor = McpToolExecutor::new();
@@ -1403,7 +1403,7 @@ fn test_list_device_bindings_empty() {
     }
 }
 
-/// v4.23.0: Test list_device_bindings summary counts
+/// Test list_device_bindings summary counts
 #[test]
 fn test_list_device_bindings_summary_counts() {
     let executor = McpToolExecutor::new();
@@ -1501,7 +1501,7 @@ fn test_list_discovered_ports_risk_tier() {
     );
 }
 
-/// v4.23.0: Test get_status includes device_bindings
+/// Test get_status includes device_bindings
 #[test]
 fn test_get_status_includes_device_bindings() {
     use crate::daemon::types::{DaemonState, DevicePortStatus, DeviceStatus, LifecycleState};
@@ -1536,8 +1536,8 @@ fn test_get_status_includes_device_bindings() {
     assert_eq!(bindings[0]["is_configured"], true);
 }
 
-/// v4.23.0: Test list_devices includes device_bindings
-/// v4.26.0: Fixed to use is_configured field instead of "raw:" prefix (D19)
+/// Test list_devices includes device_bindings
+/// Fixed to use is_configured field instead of "raw:" prefix (D19)
 #[test]
 fn test_list_devices_includes_device_bindings() {
     use crate::daemon::types::{DaemonState, DevicePortStatus, DeviceStatus, MidiDeviceInfo};
@@ -1577,7 +1577,7 @@ fn test_list_devices_includes_device_bindings() {
     assert_eq!(bindings[0]["is_configured"], false);
 }
 
-// Tests for conductor_switch_mode validation path (Issue #321).
+// Tests for conductor_switch_mode validation path.
 // These test the LLM executor's read-only validation logic only.
 // End-to-end MCP mode switching (via mcp.rs → DispatchOutcome) is covered
 // by mode_management_integration_test.
@@ -1656,7 +1656,7 @@ async fn test_switch_mode_unknown_mode_error() {
     }
 }
 
-// Topology summary tests (ADR-016 Chunk 1C - #565)
+// Topology summary tests (ADR-016)
 
 #[test]
 fn test_topology_summary_tool_registered() {
@@ -2004,11 +2004,10 @@ async fn test_gui_only_profile_tools_return_clear_error() {
     }
 }
 
-// ── PolyAftertouch routing-helper symmetry (#575 review round 2) ────────
-// Copilot review found that classify_trigger emits "PolyAftertouch" but the
-// sibling helpers used for MCP topology / SendMidi message-type lookup did
-// not recognise it, so MidiForward routing entries and reverse string
-// lookups returned None.
+// ── PolyAftertouch routing-helper symmetry ──────────────────────────────
+// classify_trigger emits "PolyAftertouch" but the sibling helpers used for
+// MCP topology / SendMidi message-type lookup did not recognise it, so
+// MidiForward routing entries and reverse string lookups returned None.
 
 #[test]
 fn midi_message_to_trigger_type_recognises_poly_aftertouch() {

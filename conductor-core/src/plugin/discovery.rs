@@ -24,7 +24,7 @@ pub enum DiscoveryError {
     #[error("Failed to parse manifest at {path}: {reason}")]
     ManifestParseError { path: String, reason: String },
 
-    /// Manifest binary path escapes the plugin directory (#2117)
+    /// Manifest binary path escapes the plugin directory
     #[error("Insecure binary path in manifest at {path}: {reason}")]
     InsecureBinaryPath { path: String, reason: String },
 
@@ -44,8 +44,8 @@ pub enum DiscoveryError {
 /// Plugin discovery result type
 pub type DiscoveryResult<T> = Result<T, DiscoveryError>;
 
-/// True if `binary` is safe to `join` onto a plugin directory (#2117 /
-/// clawpatch #2103): a relative path whose components are only
+/// True if `binary` is safe to `join` onto a plugin directory: a
+/// relative path whose components are only
 /// `Component::Normal` or `Component::CurDir` (`.`) — never an absolute
 /// prefix / root or a `..` parent traversal — and that names at least one real
 /// component (a bare `.` or empty string is rejected).
@@ -324,7 +324,7 @@ impl PluginDiscovery {
                 reason: e.to_string(),
             })?;
 
-        // Build binary path. SECURITY (#2117 / clawpatch #2103): the manifest's
+        // Build binary path. SECURITY: the manifest's
         // `binary` field is attacker-controlled (a third-party / downloaded
         // plugin). `plugin_dir.join(binary)` would resolve a binary OUTSIDE the
         // plugin's own directory if `binary` is an absolute path (`join`
@@ -492,7 +492,7 @@ network = true
         assert_eq!(plugin.capabilities, vec![Capability::Network]);
     }
 
-    /// Regression test for #2117 (clawpatch #2103): a plugin manifest's
+    /// Regression test: a plugin manifest's
     /// `binary` field is attacker-controlled. The loader builds the binary
     /// path as `plugin_dir.join(binary)` — so an ABSOLUTE path
     /// (`Path::join` discards the base and uses the absolute path verbatim) or

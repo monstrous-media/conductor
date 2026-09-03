@@ -137,7 +137,7 @@ impl SingletonLock {
                         path: lockfile_path.to_path_buf(),
                     }
                 } else {
-                    // Council #1297 round 1: prefer the idiomatic
+                    // Prefer the idiomatic
                     // `Errno -> io::Error` conversion over manual
                     // `from_raw_os_error(errno as i32)`. nix's
                     // `From<Errno> for io::Error` does the right

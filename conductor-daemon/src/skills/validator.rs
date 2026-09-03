@@ -228,7 +228,7 @@ fn parse_frontmatter(yaml: &str) -> Result<SkillMetadata, SkillValidationError> 
     Ok(metadata)
 }
 
-/// Validate `allowed-tools` syntax (#1410).
+/// Validate `allowed-tools` syntax.
 ///
 /// Two grammars are accepted; the choice is structural, not a feature
 /// flag:
@@ -257,7 +257,7 @@ fn validate_tool_patterns(patterns: &str) -> Result<(), SkillValidationError> {
     validate_claude_tool_patterns(trimmed)
 }
 
-/// Legacy `namespace:pattern, …` strict validator (pre-#1410 behaviour).
+/// Legacy `namespace:pattern, …` strict validator (the original behaviour).
 fn validate_legacy_tool_patterns(patterns: &str) -> Result<(), SkillValidationError> {
     for pattern in patterns.split(',') {
         let pattern = pattern.trim();
@@ -1045,7 +1045,7 @@ allowed-tools: "Bash @invalid"
         );
     }
 
-    // ==================== Claude-style grammar tests (#1410) ====================
+    // ==================== Claude-style grammar tests ====================
 
     #[test]
     fn test_validate_claude_style_bare_names() {
@@ -1080,7 +1080,7 @@ allowed-tools: "Bash @invalid"
 
     #[test]
     fn test_validate_shipped_skills_claude_syntax() {
-        // Per #1410: every SKILL.md shipped under `skills/` and
+        // Every SKILL.md shipped under `skills/` and
         // `.claude/skills/` must validate. The bug fix is the validator
         // accepting Claude's space-separated allowed-tools grammar.
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

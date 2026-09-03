@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1486: guard the documentation's `VolumeControl` examples against the
+//! Guard the documentation's `VolumeControl` examples against the
 //! obsolete `action` / `direction` field.
 //!
 //! The config schema is `VolumeControl { operation: String, value: Option<u8> }`

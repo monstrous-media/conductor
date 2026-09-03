@@ -9,7 +9,7 @@
 // filters must pass: the source must be inside the CIDR allow-list, and — when
 // a `sender_acl` is populated — also one of its explicit IPs.
 //
-// Acceptance (issue #1898, spec §5 A.3):
+// Acceptance (spec §5 A.3):
 //   cargo test --package conductor-daemon --test acl_filter_test
 
 use std::net::IpAddr;

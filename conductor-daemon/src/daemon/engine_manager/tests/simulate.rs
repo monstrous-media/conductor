@@ -4,7 +4,7 @@
 use super::*;
 
 // =========================================================================
-// simulate_mapping tests (ADR-014 Phase 5A — Issue #488)
+// simulate_mapping tests (ADR-014 Phase 5A)
 // =========================================================================
 
 #[tokio::test]
@@ -327,7 +327,7 @@ fn test_default_value_for_unknown() {
 
 #[test]
 fn test_default_value_for_poly_aftertouch() {
-    // #575 review round 2: simulate_mapping must produce a usable default
+    // simulate_mapping must produce a usable default
     // pressure for poly-aftertouch triggers, mirroring channel aftertouch.
     let info = FiredTriggerInfo {
         trigger_type: "poly_aftertouch".to_string(),

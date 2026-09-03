@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Unit tests for the Slice B.4 approval-admin logic. In a `#[path]` sibling so
+//! Unit tests for the approval-admin logic. In a `#[path]` sibling so
 //! the impl file stays within the Council verify content budget.
 
 use super::*;

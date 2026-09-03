@@ -3,7 +3,7 @@
 
 //! `EngineManager` SysEx probe methods (`run_probe_device_identity`,
 //! `dispatch_probe_on_connect_for_new_ports`), extracted from
-//! `engine_manager::devices` (refactor #2073).
+//! `engine_manager::devices`.
 
 use super::*;
 
@@ -279,7 +279,7 @@ impl EngineManager {
                         );
                         // Direct broadcast bypasses `push_monitor_event`'s
                         // ring buffer / rate limiter / trigger pipeline
-                        // intentionally (Copilot #970 review). Rationale:
+                        // intentionally. Rationale:
                         //   - This is an action-required notification,
                         //     not telemetry — the GUI's
                         //     `identityConfirmations` store dedupes

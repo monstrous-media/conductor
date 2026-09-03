@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-040 Slice 4a (#1767) — transient mode-lock state machine.
+//! ADR-040 — transient mode-lock state machine.
 //!
 //! Drives the `EngineManager` lock methods directly: manual set (with/without
 //! lock), unlock, re-lock on a different mode, the auto-switch suppression gate,
@@ -154,7 +154,7 @@ async fn auto_switch_applies_when_unlocked() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
 async fn auto_switch_to_unknown_mode_is_not_applied() {
-    // Copilot review on #2278: persist_mode_change returns Ok(()) for unknown
+    // persist_mode_change returns Ok(()) for unknown
     // modes (warn-only), so apply_auto_switch must validate to avoid falsely
     // reporting "applied".
     let (_f, p) = two_mode_config();
@@ -168,7 +168,7 @@ async fn auto_switch_to_unknown_mode_is_not_applied() {
     assert_eq!(active_mode(&mgr), before, "mode unchanged");
 }
 
-// ── ADR-040 D4/§4.2 (#2350): ModeChange ACTION locks the mode ──────────
+// ── ADR-040 D4/§4.2: ModeChange ACTION locks the mode ──────────
 
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
@@ -242,7 +242,7 @@ async fn set_unknown_mode_errors_and_sets_no_lock() {
     assert!(mgr.mode_lock().is_none(), "no lock set for an unknown mode");
 }
 
-// ── Slice 4b: IPC handlers (conductorctl mode set/unlock/status) ────
+// ── IPC handlers (conductorctl mode set/unlock/status) ────
 
 use crate::daemon::types::{IpcCommand, IpcRequest, ResponseStatus};
 
@@ -343,7 +343,7 @@ async fn ipc_set_unknown_mode_returns_error() {
         )
         .await;
     assert!(matches!(resp.status, ResponseStatus::Error));
-    // An unknown mode is a bad request, not an internal fault (Copilot review #2283).
+    // An unknown mode is a bad request, not an internal fault.
     assert_eq!(
         resp.error.as_ref().map(|e| e.code),
         Some(crate::daemon::error::IpcErrorCode::InvalidRequest.as_u16())

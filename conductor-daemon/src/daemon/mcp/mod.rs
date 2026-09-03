@@ -138,8 +138,8 @@ impl McpServer {
 
         info!("MCP server listening on {:?}", self.socket_path);
 
-        // Limit concurrent connections to prevent resource exhaustion
-        // (#1480). The permit is acquired BEFORE spawning, and an at-cap
+        // Limit concurrent connections to prevent resource exhaustion.
+        // The permit is acquired BEFORE spawning, and an at-cap
         // connection is dropped immediately — mirroring the IPC server
         // (ADR-027 D16). The previous code spawned a task that then blocked
         // on `sem.acquire().await` while still holding the accepted stream
@@ -177,7 +177,7 @@ impl McpServer {
                             let config = Arc::clone(&self.config);
                             let shared_state = self.shared_state.clone();
 
-                            // #1311: pin peer credentials at accept and
+                            // Pin peer credentials at accept and
                             // look up their tier ceiling in `McpRegistry`.
                             // `None` ceiling = unregistered → ReadOnly only.
                             // Pinning errors (kernel without pidfd_open, etc.)
@@ -229,7 +229,7 @@ pub fn get_mcp_socket_path() -> Result<PathBuf> {
     Ok(runtime_dir.join("conductor").join(MCP_SOCKET_NAME))
 }
 
-/// #1311: pin the peer credentials of a freshly-accepted MCP
+/// Pin the peer credentials of a freshly-accepted MCP
 /// `UnixStream`, canonicalize its exe path, and look the path up in
 /// `McpRegistry`. Returns the registered tier ceiling, or `None` for
 /// unregistered peers / pin failures.
@@ -273,9 +273,9 @@ fn resolve_peer_tier_ceiling(
         }
     };
     // Peer's exe is already canonicalised by `PinnedPeer::from_stream`
-    // (see security::peer_pin). `mcp register` canonicalises on save
-    // (#1317 fixes the symmetric gap on revoke). So a direct path
-    // comparison matches both sides without further normalisation.
+    // (see security::peer_pin). `mcp register` canonicalises on save,
+    // and revoke does the same to close the symmetric gap. So a direct
+    // path comparison matches both sides without further normalisation.
     registry.lookup_tier(&peer.initial_exe)
 }
 
@@ -285,7 +285,7 @@ fn resolve_peer_tier_ceiling(
 /// `McpRegistry::lookup_tier(canonical(peer.exe))`. `None` means the
 /// peer is unregistered → clamped to `ReadOnly` per ADR-027 §D18.
 /// Enforcement happens at the dispatch site in `handle_tools_call`
-/// via [`check_peer_tier_ceiling`] — pre-#1311 the dispatch
+/// via [`check_peer_tier_ceiling`] — previously the dispatch
 /// short-circuited `CallerContext::internal_trusted()` which let
 /// any same-UID process invoke ConfigChange tools regardless of
 /// registry state.
@@ -461,7 +461,7 @@ mod tools_call;
 
 pub(crate) use tools_call::handle_tools_call;
 
-/// #1311: per-client tier-ceiling check for the MCP socket.
+/// Per-client tier-ceiling check for the MCP socket.
 ///
 /// The MCP registry (`mcp_registry::McpRegistry`, ADR-027 §D18)
 /// stores per-exe tier grants. A peer that has been registered with
@@ -516,7 +516,7 @@ pub fn check_peer_tier_ceiling(
             );
         }
         Some(super::audit::AuditRiskTier::Internal) => {
-            // Council R3 defensive posture: `Internal` is reserved
+            // Defensive posture: `Internal` is reserved
             // for daemon-internal callers (which never traverse
             // this MCP socket path). An external registry entry at
             // tier=Internal is either operator misconfiguration or
@@ -531,7 +531,7 @@ pub fn check_peer_tier_ceiling(
     };
 
     // Ordinal: ReadOnly=0, Stateful=1, ConfigChange=2, HardwareIO=3.
-    // Internal is rejected at the match above (Council R3 defensive).
+    // Internal is rejected at the match above (defensive).
     let ceiling_ord = audit_tier_ordinal(ceiling);
     let required_ord = audit_tier_ordinal(required_min_ceiling);
 
@@ -545,7 +545,7 @@ pub fn check_peer_tier_ceiling(
 /// Internal ordinal for `AuditRiskTier` — the registry uses
 /// `AuditRiskTier` (no `Ord` derive on the public type to avoid
 /// implying a numeric relationship the audit log shouldn't depend
-/// on). #1311's tier ceiling check needs ordering; encode it here.
+/// on). The tier ceiling check needs ordering; encode it here.
 fn audit_tier_ordinal(tier: super::audit::AuditRiskTier) -> u8 {
     use super::audit::AuditRiskTier;
     match tier {

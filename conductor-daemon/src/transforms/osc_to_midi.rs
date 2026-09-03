@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! OSC → MIDI structured transform (ADR-039-A Slice 1, #1361).
+//! OSC → MIDI structured transform (ADR-039-A).
 //!
 //! The reverse of [`crate::transforms::midi_to_osc`]: an inbound OSC message
 //! becomes a 3-byte MIDI Control Change (or Note On). STRUCTURED — it reads the
@@ -21,8 +21,7 @@
 //! The `{cc}`/`{note}` capture comes straight off the wire, so it is parsed
 //! **fallibly** and range-checked to `0..=127` **before** any MIDI byte is
 //! built — `/eos/fader/999` yields `None` (route skips), never a panic. The
-//! argument value is likewise coerced and clamped. This is the reasoning the
-//! Council R1 review required (blocker 4).
+//! argument value is likewise coerced and clamped.
 
 use conductor_core::actions::OscArg;
 use conductor_core::config::types::SignalTransform;
@@ -72,7 +71,7 @@ pub fn apply(transform: &SignalTransform, osc: &OscInbound) -> Option<Vec<u8>> {
 /// literal prefix/suffix of `template`. Returns `None` if the template has no
 /// placeholder, the address doesn't fit the prefix/suffix, the capture isn't a
 /// non-negative integer, or it exceeds 127 (the attacker-controlled bounds
-/// check). Single placeholder only in Slice 1.
+/// check). Single placeholder only for now (ADR-039-A).
 fn extract_7bit(template: &str, address: &str, placeholder: &str) -> Option<u8> {
     let idx = template.find(placeholder)?;
     let prefix = &template[..idx];

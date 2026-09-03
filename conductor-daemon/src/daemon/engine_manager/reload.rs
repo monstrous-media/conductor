@@ -1,12 +1,12 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager` methods extracted from `engine_manager::mod` (refactor #2073).
+//! `EngineManager` methods extracted from `engine_manager::mod`.
 
 use super::*;
 
 /// Runtime artifacts built from a config by the **fallible** PREPARE phase
-/// (#2100 / ADR-044), ready to be installed by the **infallible** APPLY phase
+/// (ADR-044), ready to be installed by the **infallible** APPLY phase
 /// (`apply_prepared`). Phase 1 (this change) builds these immediately before
 /// applying them — behaviour-preserving; Phase 2 moves PREPARE *before* the
 /// `LiveConfig` commit so a build failure rejects the change without leaving
@@ -32,7 +32,7 @@ pub(crate) struct PreparedRuntime {
     target_revision: conductor_core::config::ConfigRevision,
 }
 
-/// Outcome of the **infallible** APPLY phase (#2100 / ADR-044). Returned by
+/// Outcome of the **infallible** APPLY phase (ADR-044). Returned by
 /// `apply_prepared` so the post-commit rebuild reports what it did (and what
 /// it skipped) as a value rather than only via logs — APPLY never returns a
 /// `Result`, so a rebuild can never `?`-bail and leave the runtime half-built.
@@ -55,7 +55,7 @@ impl EngineManager {
     pub(crate) async fn reload_config(&mut self) -> Result<ReloadMetrics> {
         let start = Instant::now();
 
-        // ADR-025 Phase 3.F (#886): abort any pending observation check
+        // ADR-025 Phase 3.F: abort any pending observation check
         // BEFORE any awaited swap work. If the old sleeper's grace period
         // ended during the file-I/O + compile + lock-swap work below, it
         // would otherwise wake and emit a warning with stale-context
@@ -96,7 +96,7 @@ impl EngineManager {
         // top-of-function "skip while Reloading" guard then silently no-ops
         // every subsequent reload — bricking config reload until restart.
         // `run_loop` only logs a reload error and does NOT reset state, so
-        // `reload_config` must restore it itself (Council #2168 R1).
+        // `reload_config` must restore it itself.
         let outcome = self.reload_config_after_lock(start).await;
         if outcome.is_err()
             && let Err(te) = self.transition_state(current_state).await
@@ -111,11 +111,11 @@ impl EngineManager {
     }
 
     /// The fallible body of [`Self::reload_config`], split out so the wrapper can
-    /// restore the pre-`Reloading` lifecycle state on any error (Council #2168
-    /// R1). On success it transitions back to `Running` itself.
+    /// restore the pre-`Reloading` lifecycle state on any error. On success it
+    /// transitions back to `Running` itself.
     async fn reload_config_after_lock(&mut self, start: Instant) -> Result<ReloadMetrics> {
         // Phase 1: Load and validate new config
-        // v4.14.0: Properly handle non-UTF8 paths (LLM Council feedback v4.13.3)
+        // Properly handle non-UTF8 paths
         let config_load_start = Instant::now();
         let config_path_str =
             pathbuf_to_str_or_err(&self.config_path, "config_path in reload_config")?;
@@ -123,7 +123,7 @@ impl EngineManager {
             .map_err(|e| DaemonError::Ipc(format!("Config load failed: {}", e)))?;
         let config_load_ms = config_load_start.elapsed().as_millis() as u64;
 
-        // Phase 1b: Schema validation (v4.26.77)
+        // Phase 1b: Schema validation
         let validation_report = conductor_core::config::validator::validate_config(&new_config);
         for finding in &validation_report.warnings {
             warn!(
@@ -172,8 +172,7 @@ impl EngineManager {
 
         // APPLY is infallible (ADR-044): everything below is post-commit, so a
         // failure here must NOT propagate as `Err` — the wrapper would then
-        // revert the lifecycle state away from the now-committed config (Council
-        // #2168 R3).
+        // revert the lifecycle state away from the now-committed config.
         let mapping_compile_ms = self
             .apply_committed_guarded(prepared, "reload")
             .await
@@ -216,8 +215,8 @@ impl EngineManager {
             swap_ms
         );
 
-        // Phase 4: Create known_good backup on successful validation (v4.26.77).
-        // #2173: serialize the VALIDATED IN-MEMORY config rather than
+        // Phase 4: Create known_good backup on successful validation.
+        // Serialize the VALIDATED IN-MEMORY config rather than
         // `std::fs::copy`-ing the file from disk. The copy re-read the on-disk
         // file AFTER load+validate, so a concurrent edit landing in that window
         // could be captured into `*.toml.known_good` — a backup that never passed
@@ -238,8 +237,7 @@ impl EngineManager {
         // Transition back to Running. The config is committed and the runtime
         // applied by this point, so a failed transition must NOT bubble up as an
         // `Err` (the wrapper would revert the lifecycle state away from the live
-        // config). Force-set as a last resort, mirroring `reload_from_cached_config`
-        // (Council #2168 R3).
+        // config). Force-set as a last resort, mirroring `reload_from_cached_config`.
         if let Err(e) = self.transition_state(LifecycleState::Running).await {
             warn!(
                 "Failed to transition to Running after reload, forcing: {}",
@@ -248,12 +246,12 @@ impl EngineManager {
             *self.state.write().await = LifecycleState::Running;
         }
 
-        // #1070: broadcast a config_reloaded signal so subscribed GUIs
+        // Broadcast a config_reloaded signal so subscribed GUIs
         // refresh immediately instead of waiting up to one 3s poll. This
         // covers every reload_config() trigger uniformly — file-watcher
         // edits, tray-menu Reload, and `conductorctl reload`. Emitting on
         // the existing MonitorEvent broadcast (rather than a bespoke
-        // channel) follows the pattern #943 established for
+        // channel) follows the pattern established for
         // `ambiguous_port_detected`. Fire-and-forget: a send error just
         // means no subscribers, which is the normal headless-daemon case.
         let reloaded_ms = SystemTime::now()
@@ -275,8 +273,8 @@ impl EngineManager {
         Ok(metrics)
     }
 
-    /// Post-commit runtime rebuild (#2051 / ADR-043 D2), now expressed as the
-    /// PREPARE→APPLY pair (#2100 / ADR-044 Phase 1): build the fallible
+    /// Post-commit runtime rebuild (ADR-043 D2), now expressed as the
+    /// PREPARE→APPLY pair (ADR-044 Phase 1): build the fallible
     /// artifacts (`prepare_runtime`) then install them (`apply_prepared`).
     ///
     /// Behaviour-preserving — still invoked post-commit by
@@ -297,7 +295,7 @@ impl EngineManager {
         Ok(report.mapping_compile_ms)
     }
 
-    /// PREPARE phase (#2100 / ADR-044) — **fallible, no side effects.**
+    /// PREPARE phase (ADR-044) — **fallible, no side effects.**
     ///
     /// Builds the artifacts whose construction can fail — the MappingEngine
     /// compile, endpoint normalization, and the network-listener config/ACL
@@ -320,7 +318,7 @@ impl EngineManager {
         .map_err(|e| DaemonError::Ipc(format!("Compilation task failed: {}", e)))?;
         let mapping_compile_ms = mapping_compile_start.elapsed().as_millis() as u64;
 
-        // Unified endpoint set (ADR-035 Slice 6) — normalized once and reused
+        // Unified endpoint set (ADR-035) — normalized once and reused
         // by the APPLY registry / output-map / device-status steps.
         let (endpoints, _findings) =
             conductor_core::config::loader::normalize_to_endpoints(new_config)?;
@@ -348,7 +346,7 @@ impl EngineManager {
     }
 
     /// Apply an already-PREPAREd runtime to the just-committed config with the
-    /// **revision-equivalence guard** (#2100 Phase 2 / ADR-044). Committing
+    /// **revision-equivalence guard** (ADR-044 Phase 2). Committing
     /// call sites run `prepare_runtime(candidate)` *before* the `LiveConfig`
     /// commit (so a build failure rejects the change without committing), then
     /// commit, then call this. If the committed snapshot's revision matches
@@ -368,7 +366,7 @@ impl EngineManager {
     /// the dispatch backstop (`reconcile_runtime_to_live`) retries the rebuild,
     /// and return a default report. We never `?`-bail: bailing post-commit would
     /// report a live config as failed and (via callers' restore logic) revert
-    /// the lifecycle state away from the committed config (Council #2168 R3).
+    /// the lifecycle state away from the committed config.
     pub(crate) async fn apply_committed_guarded(
         &mut self,
         prepared: PreparedRuntime,
@@ -407,7 +405,7 @@ impl EngineManager {
         report
     }
 
-    /// APPLY phase (#2100 / ADR-044) — **infallible** install of a
+    /// APPLY phase (ADR-044) — **infallible** install of a
     /// `PreparedRuntime`. Returns an [`ApplyReport`] (never a `Result`) so a
     /// rebuild can't `?`-bail mid-way and leave the runtime split-brained.
     /// `new_config` is the committed config (== the one `prepared` was built
@@ -454,10 +452,9 @@ impl EngineManager {
         self.route_engine.store(Arc::new(new_route_engine));
 
         // (Connector registry is rebuilt once, in the device-output-map block
-        // below, from this same prepared endpoint set — the earlier pre-#2100
-        // code rebuilt it twice from identical endpoints with nothing reading
-        // the registry in between; collapsed to a single rebuild. Council
-        // review on #2163.)
+        // below, from this same prepared endpoint set — the earlier code
+        // rebuilt it twice from identical endpoints with nothing reading
+        // the registry in between; collapsed to a single rebuild.)
 
         // Network listeners: bind the prepared (already-parsed) set. The config
         // parse happened in PREPARE; here we only bind, and a bind failure is
@@ -469,14 +466,14 @@ impl EngineManager {
         report.listeners_bound = listeners_bound;
         report.listeners_skipped = listeners_skipped;
 
-        // Reset rate limiter with new config limit (v4.26.0 - ADR-009 D9)
+        // Reset rate limiter with new config limit (ADR-009 D9)
         self.device_rate_limiter =
             DeviceRateLimiter::new(new_config.advanced_settings.max_events_per_sec);
 
-        // #2486 + #2490: re-apply ALL configurable timing knobs (chord +
+        // Re-apply ALL configurable timing knobs (chord +
         // double-tap + hold) to EXISTING per-device EventProcessors so a runtime
         // config change reaches already-seen devices — not just newly-created
-        // ones (processors only read these at creation; before #2490 only chord
+        // ones (processors only read these at creation; previously only chord
         // was re-applied, and hold/double-tap were never applied at all). Chord
         // is Learn-aware per `midi_learn_active`, matching the creation path in
         // `events_device`.
@@ -489,9 +486,9 @@ impl EngineManager {
         }
 
         // ADR-027 §D10b: re-apply the shell-sandbox policy so a changed
-        // `security.shell.allow_unsandboxed` takes effect on reload (Copilot
-        // review — startup-only wiring meant reloads were ignored). Moved here
-        // from the pre-commit body for ADR-044 Phase 2 atomicity (#2100): this
+        // `security.shell.allow_unsandboxed` takes effect on reload (previously
+        // startup-only wiring meant reloads were ignored). Moved here
+        // from the pre-commit body for ADR-044 Phase 2 atomicity: this
         // is an infallible side effect, so it must run in APPLY (post-commit)
         // — never before the commit, where a failed PREPARE/COMMIT would leave
         // the executor's policy mutated while the published config still
@@ -517,8 +514,7 @@ impl EngineManager {
         // accordingly so the operator can spot it without diff'ing
         // configs. Wording describes the override only — actual
         // probing is gated by `sysex_identity_probing`,
-        // `probe_on_connect`, paired-output presence, and rate limit
-        // (#976 review).
+        // `probe_on_connect`, paired-output presence, and rate limit.
         for alias in new_config.endpoints_with_no_probe_sysex_override() {
             warn!(
                 device = %alias,
@@ -535,18 +531,18 @@ impl EngineManager {
         self.capture_processed = ec_ref.is_none_or(|ec| ec.capture_processed);
         self.capture_actions = ec_ref.is_none_or(|ec| ec.capture_actions);
 
-        // #955: re-run port resolution against the new config so that
+        // Re-run port resolution against the new config so that
         // adding/removing/renaming `[[bindings]]` actually affects
         // runtime DeviceIds. Without this rescan, the InputManager
         // keeps the port→DeviceId mapping it built at startup, so
         // events keep flowing under stale aliases until the daemon
         // restarts. We do this BEFORE the device_output_map rebuild
         // below so it picks up the freshly re-keyed bindings.
-        // #885: every config now flows through the multi-device manager,
+        // Every config now flows through the multi-device manager,
         // so the rescan is unconditional whenever an InputManager exists.
-        // #2390: enumerate ports OFF the run-loop (blocking CoreMIDI) BEFORE
+        // Enumerate ports OFF the run-loop (blocking CoreMIDI) BEFORE
         // taking the input_manager lock, then pass them into the cheap diff.
-        // #2393: skip the scan in GamepadOnly — rescan_ports discards the result
+        // Skip the scan in GamepadOnly — rescan_ports discards the result
         // there, so it's pure waste (and emits spurious MIDI warnings on hosts
         // with no MIDI stack).
         let reload_ports = if crate::input_manager::midi_enumeration_enabled(
@@ -587,12 +583,12 @@ impl EngineManager {
         }
 
         // ADR-021 Phase 2A: Rebuild device_output_map with new config's device/output definitions.
-        // #955: Also refresh device_status.devices so the wire-format
+        // Also refresh device_status.devices so the wire-format
         // `device_id`/`is_configured`/`direction` reflect the new
         // resolution after the rescan above. Without this, the
         // status JSON keeps stale DeviceIds even though the InputManager
         // has been re-keyed.
-        // #885: status refresh is unconditional now (every config flows
+        // Status refresh is unconditional now (every config flows
         // through the multi-device manager).
         {
             let (full_bindings, enabled_states) =
@@ -615,11 +611,11 @@ impl EngineManager {
                 })
                 .collect();
             let output_ports = crate::daemon::output_resolver::enumerate_output_ports_async().await;
-            // ADR-035 Slice 6/9.5: build the MIDI output map AND rebuild the
+            // ADR-035: build the MIDI output map AND rebuild the
             // signal-routing registry from the prepared (already-normalized)
             // endpoint set. `build_output_map` folds in what the legacy
             // `build_device_output_map` + `build_connector_output_map` pair
-            // used to do — including the #1611 output/bidirectional alias
+            // used to do — including the output/bidirectional alias
             // resolution for `MidiForward { target = "<alias>" }`.
             let output_map = crate::daemon::output_resolver::build_output_map(
                 &endpoints,
@@ -632,7 +628,7 @@ impl EngineManager {
                 .collect();
             self.device_output_map.store(Arc::new(flat_map));
 
-            // #2063: reconcile OS virtual MIDI ports to the reloaded endpoint
+            // Reconcile OS virtual MIDI ports to the reloaded endpoint
             // set (create added, tear down removed/disabled). Post-commit and
             // infallible, consistent with the ADR-044 APPLY phase.
             self.sync_virtual_ports(&endpoints);
@@ -659,7 +655,7 @@ impl EngineManager {
                             output_connected: io.output_connected,
                             output_port_name: io.output_port_name,
                             output_auto_paired: io.output_auto_paired,
-                            // TODO(#742): Currently MIDI-only. Derive from binding source
+                            // TODO: Currently MIDI-only. Derive from binding source
                             // when HID/OSC devices are added to the binding path.
                             protocol: "midi".to_string(),
                         }
@@ -675,10 +671,10 @@ impl EngineManager {
             status.devices = device_statuses;
         }
 
-        // Reconcile current_mode with new config (v4.10.10, v4.21.0)
+        // Reconcile current_mode with new config
         // Guard against empty modes array and clamp to valid range
         //
-        // SAFETY INVARIANT (v4.13.3 - LLM Council Review):
+        // SAFETY INVARIANT:
         // When modes is empty, we set index to 0. This is safe because:
         // 1. All access to config.modes uses .get() which returns Option
         // 2. .get(0) on empty Vec returns None, not a panic
@@ -718,7 +714,7 @@ impl EngineManager {
 
         // ADR-025 Phase 3.F — re-log PC-state dependencies after the
         // commit so the inventory follows config edits. Also re-schedule
-        // the runtime observed-vs-expected warning (#886) — the new
+        // the runtime observed-vs-expected warning — the new
         // config may have a different expected set than the prior one.
         // `reason` labels both so the log line says which path triggered
         // it (reload / save / …).
@@ -728,7 +724,7 @@ impl EngineManager {
         report
     }
 
-    /// Structural post-commit reconcile (#2071, ADR-043 D2/Q2).
+    /// Structural post-commit reconcile (ADR-043 D2/Q2).
     ///
     /// The single, content-guarded entry point that makes the running
     /// daemon's runtime state match the latest committed `LiveConfig`
@@ -760,7 +756,7 @@ impl EngineManager {
         // backstop calls this after *every* successful command, so the no-op
         // path (read-only commands, byte-identical commits) must stay
         // genuinely cheap — an ArcSwap load + a `Copy` revision compare, with
-        // NO deep `Config` clone (Copilot review on #2099). Only clone the
+        // NO deep `Config` clone. Only clone the
         // committed config when a rebuild is actually due.
         let (revision, committed) = {
             let snap = self.live_config.load();

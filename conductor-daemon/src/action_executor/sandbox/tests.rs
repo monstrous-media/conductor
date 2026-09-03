@@ -86,7 +86,7 @@ mod macos_profile {
 
     #[test]
     fn profile_drops_control_char_paths() {
-        // (Council R1, finding 2) A path with a newline trying to inject an
+        // A path with a newline trying to inject an
         // `(allow default)` directive must be dropped, not emitted.
         let p = SandboxPolicy {
             fs_write_allow: vec![

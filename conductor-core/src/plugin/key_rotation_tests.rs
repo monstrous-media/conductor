@@ -238,7 +238,7 @@ fn empty_manifest_rejected() {
 
 #[test]
 fn over_length_chain_rejected_before_crypto() {
-    // Council R-high: an oversized manifest is a CPU-exhaustion (DoS) vector —
+    // An oversized manifest is a CPU-exhaustion (DoS) vector —
     // it must be rejected up front, before any signature verification. The
     // entries need not be valid; the length check fires first.
     let n = MAX_CHAIN_LENGTH + 1;
@@ -286,7 +286,7 @@ fn invalid_head_public_key_rejected() {
 
 #[test]
 fn duplicate_public_key_in_chain_rejected() {
-    // Council R-high: a key reused LATER in the chain (non-adjacent, so it
+    // A key reused LATER in the chain (non-adjacent, so it
     // evades the self-signed check) creates an ambiguous active window —
     // resolve_signer's `.find()` would match the earlier instance and
     // falsely reject a legitimate later signature. Forbid reuse outright.
@@ -308,7 +308,7 @@ fn duplicate_public_key_in_chain_rejected() {
 
 #[test]
 fn truncated_chain_rejected_by_high_water_mark() {
-    // Council R-high: an attacker replays a valid historical PREFIX (fewer
+    // An attacker replays a valid historical PREFIX (fewer
     // entries → lower head seq) to resurrect a rotated-away key. The host's
     // persisted high-water mark catches it.
     let (full, trusted, _k) = valid_chain(3); // head seq 2
@@ -389,7 +389,7 @@ fn resolve_signer_rejects_key_not_in_chain() {
 
 #[test]
 fn resolve_signer_rejects_future_signature() {
-    // Council R-high: a signature claimed in the future (signed_at > now) is
+    // A signature claimed in the future (signed_at > now) is
     // bogus and must be rejected even when it lands in an active window.
     let (m, trusted, keys) = valid_chain(3);
     let vc = validate_chain(&m, &trusted).unwrap();
@@ -401,7 +401,7 @@ fn resolve_signer_rejects_future_signature() {
 
 #[test]
 fn oversized_manifest_json_rejected_before_parse() {
-    // Council R-high: cap the byte size before serde_json allocates (DoS).
+    // Cap the byte size before serde_json allocates (DoS).
     let big = format!(
         "{{ \"signing_keys\": [] , \"pad\": \"{}\" }}",
         "A".repeat(MAX_MANIFEST_BYTES)

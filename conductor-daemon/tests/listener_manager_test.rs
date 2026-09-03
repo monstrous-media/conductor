@@ -6,7 +6,7 @@
 // ListenerManager builds one ListenerEdge per enabled Input/Bidirectional
 // OSC/Art-Net endpoint. Each edge runs the per-packet checks in the mandated
 // order (spec §4.2.1): ACL filter FIRST, then the rate-limit edge. The ordering
-// is a security property (Council R1 G2): an off-ACL packet must be rejected
+// is a security property: an off-ACL packet must be rejected
 // before the rate limiter is consulted, so a flood of off-ACL traffic can never
 // consume a listener's rate-limit budget and starve a legitimate sender.
 //
@@ -14,7 +14,7 @@
 // ACL (spec D1) so it accepts loopback sources. Sockets are bound in Slice A.6b;
 // this slice is the socket-free edge + manager.
 //
-// Acceptance (issue #1898, spec §5 A.6):
+// Acceptance (spec §5 A.6):
 //   cargo test --package conductor-daemon --test listener_manager_test
 
 use std::net::IpAddr;

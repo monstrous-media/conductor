@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `McpToolExecutor` query builders (second `impl` block; #2601).
+//! `McpToolExecutor` query builders (second `impl` block).
 
 use crate::daemon::mcp_types::ToolCallResult;
 use conductor_core::config::Config;
@@ -21,7 +21,7 @@ impl McpToolExecutor {
         match status_data {
             Some(data) => ToolCallResult::json(&data),
             None => ToolCallResult::json(&json!({
-                "daemon_running": true, // Daemon is responding to this request (#105)
+                "daemon_running": true, // Daemon is responding to this request
                 "lifecycle_state": "Unknown",
                 "connected": false,
                 "device_connected": false,
@@ -43,7 +43,7 @@ impl McpToolExecutor {
         }
     }
 
-    /// List multi-device bindings (v4.23.0 - ADR-009 Phase 5)
+    /// List multi-device bindings (ADR-009 Phase 5)
     pub(super) fn list_device_bindings(&self, status_data: Option<Value>) -> ToolCallResult {
         let bindings = status_data
             .as_ref()
@@ -335,7 +335,7 @@ impl McpToolExecutor {
     }
 
     /// List all signal-routing routes from the active config
-    /// (ADR-031 § 3.4, P3 slice 3 / #1143).
+    /// (ADR-031 § 3.4, P3).
     ///
     /// Reads `config.routes` directly — the config is the single
     /// source of truth for the *declared* route set. Runtime exclusion
@@ -363,13 +363,13 @@ impl McpToolExecutor {
         }
     }
 
-    /// Combined topology view (ADR-031 § 3.7 P3 slice 16 / gap A):
+    /// Combined topology view (ADR-031 § 3.7 P3, gap A):
     /// `connectors` + `routes` from the active config in one round-trip,
     /// so the LLM doesn't have to also call `conductor_list_routes`
     /// separately for "show me my routing graph" questions.
     ///
     /// `excluded` and per-connector live-status remain deferred — same
-    /// caveat as `list_routes` above. Slice 16's scope is the
+    /// caveat as `list_routes` above. The scope here is the
     /// config-derived view; the RouteEngine + connector_registry runtime
     /// data plumbing through SharedDaemonStateRefs is its own follow-up.
     pub(super) fn get_routing_graph(&self, config: Option<&Config>) -> ToolCallResult {
@@ -400,7 +400,7 @@ impl McpToolExecutor {
         }))
     }
 
-    /// Validate config against protocol schemas (v4.26.66)
+    /// Validate config against protocol schemas
     pub(super) fn validate_config(&self, config: Option<&Config>) -> ToolCallResult {
         match config {
             Some(cfg) => {
@@ -588,8 +588,8 @@ impl McpToolExecutor {
             None => return ToolCallResult::error("Missing required argument: mode"),
         };
 
-        // Find the mode index via the canonical validator in conductor-core
-        // (#1567) — the same code the mode-management integration tests use, so
+        // Find the mode index via the canonical validator in conductor-core —
+        // the same code the mode-management integration tests use, so
         // the "Mode not found … Available modes …" contract has one source.
         let mode_index = match config.resolve_mode_switch(mode_name) {
             Ok(idx) => idx,
@@ -605,7 +605,7 @@ impl McpToolExecutor {
             "status": "validated"
         }))
     }
-    /// Get signal topology summary (ADR-016 Chunk 1C - #565)
+    /// Get signal topology summary (ADR-016)
     ///
     /// Analyzes config + device bindings to produce a structured topology summary
     /// including device status, mapping classification, routing paths, and loop warnings.
@@ -805,7 +805,7 @@ impl McpToolExecutor {
         }))
     }
 
-    /// Get the active profile info from status data (Phase 1 - Issue #323)
+    /// Get the active profile info from status data (Phase 1)
     pub(super) fn get_active_profile(&self, status_data: Option<Value>) -> ToolCallResult {
         let active_profile = status_data
             .as_ref()
@@ -817,7 +817,7 @@ impl McpToolExecutor {
         }))
     }
 
-    /// Suggest a binding configuration based on event fingerprinting (#755).
+    /// Suggest a binding configuration based on event fingerprinting.
     ///
     /// Analyzes the port name and returns a binding suggestion with device
     /// category, confidence, suggested alias, and reasoning.

@@ -4,8 +4,7 @@
 // ADR-042 Phase A — Slice A.4: rate-limit edge at the network listener.
 //
 // `RateLimitEdge` is the second stage of the listener edge (after the ACL
-// filter, before audit — spec §4.2.1). It enforces TWO buckets per the
-// reasoning-tier Council decision (R6):
+// filter, before audit — spec §4.2.1). It enforces TWO buckets:
 //
 //   1. a per-sender bucket, checked FIRST so a rejected packet never charges
 //      the shared budget (spec §4.3 ordering P0), held in a BOUNDED LRU so a
@@ -13,7 +12,7 @@
 //   2. a per-listener `total` bucket — outside the LRU, never evicted — which
 //      is the real aggregate-ingress DoS guarantee.
 //
-// Acceptance (issue #1898, spec §5 A.4):
+// Acceptance (spec §5 A.4):
 //   cargo test --package conductor-daemon --test rate_limit_edge_test
 
 use std::net::IpAddr;

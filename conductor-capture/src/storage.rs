@@ -77,7 +77,7 @@ impl CaptureStorage {
 
     /// Save a capture to local storage.
     ///
-    /// #2147: this refuses to overwrite an existing capture file — if a capture
+    /// This refuses to overwrite an existing capture file — if a capture
     /// with the same id is already on disk, it returns
     /// [`std::io::ErrorKind::AlreadyExists`] rather than silently truncating it.
     /// The previous `fs::write` clobbered the existing file with no warning, so
@@ -89,7 +89,7 @@ impl CaptureStorage {
 
     /// Save a capture, replacing any existing capture file with the same id.
     ///
-    /// #2147: the explicit, opt-in counterpart to [`save`](Self::save) for
+    /// The explicit, opt-in counterpart to [`save`](Self::save) for
     /// callers that genuinely intend to update a capture in place. Overwriting
     /// is never the silent default.
     pub fn save_overwrite(&self, capture: &StoredCapture) -> Result<PathBuf, std::io::Error> {
@@ -100,7 +100,7 @@ impl CaptureStorage {
     /// rename. When `overwrite` is false the rename is non-clobbering
     /// (`AlreadyExists` if the file exists); when true it replaces any existing
     /// file. Shared by [`save`](Self::save) and
-    /// [`save_overwrite`](Self::save_overwrite) (#2147).
+    /// [`save_overwrite`](Self::save_overwrite).
     ///
     /// The JSON is written to a temp file in the same directory and only then
     /// renamed into place, so the destination `{id}.json` only ever receives a
@@ -169,7 +169,7 @@ impl CaptureStorage {
     ///
     /// Corrupt/unreadable files are skipped but logged; use
     /// [`list_with_warnings`](Self::list_with_warnings) to surface them to a
-    /// caller/UI. #1415: previously read and JSON-parse errors were silently
+    /// caller/UI. Previously read and JSON-parse errors were silently
     /// swallowed, so a corrupted capture simply vanished from listings —
     /// hiding data loss.
     pub fn list(&self) -> Result<Vec<CaptureInfo>, std::io::Error> {
@@ -177,7 +177,7 @@ impl CaptureStorage {
     }
 
     /// List all captures, plus a warning for every `.json` file that could not
-    /// be read or deserialized (#1415).
+    /// be read or deserialized.
     ///
     /// Each warning names the offending path and the underlying error so the
     /// CLI/UI can tell the user which captures need recovery instead of letting
@@ -236,7 +236,7 @@ impl CaptureStorage {
 
     /// Export a capture to a specific path.
     ///
-    /// #2147: like [`save`](Self::save), this refuses to silently overwrite an
+    /// Like [`save`](Self::save), this refuses to silently overwrite an
     /// existing file — it returns [`std::io::ErrorKind::AlreadyExists`] if
     /// `path` already exists, and writes atomically (temp + rename) so a failed
     /// export never leaves a partial/corrupt file at the user's path. Use
@@ -247,7 +247,7 @@ impl CaptureStorage {
 
     /// Export a capture to a specific path, replacing any existing file.
     ///
-    /// #2147: the explicit, opt-in counterpart to [`export`](Self::export);
+    /// The explicit, opt-in counterpart to [`export`](Self::export);
     /// still writes atomically.
     pub fn export_overwrite(&self, id: &Uuid, path: &Path) -> Result<(), std::io::Error> {
         self.write_export(id, path, true)
@@ -292,7 +292,7 @@ impl CaptureStorage {
 /// rename is non-clobbering and returns [`std::io::ErrorKind::AlreadyExists`] if
 /// `target` already exists.
 ///
-/// #2147: the temp file is removed automatically on any failure, so `target`
+/// The temp file is removed automatically on any failure, so `target`
 /// only ever receives a complete file — never a partial/corrupt one, and an
 /// existing file is never silently truncated. Shared by capture storage
 /// ([`CaptureStorage::save`]) and export ([`CaptureStorage::export`]).
@@ -368,7 +368,7 @@ mod tests {
         assert_eq!(loaded.name, capture.name);
     }
 
-    /// #2147: `save` must not silently overwrite an existing capture file.
+    /// `save` must not silently overwrite an existing capture file.
     /// A second `save` to the same id is rejected with `AlreadyExists` and the
     /// original file is left intact — the prior bug used `fs::write`, which
     /// truncated the existing capture without warning.
@@ -403,7 +403,7 @@ mod tests {
         assert_eq!(loaded.name, "original");
     }
 
-    /// #2147: `save_overwrite` is the explicit opt-in for replacing a capture
+    /// `save_overwrite` is the explicit opt-in for replacing a capture
     /// in place — so callers that genuinely intend an update still can, but
     /// only deliberately.
     #[test]
@@ -432,7 +432,7 @@ mod tests {
         assert_eq!(loaded.name, "updated");
     }
 
-    /// #2147 (Copilot): the atomic temp-write + rename must not leave stray
+    /// (Copilot): the atomic temp-write + rename must not leave stray
     /// temp files behind on success — only the `{id}.json` capture should
     /// remain, so a later `list()` stays clean and no partial files linger.
     #[test]
@@ -462,7 +462,7 @@ mod tests {
         );
     }
 
-    /// #2147 (Council): `export` is "save a capture to a user path" and carried
+    /// `export` is "save a capture to a user path" and carried
     /// the same silent-clobber bug — it must not overwrite an existing file at
     /// the target either.
     #[test]
@@ -502,7 +502,7 @@ mod tests {
         assert_eq!(exported.id, id);
     }
 
-    /// #2147: export to a fresh path succeeds and leaves no stray temp files.
+    /// Export to a fresh path succeeds and leaves no stray temp files.
     #[test]
     fn export_to_new_path_writes_atomically() {
         let (storage, temp) = create_test_storage();
@@ -578,7 +578,7 @@ mod tests {
         assert!(storage.load(&capture.id).is_err());
     }
 
-    /// #1415 regression. A corrupt `.json` in the captures directory must be
+    /// Regression test. A corrupt `.json` in the captures directory must be
     /// reported (via `list_with_warnings`) rather than silently omitted —
     /// previously `list()` swallowed the parse error and the file vanished,
     /// hiding the data loss.
@@ -620,7 +620,7 @@ mod tests {
         );
     }
 
-    /// #1415 companion: the *unreadable* branch (read error, distinct from a
+    /// Companion test: the *unreadable* branch (read error, distinct from a
     /// parse error) must also be surfaced. A directory whose name ends in
     /// `.json` passes the extension filter but fails `fs::read_to_string`,
     /// exercising that arm.

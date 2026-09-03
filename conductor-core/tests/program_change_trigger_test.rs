@@ -328,7 +328,7 @@ command = "echo whatever"
 #[test]
 fn program_change_with_device_filter_uses_helper() {
     // Trigger::device() and set_device() must cover the new variant,
-    // otherwise alias cascading (#745) breaks.
+    // otherwise alias cascading breaks.
     use conductor_core::config::types::Trigger;
 
     let mut t = Trigger::ProgramChange {
@@ -345,7 +345,7 @@ fn program_change_with_device_filter_uses_helper() {
     assert!(t.device().is_none());
 }
 
-/// #1496: a device-filtered ProgramChange mapping must be enforced through the
+/// A device-filtered ProgramChange mapping must be enforced through the
 /// real MappingEngine lookup — `get_action_for_processed_with_device` — not
 /// merely at the `Trigger::device()` accessor level (above). It matches a
 /// ProgramChange from the configured device and rejects the same event from a
@@ -400,7 +400,7 @@ command = "echo pc-5"
     // No device_id on the event → per `get_action_for_processed_with_device`,
     // only mappings WITHOUT a device filter are considered, so this
     // device-filtered ProgramChange mapping must not match. Pins the
-    // None-arm of the device-filter path (Copilot, #1496).
+    // None-arm of the device-filter path.
     assert!(
         engine
             .get_action_for_processed_with_device(&event, 0, None)
@@ -410,10 +410,10 @@ command = "echo pc-5"
 }
 
 // ────────────────────────────────────────────────────────────────
-// #1458 — the raw-MidiEvent `process` path must emit ProgramChange
+// The raw-MidiEvent `process` path must emit ProgramChange
 // ────────────────────────────────────────────────────────────────
 
-/// #1458 regression. `EventProcessor::process(MidiEvent)` dropped
+/// Regression test: `EventProcessor::process(MidiEvent)` dropped
 /// `MidiEvent::ProgramChange` through its `_ => {}` arm, so callers parsing
 /// raw MIDI into `MidiEvent` and using the public `process` path produced no
 /// event for program/bank changes and `Trigger::ProgramChange` mappings could

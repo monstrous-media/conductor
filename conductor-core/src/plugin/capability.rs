@@ -142,7 +142,7 @@ impl Capability {
     }
 }
 
-/// Enriched capability metadata for GUI display (#1074).
+/// Enriched capability metadata for GUI display.
 ///
 /// Plugin manifests declare capabilities as raw strings (e.g. `"Network"`,
 /// `"storage"`). The Plugin Manager UI renders rich cards with risk
@@ -170,8 +170,7 @@ pub struct EnrichedCapability {
     pub description: String,
     /// Risk tier for UI colour cue. Typed (not `String`) so the
     /// Rust↔GUI contract is compiler-enforced and there's no risk of
-    /// emitting a typoed/mis-cased tier (Copilot review on PR #1104
-    /// round 5). Wire format is the same lowercase JSON
+    /// emitting a typoed/mis-cased tier. Wire format is the same lowercase JSON
     /// (`"low"`/`"medium"`/`"high"`/`"unknown"`) — frontend
     /// `normaliseRiskLevel` accepts those verbatim.
     pub risk_level: CapabilityRiskTier,
@@ -332,7 +331,7 @@ mod tests {
         assert_eq!(deserialized, cap);
     }
 
-    // ─── #1074: registry-string enrichment ─────────────────────────
+    // ─── Registry-string enrichment ─────────────────────────
 
     #[test]
     fn test_enrich_known_lowercase_capability() {

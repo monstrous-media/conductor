@@ -12,7 +12,7 @@
 //! This crate is a **re-export-only** compatibility layer: the modules below
 //! alias `conductor_core`. It deliberately owns no sibling implementation files
 //! — `src/lib.rs` is the entire source. (Stale pre-extraction copies of
-//! `actions.rs`/`mappings.rs`/`feedback.rs`/etc. were removed in #1465; because
+//! `actions.rs`/`mappings.rs`/`feedback.rs`/etc. were removed; because
 //! they were never declared as `mod`s they compiled to nothing and silently
 //! diverged.) The public surface is covered by `tests/backward_compatibility_test.rs`.
 

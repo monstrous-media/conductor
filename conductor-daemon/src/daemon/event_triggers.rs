@@ -82,7 +82,7 @@ impl TriggerEngine {
 
         for trigger in &mut self.triggers {
             // Always prune stale events, even for non-matching event types,
-            // to prevent memory leaks from accumulated timestamps (council review).
+            // to prevent memory leaks from accumulated timestamps.
             if let Some(cutoff) = now.checked_sub(trigger.condition.window) {
                 while trigger.event_times.front().is_some_and(|&t| t < cutoff) {
                     trigger.event_times.pop_front();
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_non_matching_events_still_prune_stale_timestamps() {
-        // Council review: non-matching events must prune old timestamps
+        // Non-matching events must prune old timestamps
         // to prevent memory leaks from accumulated event_times.
         let mut config = BTreeMap::new();
         config.insert(

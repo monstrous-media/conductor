@@ -3,7 +3,7 @@
 
 use super::*;
 
-// ── Event Monitor Tests (Issue #326) ──────────────────────────────
+// ── Event Monitor Tests ──────────────────────────────
 
 #[test]
 fn test_create_monitor_event_note_on() {
@@ -91,7 +91,7 @@ fn test_create_monitor_event_gamepad_axis() {
     assert_eq!(me.event_type, "gamepad_axis");
     assert_eq!(me.axis, Some(129));
     assert_eq!(me.value, Some(50));
-    // #599: raw analog value rides through for high-precision value bars
+    // Raw analog value rides through for high-precision value bars
     assert_eq!(me.analog_value, Some(-0.21));
 }
 
@@ -112,7 +112,7 @@ fn test_create_monitor_event_gamepad_trigger() {
 
 #[test]
 fn test_create_monitor_event_midi_encoder_has_no_analog_value() {
-    // MIDI encoders (encoder < 128) never carry an analog value (#599)
+    // MIDI encoders (encoder < 128) never carry an analog value
     let event = InputEvent::EncoderTurned {
         channel: Some(0),
         time: std::time::Instant::now(),
@@ -151,10 +151,10 @@ fn test_create_monitor_event_poly_pressure() {
     assert_eq!(me.value, Some(90));
 }
 
-/// #601 follow-up: `MonitorEvent.channel` was always `None` for raw MIDI
+/// `MonitorEvent.channel` was always `None` for raw MIDI
 /// events because `create_monitor_event` never destructured the channel
 /// field that exists on every relevant `InputEvent` variant. The GUI's
-/// EventRow channel tag and expanded "Channel" row both rely on it, so
+/// channel tag and expanded "Channel" row both rely on it, so
 /// channel info was invisible in the events panel. This test pins the
 /// pipeline: if any branch silently drops channel again, it fails.
 #[test]
@@ -275,7 +275,7 @@ fn test_create_monitor_event_channel_none_for_gamepad_variants() {
     assert_eq!(me.channel, None, "gamepad_axis must not carry MIDI channel");
 }
 
-// ── Issue #840: program_change + canonical raw_bytes ────────────────
+// ── program_change + canonical raw_bytes ────────────────
 
 /// ProgramChange was previously dropped by `create_monitor_event`'s
 /// catch-all `_ => None`, so PC never appeared in the events panel. It now
@@ -297,7 +297,7 @@ fn test_create_monitor_event_program_change() {
     assert_eq!(me.raw_bytes, Some(vec![0xC0, 11]));
 }
 
-/// #840: each raw channel-voice event carries canonical MIDI 1.0 bytes,
+/// Each raw channel-voice event carries canonical MIDI 1.0 bytes,
 /// reconstructed via `midi_bytes::extract_raw_midi` (channel folded into the
 /// status byte's low nibble). The expanded event view renders these as hex.
 #[test]
@@ -324,7 +324,7 @@ fn test_create_monitor_event_populates_canonical_raw_bytes() {
     assert_eq!(me.raw_bytes, Some(vec![0x92, 0x3C, 0x64]));
 }
 
-/// #840 review: `extract_raw_midi` folds `channel: None` into channel 0, so a
+/// `extract_raw_midi` folds `channel: None` into channel 0, so a
 /// channel-less MIDI event would get fabricated channel-0 bytes. Gate it — a
 /// raw event whose source carried no channel must carry no `raw_bytes` (the
 /// Channel row already shows "—" for these; the Raw row stays hidden to match).
@@ -359,7 +359,7 @@ fn test_create_monitor_event_gamepad_has_no_raw_bytes() {
     assert_eq!(me.raw_bytes, None, "gamepad events are not MIDI wire bytes");
 }
 
-// ── Issue #589: Processed event suppression ─────────────────────────
+// ── Processed event suppression ─────────────────────────
 
 #[test]
 fn test_is_redundant_processed_event_suppresses_when_capture_midi() {
@@ -637,7 +637,7 @@ fn test_mapping_matched_event_format() {
 
 #[test]
 fn test_processing_us_on_monitor_event() {
-    // R899/Issue #709: processing latency is stamped as processing_us on the
+    // R899: processing latency is stamped as processing_us on the
     // raw MonitorEvent, not emitted as a separate "latency" event.
     let event = MonitorEvent {
         timestamp_ms: 6000,
@@ -716,7 +716,7 @@ fn test_monitor_rate_limiter_unlimited_mode() {
 
 #[test]
 fn test_monitor_rate_limiter_non_monotonic_timestamps() {
-    // Council review: timestamps may jitter backwards from external clocks.
+    // Timestamps may jitter backwards from external clocks.
     // Limiter should handle gracefully — backwards jump resets the window.
     let limiter = MonitorRateLimiter::new(3);
 
@@ -750,7 +750,7 @@ fn test_chord_event_detail_uses_emit_format() {
     assert!(detail.contains("[60, 64, 67]"));
 }
 
-// ── Push-based event monitoring tests (#394) ──
+// ── Push-based event monitoring tests ──
 
 #[test]
 fn test_broadcast_channel_sends_to_subscriber() {

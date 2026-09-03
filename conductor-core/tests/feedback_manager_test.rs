@@ -98,7 +98,7 @@ impl PadFeedback for MockFeedback {
     ) -> Result<(), Box<dyn Error>> {
         // Record the forwarded flash so the manager test can assert the
         // wrapped device actually received it (pad/color/duration), not just
-        // that the manager tracked an internal timeout (#1561).
+        // that the manager tracked an internal timeout.
         self.state
             .lock()
             .unwrap()
@@ -213,7 +213,7 @@ fn test_feedback_manager_set_scheme_clears_reactive_state() {
     assert_eq!(manager.active_pads(), 0);
 }
 
-/// #1459: presses made while a NON-reactive scheme is active must not be
+/// Presses made while a NON-reactive scheme is active must not be
 /// tracked in `reactive_state`. `on_pad_press` previously inserted
 /// unconditionally, so a press during Rainbow inflated `active_pads()` and
 /// lingered — and because switching *into* Reactive does not clear state, a
@@ -476,7 +476,7 @@ fn test_feedback_manager_concurrent_pads_fade() {
     assert_eq!(manager.active_pads(), 0);
 }
 
-// ========== Launchpad/APC Tests (Issue #330) ==========
+// ========== Launchpad/APC Tests ==========
 
 #[test]
 fn test_launchpad_pad_to_note_mapping() {
@@ -588,8 +588,7 @@ fn test_feedback_manager_flash_pad() {
     // The manager must FORWARD the flash to the wrapped device with the exact
     // pad, color, and duration — not merely start an internal timeout. Without
     // this, a regression that dropped `self.device.flash_pad(...)` would still
-    // pass the timeout-completion check below while LED feedback was broken
-    // (#1561).
+    // pass the timeout-completion check below while LED feedback was broken.
     assert_eq!(
         mock_state.lock().unwrap().flash_calls,
         vec![(3, 127, 0, 0, 50)],

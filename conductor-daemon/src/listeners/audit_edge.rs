@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase A — audit edge at the listener (Slice A.5).
+//! ADR-042 Phase A — audit edge at the listener.
 //!
 //! [`AuditRateLimiter`] is the third listener-edge stage (after the ACL filter
 //! and rate limiter). It caps audit-log emissions to **one entry per 60 seconds
@@ -10,7 +10,7 @@
 //! line per dropped packet.
 //!
 //! The suppression state is a **bounded LRU** ([`MAX_SUPPRESSION_ENTRIES`]), not
-//! an unbounded map (spec §4.4, Council reasoning-tier P0): every spoofed packet
+//! an unbounded map (spec §4.4): every spoofed packet
 //! is a non-suppressed event and therefore an insert, so a TTL-only map would
 //! still grow without bound under a spoofed-source flood. The LRU caps it — at
 //! worst a stale source emits one extra (already rate-limited) audit line when
@@ -24,22 +24,22 @@ use std::time::{Duration, Instant};
 /// Suppression window: at most one audit line per key per this duration.
 const AUDIT_WINDOW: Duration = Duration::from_secs(60);
 
-/// Hard cap on suppression-state entries (spec §4.4, Council reasoning-tier P0).
+/// Hard cap on suppression-state entries (spec §4.4).
 /// Bounds the spoofed-source OOM surface of the suppression map.
 const MAX_SUPPRESSION_ENTRIES: usize = 16_384;
 
 /// Kind of network-listener audit event, used as a suppression-key dimension so
 /// distinct event classes for the same source are not collapsed. Maps to the
-/// persisted `AuditEventType` variants at emission time (Slice A.6).
+/// persisted `AuditEventType` variants at emission time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AuditEventKind {
-    /// A packet was accepted by the edge and handed to the parser (A.6b-3c).
+    /// A packet was accepted by the edge and handed to the parser.
     /// Dedups `NetworkListenerActivity` emission to at most one line per 60s
     /// per `(listener, source)`.
     Activity,
-    /// Source IP rejected by the ACL filter (Slice A.3).
+    /// Source IP rejected by the ACL filter.
     AclRejected,
-    /// Packet dropped by the rate-limit edge (Slice A.4).
+    /// Packet dropped by the rate-limit edge.
     RateLimited,
     /// Listener failed to bind its socket.
     BindFailed,
@@ -74,7 +74,7 @@ impl AuditRateLimiter {
     pub fn should_emit(&self, listener: &str, source: IpAddr, kind: AuditEventKind) -> bool {
         let mut map = self.last_emit.lock().unwrap();
         // Normalize IPv4-mapped IPv6 so a dual-stack sender can't dodge dedup by
-        // alternating address forms (Copilot review on #1953).
+        // alternating address forms.
         let key = (
             listener.to_string(),
             crate::listeners::normalize_mapped_ip(source),
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn ipv4_mapped_source_dedups_with_ipv4() {
-        // Copilot #1953: the IPv4-mapped form of a sender must share the
+        // The IPv4-mapped form of a sender must share the
         // suppression key with its IPv4 form, not bypass dedup.
         let a = AuditRateLimiter::new();
         let v4: IpAddr = "127.0.0.1".parse().unwrap();

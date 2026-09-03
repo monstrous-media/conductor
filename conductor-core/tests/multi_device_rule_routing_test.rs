@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Integration tests for multi-device rule routing via CompiledRuleSet
-//! (v4.24.0 - ADR-009 Phase 6)
+//! (ADR-009 Phase 6)
 //!
 //! Tests that CompiledRuleSet::match_event correctly routes events based
 //! on device_id, mode index, and priority ordering.
@@ -382,7 +382,7 @@ fn test_multi_mode_device_routing() {
     ));
 }
 
-// #751: Channel scope filtering in rule matching
+// Channel scope filtering in rule matching
 #[test]
 fn test_channel_scope_filters_events() {
     // Device "drums" only responds to channel 9 (drum channel)

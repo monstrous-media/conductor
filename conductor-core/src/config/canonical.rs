@@ -27,8 +27,7 @@
 //! [`tests/canonical_serialise.rs`](../../../conductor-core/tests/canonical_serialise.rs)
 //! golden-hash test detects such drift; the workspace's pinned `toml =
 //! "0.9"` is the contract. A true cross-crate-version guarantee would
-//! require a custom emitter — out of scope for D4.A.1 (Opus + GPT-5.4
-//! Council R1).
+//! require a custom emitter — out of scope for D4.A.1.
 
 use crate::config::types::Config;
 use thiserror::Error;
@@ -40,7 +39,7 @@ pub enum CanonicalError {
     #[error("convert to toml::Value failed")]
     ToValue(#[from] toml::ser::Error),
     /// Failed to emit the sorted `toml::Value` tree to a TOML string.
-    /// Source preserved for diagnostics (Opus R1 §3.4 fix).
+    /// Source preserved for diagnostics.
     #[error("emit canonical TOML string failed")]
     Emit(#[source] toml::ser::Error),
 }

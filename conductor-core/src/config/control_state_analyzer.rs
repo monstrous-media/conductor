@@ -20,7 +20,7 @@
 //! is an optional convenience helper that emits log output via `tracing`
 //! as a side effect (`info` when the set is non-empty, `debug` otherwise).
 //!
-//! [`unobserved_pc_tuples`] (Phase 3.F runtime check, #886) is the
+//! [`unobserved_pc_tuples`] (Phase 3.F runtime check) is the
 //! companion that diffs the expected set against the live
 //! [`crate::control_state::PhysicalControlStateStore`]. Its
 //! [`log_unobserved_pc_tuples`] helper emits a `tracing::warn!` listing
@@ -85,7 +85,7 @@ pub fn log_expected_pc_tuples(config: &Config, context: &str) {
 /// [`PhysicalControlStateStore`] and return the subset **currently absent
 /// from the store snapshot** at call time. Used by the runtime
 /// observed-vs-expected warning emitted after a grace period following
-/// each config-swap (ADR-025 Phase 3.F runtime check, #886).
+/// each config-swap (ADR-025 Phase 3.F runtime check).
 ///
 /// "Currently absent" rather than "never observed since daemon start" —
 /// the store can be cleared by `reset_control_state` / `drop_device` /
@@ -612,7 +612,7 @@ mod tests {
     }
 
     // ────────────────────────────────────────────────────────────
-    // ADR-025 Phase 3.F runtime check (#886)
+    // ADR-025 Phase 3.F runtime check
     // ────────────────────────────────────────────────────────────
 
     use crate::control_state::PhysicalControlStateStore;

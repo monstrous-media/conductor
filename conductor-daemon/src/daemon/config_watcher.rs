@@ -22,13 +22,13 @@ use notify_debouncer_full::NoCache as CacheType;
 
 /// Config file watcher with debouncing
 pub struct ConfigWatcher {
-    /// Shared config path — updated on retarget, read by debouncer closure (Phase 2 - Issue #353)
+    /// Shared config path — updated on retarget, read by debouncer closure
     config_path: Arc<std::sync::Mutex<PathBuf>>,
     debouncer: Option<Debouncer<RecommendedWatcher, CacheType>>,
     event_rx: mpsc::Receiver<PathBuf>,
     command_tx: mpsc::Sender<DaemonCommand>,
     shutdown_rx: broadcast::Receiver<()>,
-    /// Channel to receive retarget requests (Phase 2 - Issue #353)
+    /// Channel to receive retarget requests
     retarget_rx: mpsc::Receiver<PathBuf>,
 }
 
@@ -36,7 +36,7 @@ impl ConfigWatcher {
     /// Create a new config watcher
     ///
     /// Returns `(ConfigWatcher, retarget_tx)` where `retarget_tx` can be used to
-    /// change the watched config path at runtime (Phase 2 - Issue #353).
+    /// change the watched config path at runtime.
     pub fn new(
         config_path: impl Into<PathBuf>,
         command_tx: mpsc::Sender<DaemonCommand>,
@@ -48,7 +48,7 @@ impl ConfigWatcher {
         // Create channel for debounced events
         let (event_tx, event_rx) = mpsc::channel(10);
 
-        // Share path with closure so retargets update the filter (Phase 2 - Issue #353)
+        // Share path with closure so retargets update the filter
         let config_path_for_closure = Arc::clone(&config_path_shared);
 
         // Create debouncer with 500ms delay
@@ -69,7 +69,7 @@ impl ConfigWatcher {
                             // Check if this is a modification event for our config file
                             if should_reload(&event.event, &current_path) {
                                 debug!("Config file changed: {:?}", current_path);
-                                // #2197: hand off WITHOUT blocking the notify callback
+                                // Hand off WITHOUT blocking the notify callback
                                 // thread (a full/slow channel must never stall the OS
                                 // file-event thread).
                                 forward_reload_path(&event_tx, current_path.clone());
@@ -137,7 +137,7 @@ impl ConfigWatcher {
                     }
                 }
 
-                // Phase 2 - Issue #353: Re-target to a different config file
+                // Re-target to a different config file
                 Some(new_path) = self.retarget_rx.recv() => {
                     let old_path = lock_config_path(&self.config_path);
                     info!("Re-targeting config watcher: {:?} -> {:?}", old_path, new_path);
@@ -156,13 +156,13 @@ impl ConfigWatcher {
                     let new_watch_path = new_path.parent()
                         .ok_or_else(|| DaemonError::FileWatcher("No parent directory for new config path".to_string()))?;
 
-                    // #2197: a re-watch failure must NOT terminate the watch loop —
+                    // A re-watch failure must NOT terminate the watch loop —
                     // propagating here previously killed `watch()` entirely, silently
                     // stopping ALL hot-reloading. Log + surface and keep the loop alive;
                     // hot-reload for the new path resumes on a later successful retarget.
                     // (The old directory was already unwatched and the shared path
                     // already updated above.) Only log the success message when the
-                    // re-watch actually succeeded (Copilot) — otherwise the failure
+                    // re-watch actually succeeded — otherwise the failure
                     // `error!` would be contradicted by an "re-targeted" success line.
                     match self.debouncer {
                         Some(ref mut debouncer) => {
@@ -238,7 +238,7 @@ fn set_config_path(mutex: &std::sync::Mutex<PathBuf>, new_path: PathBuf) {
 }
 
 /// Forward a detected config-file change to the watch loop WITHOUT blocking the
-/// notify callback thread (#2197).
+/// notify callback thread.
 ///
 /// The debouncer invokes its callback on the OS file-event thread; a
 /// `blocking_send` there could stall that thread if the channel is full or its
@@ -270,13 +270,13 @@ fn should_reload(event: &Event, config_path: &Path) -> bool {
             // Check if the event is for our config file
             event.paths.iter().any(|p| p == config_path)
         }
-        // #2123: atomic-save editors (vim, VS Code, …) — and our own atomic
+        // Atomic-save editors (vim, VS Code, …) — and our own atomic
         // config writes — write a temp file then RENAME it over the target.
         // Replacing an EXISTING config surfaces as `Modify(Name(To|Both))` on
         // the destination path, NOT `Modify(Data)` or `Create` (the `Create`
         // arm below only fires when the target didn't previously exist).
         //
-        // Exclude `RenameMode::From` (Copilot review): a `From` event naming the
+        // Exclude `RenameMode::From`: a `From` event naming the
         // config means the config was renamed AWAY (e.g. an editor moving the
         // existing config to a backup before writing the new one). The file is
         // gone at that instant, so reloading would read a missing file — the
@@ -364,7 +364,7 @@ mod tests {
 
     #[tokio::test]
     async fn forward_reload_path_drops_on_full_channel_without_blocking() {
-        // #2197: the notify-callback hand-off must never block the OS file-event
+        // The notify-callback hand-off must never block the OS file-event
         // thread. On a full channel, `forward_reload_path` drops the notification
         // (a reload is already queued + idempotent) rather than blocking.
         let (tx, mut rx) = mpsc::channel::<PathBuf>(1);
@@ -389,7 +389,7 @@ mod tests {
 
     #[tokio::test]
     async fn retarget_to_unwatchable_dir_does_not_kill_watch_loop() {
-        // #2197: a re-watch failure on retarget must be logged + recoverable, NOT
+        // A re-watch failure on retarget must be logged + recoverable, NOT
         // fatal to the watch loop (propagating `?` previously terminated `watch()`,
         // silently stopping all hot-reloading). Retarget to a path under a
         // non-existent directory so `debouncer.watch()` fails, then shut down and
@@ -478,7 +478,7 @@ mod tests {
         assert!(should_reload(&event, &config_path));
     }
 
-    /// Phase 2 - Issue #353: ConfigWatcher::new returns retarget channel
+    /// ConfigWatcher::new returns retarget channel
     #[tokio::test]
     async fn test_config_watcher_returns_retarget_channel() {
         let temp_dir = tempdir().unwrap();
@@ -497,7 +497,7 @@ mod tests {
         drop(shutdown_tx);
     }
 
-    /// Phase 2 - Issue #353: Shared config path updated on retarget
+    /// Shared config path updated on retarget
     #[tokio::test]
     async fn test_config_watcher_shared_path_update() {
         let temp_dir = tempdir().unwrap();
@@ -523,9 +523,9 @@ mod tests {
         assert_eq!(updated, new_config_path);
     }
 
-    // ── #2123: atomic-rename-save detection ─────────────────────────────
+    // ── Atomic-rename-save detection ─────────────────────────────
 
-    /// #2123: an atomic save replaces the config by renaming a temp file over
+    /// An atomic save replaces the config by renaming a temp file over
     /// it. Replacing an existing file surfaces as `Modify(Name(To))` on the
     /// destination path — which must trigger a reload. Pre-fix, `should_reload`
     /// only matched `Modify(Data/Any)` + `Create`, so this was silently missed.
@@ -567,7 +567,7 @@ mod tests {
         );
     }
 
-    /// #2123 (Copilot review): a `RenameMode::From` event naming the config
+    /// A `RenameMode::From` event naming the config
     /// means the config was renamed AWAY (moved to a backup) — the file is gone
     /// at that instant, so it must NOT trigger a reload.
     #[test]

@@ -20,14 +20,13 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 
 /// Convert a PathBuf to a UTF-8 string, returning an error with context if conversion fails.
-/// Added v4.14.0 (LLM Council feedback v4.13.3)
 fn pathbuf_to_str_or_err<'a>(path: &'a PathBuf, context: &str) -> Result<&'a str> {
     path.to_str().ok_or_else(|| DaemonError::InvalidPath {
         context: format!("{}: {:?}", context, path),
     })
 }
 
-/// ADR-045 D4 (#2495): should the (read-only) MCP socket be bound at
+/// ADR-045 D4: should the (read-only) MCP socket be bound at
 /// startup? Pure decision seam over `[mcp] enabled` (default true) so the
 /// bind/no-bind rule is unit-testable without spinning the service. When
 /// false the socket is never bound — not merely refusing calls
@@ -41,15 +40,15 @@ pub fn mcp_socket_enabled(config: &Config) -> bool {
 /// Main daemon service coordinating all components
 pub struct DaemonService {
     config_path: PathBuf,
-    /// #2551: the operator-editable **user file** (`config.toml` / active
+    /// The operator-editable **user file** (`config.toml` / active
     /// profile) that the §D9 drift watcher watches — distinct from
     /// `config_path`, which is the daemon's loaded **authority** (`live.toml`
     /// when present). ADR-034:853 says the watcher watches `user.toml`, NOT
     /// `live.toml`; pointing it at the authority made the daemon's own writes
-    /// look like external edits (the #2551 self-write drift loop). Defaults to
+    /// look like external edits (the self-write drift loop). Defaults to
     /// `config_path` when constructed via [`Self::new`].
     user_file_path: PathBuf,
-    /// #2564: active-profile identity restored at BOOT (from the daemon's own
+    /// Active-profile identity restored at BOOT (from the daemon's own
     /// `active_profile.json`, or the one-time `profiles.json` migration).
     /// Seeded into the engine's `active_profile` ArcSwap in [`Self::run`] —
     /// store only, never re-persisted. `None` for explicit `--config` boots
@@ -68,14 +67,14 @@ impl DaemonService {
     /// itself (back-compat: correct when the path given IS the operator's user
     /// file, e.g. the no-arg / test cases). When the loaded authority
     /// (`live.toml`) differs from the user file, use [`Self::new_with_user_file`]
-    /// so the watcher targets the user file (#2551).
+    /// so the watcher targets the user file.
     pub fn new(config_path: impl Into<PathBuf>) -> Result<Self> {
         let config_path = config_path.into();
         let user_file_path = config_path.clone();
         Self::build(config_path, user_file_path)
     }
 
-    /// #2551: construct with a distinct **authority** path (`config_path`, e.g.
+    /// Construct with a distinct **authority** path (`config_path`, e.g.
     /// `live.toml`) and operator-editable **user file** (`user_file_path`, e.g.
     /// `config.toml` / active profile). The §D9 watcher watches `user_file_path`
     /// so the daemon's own `live.toml` writes are never seen as external edits
@@ -108,13 +107,13 @@ impl DaemonService {
         })
     }
 
-    /// #2551: the path the §D9 drift watcher watches — the operator-editable
+    /// The path the §D9 drift watcher watches — the operator-editable
     /// user file, NOT the daemon's `live.toml` authority.
     pub fn user_file_path(&self) -> &std::path::Path {
         &self.user_file_path
     }
 
-    /// #2564: carry the boot-restored active-profile identity into [`Self::run`],
+    /// Carry the boot-restored active-profile identity into [`Self::run`],
     /// where it seeds the engine's `active_profile` ArcSwap (store only — the
     /// identity came FROM disk, so it is not re-persisted).
     pub fn set_boot_identity(&mut self, identity: crate::daemon::types::ActiveProfileInfo) {
@@ -129,7 +128,6 @@ impl DaemonService {
         self.install_panic_handler();
 
         // Load initial config
-        // v4.14.0: Properly handle non-UTF8 paths (LLM Council feedback v4.13.3)
         let config_path_str = pathbuf_to_str_or_err(&self.config_path, "config_path in run")?;
         let config = Config::load(config_path_str)
             .map_err(|e| DaemonError::Ipc(format!("Failed to load config: {}", e)))?;
@@ -142,7 +140,7 @@ impl DaemonService {
             .take()
             .ok_or_else(|| DaemonError::Fatal("Command receiver already taken".to_string()))?;
 
-        // ADR-045 D4 (#2495): capture the MCP toggle before `config` moves
+        // ADR-045 D4: capture the MCP toggle before `config` moves
         // into the engine manager.
         #[cfg(feature = "mcp")]
         let mcp_enabled = mcp_socket_enabled(&config);
@@ -154,7 +152,7 @@ impl DaemonService {
             self.shutdown_tx.clone(),
         )?;
 
-        // #2553: the "Overwrite user.toml" drift action must write the
+        // The "Overwrite user.toml" drift action must write the
         // operator-editable USER file (`config.toml`), not the `live.toml`
         // authority (`config_path`). Set this unconditionally — the Overwrite
         // action is available regardless of the watcher's user_file_policy. When
@@ -162,7 +160,7 @@ impl DaemonService {
         // no-op; via `new_with_user_file` they differ.
         engine_manager.set_user_file_path(self.user_file_path.clone());
 
-        // #2564: wire identity persistence unconditionally — profile switches
+        // Wire identity persistence unconditionally — profile switches
         // must persist `active_profile.json` regardless of HOW this boot was
         // configured (an explicit `--config` boot is itself ephemeral, but a
         // user switching profiles afterwards is a durable selection).
@@ -184,10 +182,10 @@ impl DaemonService {
             engine_manager.seed_active_profile_identity(identity);
         }
 
-        // Get the event broadcast sender for push-based monitoring (#394)
+        // Get the event broadcast sender for push-based monitoring
         let event_broadcast_tx = engine_manager.event_broadcast_tx();
         // Audit sink handle for `SubscribeAudit` streaming (ADR-027 D13a,
-        // #1167; ADR-045 D5 #2493) — the same seam every audit producer
+        // ADR-045 D5) — the same seam every audit producer
         // writes to (SQLite under `audit-db`, JSONL otherwise), so the live
         // tail works in every composition.
         let audit_sink = engine_manager.audit_sink();
@@ -222,7 +220,7 @@ impl DaemonService {
             info!("IPC server stopped");
         });
 
-        // Create config watcher (Phase 2 - Issue #353: returns retarget channel).
+        // Create config watcher (returns retarget channel).
         //
         // ADR-034 §D9: the watcher is DISABLED entirely when the live config
         // declares `user_file_policy = "ignore"` (0 inotify slots). In notify
@@ -249,7 +247,7 @@ impl DaemonService {
             tokio::spawn(async {})
         } else {
             let shutdown_rx_watcher = self.shutdown_tx.subscribe();
-            // #2551: watch the operator-editable USER file (config.toml /
+            // Watch the operator-editable USER file (config.toml /
             // active profile), NOT `self.config_path` (the loaded authority,
             // which is `live.toml` when present). Watching the authority made
             // the daemon's own writes look like external edits (ADR-034:853).
@@ -276,7 +274,7 @@ impl DaemonService {
         // D4.A.3.3.B.1: hand MCP the same `Arc<LiveConfig>` engine_manager
         // uses — the legacy `Arc<RwLock<Option<Config>>>` shim (which loaded
         // a separate copy from disk and never synced) retired.
-        // ADR-045 D1 (#2492): the MCP server (and its socket bind, inside
+        // ADR-045 D1: the MCP server (and its socket bind, inside
         // `McpServer::run`) only exists in `mcp` compositions.
         #[cfg(feature = "mcp")]
         let mcp_handle = if !mcp_enabled {
@@ -306,17 +304,17 @@ impl DaemonService {
         #[cfg(not(feature = "mcp"))]
         let mcp_handle = tokio::spawn(async {});
 
-        // Start persistent MIDI watcher thread (v4.26.1)
+        // Start persistent MIDI watcher thread
         // On macOS, keeps a CoreMIDI client alive with CFRunLoopRun() so that
         // device-added notifications are received. Without this, the daemon's
-        // HotPlugCheck rescan never sees newly connected MIDI devices. (#116)
+        // HotPlugCheck rescan never sees newly connected MIDI devices.
         // Binding must stay alive for daemon lifetime; do not change to `let _ =`.
         let _midi_watcher = midi_watcher::start_midi_watcher();
 
         // Spawn signal handler task. It subscribes to the shutdown broadcast
         // so that an IPC-initiated stop also terminates it — otherwise the
         // final `tokio::join!` below blocks forever and the daemon process
-        // never exits after `conductorctl stop` / GUI "Stop & Close" (#1295).
+        // never exits after `conductorctl stop` / GUI "Stop & Close".
         let command_tx = self.command_tx.clone();
         let shutdown_rx_signal = self.shutdown_tx.subscribe();
         let signal_handle = tokio::spawn(async move {
@@ -351,7 +349,7 @@ impl DaemonService {
     /// Exits on either an OS signal OR the daemon's shutdown broadcast.
     /// The broadcast arm is what lets an IPC-initiated stop (no OS signal
     /// involved) terminate this task; without it `DaemonService::run`'s
-    /// final `tokio::join!` waits on this task forever (#1295).
+    /// final `tokio::join!` waits on this task forever.
     async fn signal_handler(
         command_tx: mpsc::Sender<DaemonCommand>,
         mut shutdown_rx: broadcast::Receiver<()>,
@@ -502,10 +500,10 @@ const EX_TEMPFAIL: i32 = 75;
 /// mode's SIGTERM exit so a misconfigured systemd unit wouldn't crash-loop
 /// while waiting for the operator to bootstrap a config.
 ///
-/// **RESERVED (#1323): the AwaitingConfig idle mode was never wired and is
+/// **RESERVED: the AwaitingConfig idle mode was never wired and is
 /// downgraded to reserved, so nothing returns this code today.** Kept as the
 /// documented "no input config" exit for an eventual reinstatement.
-#[allow(dead_code)] // Reserved for the AwaitingConfig idle mode (downgraded, #1323)
+#[allow(dead_code)] // Reserved for the AwaitingConfig idle mode (downgraded)
 const EX_NOINPUT: i32 = 66;
 
 /// Acquire the daemon-singleton flock per ADR-034 §D10 / §D4.B.2.
@@ -572,7 +570,7 @@ fn acquire_singleton_lock_or_exit() -> super::singleton_lock::SingletonLock {
 /// - If neither loads (`AwaitingConfig` outcome), return `None` and
 ///   let the caller fall through to the legacy `~/.config/conductor`
 ///   path. The full `LifecycleState::AwaitingConfig` idle mode was never
-///   wired and is downgraded to reserved (#1323): when no config resolves
+///   wired and is downgraded to reserved: when no config resolves
 ///   anywhere, the daemon exits with a descriptive error (see `main.rs`)
 ///   rather than entering an idle bootstrap state.
 fn resolve_canonical_config_path() -> Option<PathBuf> {
@@ -606,8 +604,7 @@ fn resolve_canonical_config_path() -> Option<PathBuf> {
             // operator can see WHY live.toml was rejected (parse
             // failure, read failure, etc.) alongside the recovery
             // notice — diagnosing corruption shouldn't require
-            // grepping two separate log lines (Council #1298
-            // round 2).
+            // grepping two separate log lines.
             for r in &prior_rejections {
                 warn!(
                     "Live config source {} rejected: {} (will recover from known-good)",
@@ -636,8 +633,8 @@ fn resolve_canonical_config_path() -> Option<PathBuf> {
                 // Files present but invalid — surface every rejection
                 // so the operator can diagnose. Falling through to the
                 // legacy path is the behaviour; the hard-stop
-                // AwaitingConfig idle mode was downgraded to reserved
-                // (#1323), so an unresolvable config ultimately exits
+                // AwaitingConfig idle mode was downgraded to reserved,
+                // so an unresolvable config ultimately exits
                 // with a descriptive error in `main.rs`.
                 for r in rejections {
                     warn!(
@@ -653,7 +650,7 @@ fn resolve_canonical_config_path() -> Option<PathBuf> {
 }
 
 /// Run daemon with default config path
-/// #2551 (Copilot #2555): choose the §D9 watcher's user-file target. The watcher
+/// Choose the §D9 watcher's user-file target. The watcher
 /// must NEVER target the daemon's `live.toml` authority — its own writes would
 /// self-trip drift (ADR-034:853). Substitute the conventional
 /// `<state_dir>/config.toml` (which the daemon never writes) ONLY when the
@@ -670,7 +667,7 @@ fn resolve_canonical_config_path() -> Option<PathBuf> {
 /// (resolves `.`/`..`/symlinks and relative→absolute) so a non-canonical
 /// `--config ./live.toml` still matches the absolute canonical authority;
 /// falls back to lexical equality only when a path can't be canonicalized
-/// (e.g. it does not exist). #2555 (Council): raw `PathBuf` equality alone
+/// (e.g. it does not exist). Raw `PathBuf` equality alone
 /// would miss un-normalized/relative forms and re-target the watcher at
 /// `live.toml`.
 fn same_file(a: &Path, b: &Path) -> bool {
@@ -702,12 +699,12 @@ pub async fn run_daemon() -> Result<()> {
     // D4.B.3 wire-up: prefer the ADR-034 §D4.1 canonical source
     // (live.toml → known_good). Falls through to the legacy
     // `~/.config/conductor/config.toml` path on AwaitingConfig.
-    // #2551: the §D9 watcher watches the operator-editable user file, not the
+    // The §D9 watcher watches the operator-editable user file, not the
     // `live.toml` authority. The user file is the discovered `config.toml`.
     let canonical = resolve_canonical_config_path();
     let conventional = get_state_dir()?.join("config.toml");
     let config_path = canonical.clone().unwrap_or_else(|| conventional.clone());
-    // Guard: never let the watcher target the authority (#2555 Copilot).
+    // Guard: never let the watcher target the authority.
     let user_file = watcher_user_file(canonical.as_deref(), conventional.clone(), conventional);
 
     let mut daemon = DaemonService::new_with_user_file(config_path, user_file)?;
@@ -717,8 +714,8 @@ pub async fn run_daemon() -> Result<()> {
 /// Run daemon with a custom config path.
 ///
 /// `explicit` distinguishes the two CLI cases:
-/// - `explicit == true` — the operator passed `conductor --config X`. #1318:
-///   the explicit path is **authoritative**. We *adopt* it — validate X and
+/// - `explicit == true` — the operator passed `conductor --config X`.
+///   The explicit path is **authoritative**. We *adopt* it — validate X and
 ///   overwrite the live config (`live.toml`) with it — then boot from
 ///   `live.toml`. Because `live.toml` is the daemon's mutate target / authority
 ///   (§D11), an explicit override must rewrite it, not merely shadow it for one
@@ -732,7 +729,7 @@ pub async fn run_daemon_with_config(config_path: impl Into<PathBuf>, explicit: b
     run_daemon_with_identity(config_path, explicit, None).await
 }
 
-/// #2564: `run_daemon_with_config` plus the boot-restored active-profile
+/// `run_daemon_with_config` plus the boot-restored active-profile
 /// IDENTITY (from `startup::resolve_startup_identity_and_path`). `None` for
 /// explicit `--config` boots (ephemeral) and when nothing resolved.
 pub async fn run_daemon_with_identity(
@@ -747,20 +744,20 @@ pub async fn run_daemon_with_identity(
     let arg_path = config_path.into();
 
     if explicit {
-        // #1318: adopt the explicit config as the live authority before boot.
+        // Adopt the explicit config as the live authority before boot.
         adopt_explicit_config(&arg_path).await?;
     }
 
     // After an adopt, `live.toml` holds the explicit config, so the canonical
     // resolver loads it. In the non-explicit case this resumes `live.toml` /
     // known-good and falls back to the discovered path on AwaitingConfig.
-    // #2551: keep the user-file path (`arg_path`) for the §D9 watcher; `resolved`
+    // Keep the user-file path (`arg_path`) for the §D9 watcher; `resolved`
     // is the authority (`live.toml` after an adopt / when present).
     let canonical = resolve_canonical_config_path();
     let resolved = canonical.clone().unwrap_or_else(|| arg_path.clone());
     // Guard: if `--config` pointed at the EXISTING authority itself (e.g.
     // `--config live.toml`, so `arg_path` == the canonical live.toml), the watcher
-    // must not target it (#2555 Copilot) — fall back to the conventional
+    // must not target it — fall back to the conventional
     // `config.toml`. When no live.toml exists yet, `arg_path` is a legitimate user
     // file even though `resolved` fell back to it, so it is kept.
     let conventional = get_state_dir()?.join("config.toml");
@@ -773,7 +770,7 @@ pub async fn run_daemon_with_identity(
     daemon.run().await
 }
 
-/// #1318: make an explicit `--config X` authoritative by overwriting the live
+/// Make an explicit `--config X` authoritative by overwriting the live
 /// config (`live.toml`) with the validated contents of X. Thin wrapper that
 /// resolves `LivePaths` from the environment; the testable core is
 /// [`adopt_explicit_config_to`].
@@ -792,7 +789,7 @@ async fn adopt_explicit_config(arg_path: &std::path::Path) -> Result<()> {
 /// `persist_atomically` (0600, atomic temp→rename, dir fsync). NOT `Config::save`
 /// — that enforces a user-file directory allowlist (config dir / cwd / /tmp) and
 /// would reject `$XDG_STATE_HOME/conductor/live.toml` under e.g. a systemd
-/// `WorkingDirectory=/` (Copilot #2370). This is the same write contract the
+/// `WorkingDirectory=/`. This is the same write contract the
 /// daemon's own commit path uses for `live.toml` (§D11).
 async fn adopt_explicit_config_to(
     arg_path: &std::path::Path,
@@ -836,7 +833,7 @@ mod tests {
     use crate::daemon::live_config::LivePaths;
     use tempfile::tempdir;
 
-    /// #1318: an explicit `--config X` must be authoritative — it overwrites the
+    /// An explicit `--config X` must be authoritative — it overwrites the
     /// live config so the daemon boots from X (operator recovery + test
     /// isolation), instead of an existing `live.toml` silently winning.
     #[tokio::test]
@@ -897,7 +894,7 @@ mod tests {
         );
     }
 
-    /// #1295: the signal-handler task must exit on the shutdown broadcast,
+    /// The signal-handler task must exit on the shutdown broadcast,
     /// not only on an OS signal. Without this, an IPC `Stop` leaves
     /// `DaemonService::run` blocked forever in its final `tokio::join!` —
     /// the process never exits and the final state save is skipped.
@@ -1010,7 +1007,7 @@ mod tests {
         // Should be able to get command sender for external control
     }
 
-    // ── #2551: §D9 watcher must watch the USER file, not the live.toml authority ──
+    // ── §D9 watcher must watch the USER file, not the live.toml authority ──
 
     #[test]
     fn new_with_user_file_targets_user_file_not_authority() {
@@ -1055,7 +1052,7 @@ mod tests {
 
     #[test]
     fn watcher_user_file_never_targets_the_authority() {
-        // #2555 (Copilot): if `--config` points at the EXISTING authority (e.g.
+        // If `--config` points at the EXISTING authority (e.g.
         // `--config live.toml`), the user file == the canonical authority and the
         // watcher would self-trip drift again. Guard: fall back to the conventional
         // config.toml, which the daemon never writes (ADR-034:853).
@@ -1079,7 +1076,7 @@ mod tests {
 
         // No canonical authority yet (no live.toml): the user file (a profile /
         // config.toml that `resolved` fell back to) is legitimate — do NOT
-        // over-fire the guard onto the conventional file (Copilot #2555 edge).
+        // over-fire the guard onto the conventional file.
         assert_eq!(
             watcher_user_file(None, profile.clone(), cfg.clone()),
             profile,
@@ -1090,7 +1087,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn watcher_user_file_detects_authority_via_symlink() {
-        // #2555 (Council): a path that resolves to the authority via a symlink
+        // A path that resolves to the authority via a symlink
         // (or a relative form) is NOT lexically equal to the absolute canonical
         // authority. Raw `PathBuf` equality would miss it and re-target the
         // watcher at `live.toml`; `same_file` canonicalizes so it is caught.

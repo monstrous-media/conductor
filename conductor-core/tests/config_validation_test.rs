@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Config validation tests for multi-device support (v4.24.0 - ADR-009 Phase 6,
+//! Config validation tests for multi-device support (ADR-009 Phase 6,
 //! migrated to the unified `[[endpoints]]` model in ADR-035).
 //!
 //! Tests that config validation:
@@ -416,7 +416,7 @@ fn test_validate_endpoint_channel_15_allowed() {
 
 /// ADR-038: a Tap action whose message is only whitespace is effectively
 /// blank and should be rejected, mirroring the alias/command `trim()` checks
-/// elsewhere in the validator (Copilot review on PR #1854).
+/// elsewhere in the validator.
 #[test]
 fn test_validate_tap_whitespace_message_rejected() {
     let tap_mapping = Mapping {

@@ -3,11 +3,11 @@
 
 use super::*;
 
-// ── #1301 slice 2: stage-9 edge cases ────────────────────────────
+// ── Stage-9 edge cases ────────────────────────────
 //
-// Slice 1 pinned happy path + no-route + precedence. Slice 2 covers
+// The earlier tests pinned happy path + no-route + precedence. These cover
 // the failure modes: disabled route, empty config, unknown
-// destination alias. These pin the "stage 9 doesn't blow up under
+// destination alias. They pin the "stage 9 doesn't blow up under
 // partial / malformed config" contract — a regression class easy
 // to miss without explicit tests.
 
@@ -164,17 +164,17 @@ async fn test_stage9_unknown_destination_alias_does_not_panic() {
     while rx.try_recv().is_ok() {}
 }
 
-// ── #1301 slice 3a: metrics + payload enrichment ───────────────────
+// ── Metrics + payload enrichment ───────────────────
 //
-// Slice 1 dispatched routes and emitted route_forwarded; slice 3a
-// closes the latent gap from P4 (#1144): every successful forward
+// Route dispatch emitted route_forwarded from the start; this addition
+// closes a latent gap: every successful forward
 // increments the destination connector's `total_messages` metric
 // via `ConnectorRegistry::record_activity()`. The payload also
-// grows to carry `bytes_out` + `bound_port` so slice 3b's GUI
+// grows to carry `bytes_out` + `bound_port` so the GUI
 // badge has the data it needs without a second roundtrip.
 
 /// AC: a successful stage-9 dispatch increments the destination
-/// connector's `total_messages` counter. Before this slice
+/// connector's `total_messages` counter. Previously
 /// `record_activity()` was dead code — the method existed but
 /// nothing in production called it, so every `ConnectorMetrics`
 /// counter was stuck at zero. Pins the wiring fix.
@@ -233,9 +233,9 @@ async fn test_stage9_dispatch_increments_record_activity() {
     );
 }
 
-/// AC: the `route_forwarded` payload carries the slice-3a enriched
-/// fields (`bytes_out`, `bound_port`) in addition to the slice-1
-/// fields (`from`, `to`, `bytes_in`). Pins the contract slice 3b's
+/// AC: the `route_forwarded` payload carries the enriched
+/// fields (`bytes_out`, `bound_port`) in addition to the base
+/// fields (`from`, `to`, `bytes_in`). Pins the contract the
 /// GUI badge consumes.
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
@@ -269,7 +269,7 @@ async fn test_stage9_route_forwarded_payload_includes_enriched_fields() {
         .as_ref()
         .expect("route_forwarded must carry a payload");
 
-    // Slice 1 fields preserved (backward compatibility).
+    // Base fields preserved (backward compatibility).
     assert_eq!(
         payload["from"], "pads",
         "slice 1 field `from` must still be present"
@@ -283,7 +283,7 @@ async fn test_stage9_route_forwarded_payload_includes_enriched_fields() {
         "slice 1 field `bytes_in` must still be present"
     );
 
-    // Slice 3a additions.
+    // Enrichment additions.
     assert!(
         payload["bytes_out"].is_u64(),
         "slice 3a field `bytes_out` must be present (got: {:?})",
@@ -312,21 +312,21 @@ async fn test_stage9_route_forwarded_payload_includes_enriched_fields() {
     );
 }
 
-// ── #1301 slice 4: cross-protocol exclusion runtime guard ────────
+// ── Cross-protocol exclusion runtime guard ────────
 //
-// `RouteEngine::compile()` excludes routes with cross-protocol
+// `RouteEngine::compile()` originally excluded routes with cross-protocol
 // transforms (MidiToOsc / OscToMidi / MidiToArtNet / HidToArtNet)
-// — Phase 5 work, not yet executable. This test pins the runtime
+// as not yet executable, and this test pinned the runtime
 // consequence: a declared MidiToOsc route MUST NOT fire stage-9
-// dispatch even when its source receives MIDI events. P5 slice
-// 3+4 (this PR): now that MidiToOsc has a runtime, this test
+// dispatch even when its source receives MIDI events. Now that
+// MidiToOsc has a runtime, this test
 // FLIPS — MidiToOsc routes MUST dispatch as OSC. The replacement
 // (`test_stage9_midi_to_osc_route_dispatches_as_osc_packet`)
 // pins positive delivery via a real UDP receiver. A separate
 // negative test still pins the contract for STILL-excluded
-// variants (after P5 slice 8: `OscToMidi`, `HidToArtNet`).
+// variants (`OscToMidi`, `HidToArtNet`).
 
-/// P5 slice 3+4: a route with a `MidiToOsc` transform now
+/// A route with a `MidiToOsc` transform now
 /// dispatches as an OSC packet through the registry's
 /// `send_osc` path. End-to-end via a real loopback UDP
 /// receiver. Pins the cross-protocol dispatch wiring.
@@ -419,7 +419,7 @@ async fn test_stage9_midi_to_osc_route_dispatches_as_osc_packet() {
     }
 
     // `route_forwarded` monitor event must fire, with the new
-    // `protocol: "Osc"` payload field (P5 slice 3 addition).
+    // `protocol: "Osc"` payload field.
     let event = drain_for_event_type(&mut rx, "route_forwarded")
         .expect("route_forwarded must fire for cross-protocol dispatch");
     let payload = event.payload.expect("event must carry payload");
@@ -441,10 +441,10 @@ async fn test_stage9_midi_to_osc_route_dispatches_as_osc_packet() {
     );
 }
 
-/// P5 slice 8: a route with a `MidiToArtNet` transform now
+/// A route with a `MidiToArtNet` transform now
 /// dispatches as an Art-Net OpDmx UDP packet via the registry's
 /// `send_artnet` path. End-to-end via a real loopback UDP receiver.
-/// Unblocked by #1356 fix — populated `cc_to_dmx` now survives
+/// Populated `cc_to_dmx` now survives
 /// canonical TOML serialise via the `u8_string_map` serde helper.
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
@@ -564,9 +564,9 @@ async fn test_stage9_still_excluded_cross_protocol_variants_do_not_dispatch() {
     use std::time::Instant as StdInstant;
 
     let mut config = create_route_only_test_config();
-    // P5 slice 8 admits MidiToArtNet, so the "still excluded" list
+    // MidiToArtNet is now admitted, so the "still excluded" list
     // shrinks to HidToArtNet + OscToMidi. This test pins HidToArtNet
-    // (needs InputEvent-shaped stage-9 plumbing — slice 9).
+    // (needs InputEvent-shaped stage-9 plumbing — still pending).
     config.routes = vec![RouteConfig {
         from: "pads".to_string(),
         to: "absynth".to_string(),

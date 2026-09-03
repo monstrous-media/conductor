@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1316: `conductor-sign generate-key` writes Ed25519 private
+//! `conductor-sign generate-key` writes Ed25519 private
 //! keys with default umask (0644 typical on Unix). Other local
 //! users can read the signing credential.
 //!
@@ -81,12 +81,12 @@ fn run_generate_key_with_umask(
     out
 }
 
-/// THE regression test for #1316. After `conductor-sign generate-key
+/// THE regression test. After `conductor-sign generate-key
 /// /path/to/key` runs, the `.private` file MUST have mode 0o600
 /// (owner-read/write only). Pre-fix, `std::fs::write` honoured the
 /// process umask which typically leaves the file 0644 (world-read).
 ///
-/// #1542: the umask is pinned to `0o022` (permissive) around the subprocess so
+/// The umask is pinned to `0o022` (permissive) around the subprocess so
 /// this is a real regression guard. A pre-fix `std::fs::write` implementation
 /// would create the file `0o666 & !0o022 = 0o644` and fail this assertion;
 /// without the pin, a restrictive runner umask (e.g. `0o077`) would mask that
@@ -126,7 +126,7 @@ fn generate_key_private_file_has_mode_0600() {
 /// PR doesn't accidentally restrict it (which would break legitimate
 /// downstream tooling that reads .public files).
 ///
-/// #1542: with the umask pinned to `0o022`, the public key — written with the
+/// With the umask pinned to `0o022`, the public key — written with the
 /// default create mode (`0o666`) and no explicit `.mode()` — must land at
 /// exactly `0o644`. Asserting the exact mode (rather than only owner-read)
 /// catches BOTH an accidental hardening to `0o600` (the original intent) AND an
@@ -154,7 +154,7 @@ fn generate_key_public_file_is_readable() {
     );
 }
 
-/// #1316 sub-requirement: `create_new` semantics. A second
+/// Sub-requirement: `create_new` semantics. A second
 /// `generate-key` on the same output path MUST refuse to overwrite
 /// — silently clobbering an existing private key is the worst
 /// possible UX for a credential-management tool. The first call
@@ -202,7 +202,7 @@ fn generate_key_refuses_to_overwrite_existing_private_key() {
     );
 }
 
-/// #1419: the no-overwrite guarantee must cover the WHOLE keypair prefix,
+/// The no-overwrite guarantee must cover the WHOLE keypair prefix,
 /// not just the private half. If `<prefix>.public` exists but
 /// `<prefix>.private` does not, `generate-key` previously created a new
 /// private key and silently truncated the existing public key — a

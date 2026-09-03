@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Integration tests for `ActionConfig::Shell`'s ADR-027 D3 argv-form
-//! schema (issue #1037).
+//! schema.
 //!
 //! The legacy schema is a single `command: String` whitespace-split at
 //! execution time. The argv-form schema additionally accepts
@@ -16,7 +16,7 @@
 //! in `conductor-daemon/tests/`.
 //!
 //! Some test payloads contain shell metacharacters (`>`, `;`, etc.) on
-//! purpose — they mirror the exact bypass class issue #1037 calls out.
+//! purpose — they mirror a known bypass class.
 //! These tests exercise the **schema layer only** (`toml::from_str`);
 //! they do NOT run config validation, so the metacharacter blocklist
 //! Phase 1 also extends to argv-form `args` (see
@@ -34,7 +34,7 @@ use conductor_core::config::ActionConfig;
 
 #[test]
 fn shell_argv_form_with_args_array_deserialises() {
-    // The exact TOML shape reported in issue #1037 — `command` is the
+    // The exact TOML shape — `command` is the
     // resolved binary path, `args` is the argv array. Equivalent to
     // execve("/bin/sh", &["-c", "env > /tmp/out.txt"]).
     let toml_src = r#"

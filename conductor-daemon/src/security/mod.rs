@@ -9,11 +9,11 @@
 //! spec §2 line 100–104 — so the work lands in sub-pieces that each preserve
 //! today's behaviour:
 //!
-//! - **D5 (1/N) — `RiskTier` canonicalisation** ([PR #1047]): moved
+//! - **D5 (1/N) — `RiskTier` canonicalisation** (landed pre-migration): moved
 //!   `RiskTier` from `conductor-daemon::daemon::mcp_types` to
 //!   `conductor-core::security::tiers`, eliminating the historical
 //!   `ToolRiskTier` divergence so the gate has a single vocabulary.
-//! - **D5 (2/N) — Gate scaffold** ([PR #1049]): introduced the
+//! - **D5 (2/N) — Gate scaffold** (landed pre-migration): introduced the
 //!   `enforce` function, [`GateDecision`], [`CallerContext`],
 //!   [`SecurityPolicy`], and [`TrustLevel`] types. In shadow mode (the
 //!   default) the gate returned [`GateDecision::Allow`] for every tier
@@ -30,9 +30,6 @@
 //!   `TrustLevel` enum is replaced by a kernel-pinned `PinnedPeer`),
 //!   the call-site wiring through `mcp.rs` + `action_executor.rs`,
 //!   then the atomic flag flip that turns `shadow_mode = false` on.
-//!
-//! [PR #1047]: https://github.com/monstrous-media/conductor/pull/1047
-//! [PR #1049]: https://github.com/monstrous-media/conductor/pull/1049
 
 pub mod gate;
 // network_approvals uses Unix-only hardened-file APIs (libc / std::os::unix);

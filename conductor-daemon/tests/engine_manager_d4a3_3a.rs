@@ -4,19 +4,19 @@
 // ADR-034 §D4.A.3.3.A — structural acceptance for the legacy
 // `self.config: Arc<RwLock<Config>>` removal in engine_manager.rs.
 //
-// Source-text greps capture the textual acceptance criteria from #1276:
+// Source-text greps capture the textual acceptance criteria:
 // once D4.A.3.3.A lands, the legacy field, the legacy reader pattern,
 // the bridge helper, and the dead public accessor are all gone.
 //
 // These tests are deliberately string-based because the migration is
-// mechanical and the contract being asserted IS textual (the issue
-// body literally specifies `grep` invariants). When sub-piece B lands
+// mechanical and the contract being asserted IS textual (the acceptance
+// criteria literally specify `grep` invariants). When sub-piece B lands
 // and the executor.rs Arc<RwLock<Config>> path follows, similar greps
 // will go there.
 
 /// Concatenation of every `.rs` under `src/daemon/engine_manager/`. The
 /// engine_manager module was split from one file into a directory of
-/// submodules in #2073, so these structural greps must scan the whole
+/// submodules, so these structural greps must scan the whole
 /// module — not just `mod.rs`. Read at test runtime from
 /// `CARGO_MANIFEST_DIR` so newly-added submodules are covered without
 /// editing this test. Scope matches the pre-split `include_str!` of the
@@ -25,7 +25,7 @@ fn read_engine_manager_src() -> String {
     // Recurse so the scan covers the whole module — including the
     // `engine_manager/tests/` subdirectory — matching the pre-split
     // `include_str!` scope (the single file included its inline test
-    // module). (Copilot review on #2075.)
+    // module). (Copilot review.)
     fn collect(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
         for entry in std::fs::read_dir(dir)
             .expect("read engine_manager dir")

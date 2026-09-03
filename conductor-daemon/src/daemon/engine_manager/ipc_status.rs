@@ -41,13 +41,13 @@ impl EngineManager {
         let device_status = self.device_status.read().await.clone();
         let stats = self.statistics.read().await.clone();
         let uptime_secs = self.start_time.elapsed().as_secs();
-        // ADR-032 P4 (#1089) — read GUI's last-reported UI mode so we
+        // ADR-032 P4 — read GUI's last-reported UI mode so we
         // can include it in the response when set. Read under the
         // RwLock and clone to avoid holding the guard across the
         // json! macro expansion.
         let ui_mode_snapshot: Option<String> = self.ui_mode.read().await.clone();
 
-        // Lock-free mode read (v4.26.2 — fix #167: StatusBar shows lifecycle_state instead of mode name)
+        // Lock-free mode read (StatusBar shows lifecycle_state instead of mode name)
         let mode_snapshot = self.current_mode.load();
         let current_mode_name = if mode_snapshot.name.is_empty() {
             "None".to_string()
@@ -55,10 +55,10 @@ impl EngineManager {
             mode_snapshot.name.clone()
         };
 
-        // Get input manager info (v3.0)
+        // Get input manager info
         // Return None when input_manager is not initialized
-        // (LLM Council feedback v4.13.3: don't falsely report "MidiOnly")
-        // v4.14.0: Changed to Option<String> for consistency with get_daemon_state()
+        // (don't falsely report "MidiOnly")
+        // Changed to Option<String> for consistency with get_daemon_state()
         let (input_mode, hid_devices, device_count): (Option<String>, Vec<_>, usize) =
             if let Some(ref mgr) = *self.input_manager.lock().await {
                 let mode = match mgr.mode() {
@@ -136,7 +136,7 @@ impl EngineManager {
                 })),
                 "profile_cache": serde_json::to_value(self.profile_cache.metrics()).unwrap_or_default(),
         });
-        // ADR-032 P4 (#1089) — only include `ui_mode` when set, so
+        // ADR-032 P4 — only include `ui_mode` when set, so
         // consumers without a connected GUI see no shape change.
         if let Some(mode) = ui_mode_snapshot {
             status_payload["ui_mode"] = json!(mode);
@@ -339,7 +339,7 @@ impl EngineManager {
         use crate::permissions::{
             PermissionStatus, check_input_monitoring, invalidate_input_monitoring_cache,
         };
-        // PR #997 round-11 review: callers can pass
+        // Callers can pass
         // `args: { "force": true }` to bypass the daemon's
         // 30s probe cache for this call. The GUI uses this
         // after "Open System Settings" so the next probe

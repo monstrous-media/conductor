@@ -6,7 +6,7 @@
 //! We generate an SBPL profile from the [`SandboxPolicy`] and apply it in the
 //! child between `fork` and `exec` (a `pre_exec` hook). `sandbox_init` with
 //! `flags == 0` compiles and applies the supplied SBPL string. We deliberately
-//! bypass the deprecated `sandbox-exec` CLI per the Council D10b review — the
+//! bypass the deprecated `sandbox-exec` CLI per the ADR-027 D10b decision — the
 //! Seatbelt profile language is stable even though the CLI is not.
 
 use super::{SandboxOutcome, SandboxPolicy, SandboxRefused};
@@ -80,7 +80,7 @@ pub(super) fn build_profile(policy: &SandboxPolicy) -> String {
     p.push_str("  (subpath \"/private/var/folders\")\n"); // macOS per-user temp
     for path in &policy.fs_write_allow {
         let raw = path.to_string_lossy();
-        // (Council R1, finding 2) Defence-in-depth against SBPL injection: a
+        // Defence-in-depth against SBPL injection: a
         // path containing control characters (newline, NUL, …) can't appear in
         // a legitimate filesystem path and is the only way the `\`/`"` escaping
         // below could be subverted — drop it rather than emit it into the

@@ -4,17 +4,17 @@
 //! ADR-031 Phase 2A § 4.3 — `[[routes]]` reject-rule validation.
 //!
 //! Per spec § 4.3 (4 reject rules + the cc/note range correctness fix
-//! from spec § 4.1 post-#1139):
+//! from spec § 4.1):
 //!   1. `from` / `to` MUST reference an existing `[[endpoints]]` alias.
 //!   2. Self-referencing route (`from == to`) is rejected.
 //!   3. A→B + B→A direct cycle is rejected.
 //!   4. Cross-protocol route MUST have a `transform` (otherwise the
 //!      route would forward incompatible payloads).
 //!   5. `cc_range` / `note_range` with `min > max` is rejected (would
-//!      silently match nothing — same failure mode as #1118 cross-bucket
+//!      silently match nothing — same failure mode as cross-bucket
 //!      shadowing but harder to diagnose).
 //!
-//! Overlap warnings (route shadowed by Raw, etc.) land in slice 3.
+//! Overlap warnings (route shadowed by Raw, etc.) are out of scope here.
 //!
 //! ADR-035: the legacy `[[bindings]]` / `[[connectors]]` blocks are gone;
 //! every route source/target resolves against the unified `[[endpoints]]`
@@ -34,8 +34,7 @@ fn parse_or_panic(toml: &str) -> Config {
 /// Assert that an error exists whose path STARTS WITH `path_prefix`
 /// and whose message contains `fragment` (case-insensitive).
 ///
-/// Slice 8 hardening (Council finding on slice 5): the previous
-/// `assert_error_about` only matched on message substring, which is
+/// The previous `assert_error_about` only matched on message substring, which is
 /// brittle — a message mentioning "ghost" could match an error about
 /// an entirely different alias. Pinning by `path` ties each test to
 /// the specific rule that produced the finding.
@@ -97,7 +96,7 @@ matchers = [{ type = "NameContains", value = "Absynth" }]
 "#,
     );
     let report = validate_config(&cfg);
-    // Slice 8 hardening: assert by path so a stray error mentioning
+    // Assert by path so a stray error mentioning
     // "ghost" elsewhere can't satisfy the test.
     assert_error_at_path(&report, "routes[0].from", "ghost");
 }
@@ -121,7 +120,7 @@ to = "no-such-thing"
 "#,
     );
     let report = validate_config(&cfg);
-    // Slice 8 hardening: pin to the specific rule's path.
+    // Pin to the specific rule's path.
     assert_error_at_path(&report, "routes[0].to", "no-such-thing");
 }
 
@@ -184,7 +183,7 @@ to = "loopy"
 "#,
     );
     let report = validate_config(&cfg);
-    // Slice 9 hardening: precise path so a stray "loopy" in some
+    // Precise path so a stray "loopy" in some
     // unrelated future error can't satisfy the test.
     assert_error_at_path(&report, "routes[0]", "self-loop");
     assert_error_at_path(&report, "routes[0]", "loopy");
@@ -224,7 +223,7 @@ to = "a"
 "#,
     );
     let report = validate_config(&cfg);
-    // Slice 9 hardening: cycle error fires at the SECOND route
+    // Cycle error fires at the SECOND route
     // (`routes[1]`), not the first.
     assert_error_at_path(&report, "routes[1]", "cycle");
 }
@@ -262,7 +261,7 @@ to = "lights-osc"
 "#,
     );
     let report = validate_config(&cfg);
-    // Slice 9 hardening: precise path. The cross-protocol error
+    // Precise path. The cross-protocol error
     // fires at `routes[N]` (route-level), not `routes[N].transform`
     // (no field-level path).
     assert_error_at_path(&report, "routes[0]", "protocol");
@@ -320,9 +319,9 @@ cc_to_address = "/lights/cc"
 
 #[test]
 fn cc_range_min_greater_than_max_is_rejected() {
-    // Per spec § 4.1 post-#1139: silent-no-match would be exactly the
-    // failure mode #1118 caught (cross-bucket shadowing) but harder
-    // to diagnose because no trigger is involved.
+    // Per spec § 4.1: silent-no-match would be exactly the same
+    // failure mode as cross-bucket shadowing but harder to diagnose
+    // because no trigger is involved.
     let cfg = parse_or_panic(
         r#"
 [[modes]]
@@ -381,11 +380,9 @@ note_range = [96, 36]
     assert_error_at_path(&report, "routes[0].filter.note_range", "note_range");
 }
 
-// ── Slice 4: Copilot review on PR #1161 (drift / hardening) ──
-
 #[test]
 fn unknown_endpoint_does_not_also_emit_cycle_error() {
-    // ADR-031 #1142 — Copilot finding #2: cycle detection runs on
+    // ADR-031: cycle detection runs on
     // unknown aliases and cascades into a confusing extra "cycle"
     // error. Gate cycle detection on both endpoints being known.
     let cfg = parse_or_panic(
@@ -423,8 +420,8 @@ to = "ghost-a"
 
 #[test]
 fn filter_channel_out_of_0_15_range_is_rejected() {
-    // ADR-031 #1142 — Copilot finding #3: SignalFilter.channels values
-    // must be 0-15 (parity with `endpoints[*].channels` per ADR-022 / #751).
+    // ADR-031: SignalFilter.channels values
+    // must be 0-15 (parity with `endpoints[*].channels` per ADR-022).
     let cfg = parse_or_panic(
         r#"
 [[modes]]
@@ -456,9 +453,9 @@ channels = [0, 16]
 
 #[test]
 fn filter_message_type_sysex_is_rejected() {
-    // ADR-031 #1142 — Copilot finding #3: the input pipeline doesn't
-    // emit SysEx events yet (mirrors the Raw trigger validator at PR
-    // #1105 follow-up). A route with such a filter would silently
+    // ADR-031: the input pipeline doesn't
+    // emit SysEx events yet (mirrors the Raw trigger validator).
+    // A route with such a filter would silently
     // never match.
     let cfg = parse_or_panic(
         r#"
@@ -490,7 +487,7 @@ message_types = ["SysEx"]
 
 #[test]
 fn filter_message_type_channelpressure_is_rejected() {
-    // Slice 9 (Council finding): the prior single test was named
+    // The prior single test was named
     // `..._sysex_or_channelpressure_..._is_rejected` but only exercised
     // SysEx. Split into two tests so each rejected variant has its
     // own pinning. ChannelPressure has the same "input pipeline
@@ -523,11 +520,9 @@ message_types = ["ChannelPressure"]
     assert_error_at_path(&report, "routes[0].filter.message_types", "channelpressure");
 }
 
-// ── Slice 9: Council finding (transitive-cycle scope) ──
-
 #[test]
 fn transitive_cycle_does_not_emit_static_validation_error() {
-    // SCOPE PIN per spec § 4.3 + slice-6 doc comment: only direct
+    // SCOPE PIN per spec § 4.3: only direct
     // (depth-1) cycles are detected at config load. A 3-route
     // transitive cycle (A→B→C→A) is intentionally NOT flagged
     // here — the runtime route engine (Phase 2B § 4.5) is the
@@ -589,11 +584,9 @@ to = "a"
     );
 }
 
-// ── Slice 8: Council finding on slice-5 ──
-
 #[test]
 fn disabled_route_still_validates_against_all_rules() {
-    // Council finding (slice 5 review): no test pinned what happens
+    // No test pinned what happens
     // when a route has `enabled = false`. Pin the contract: validation
     // is independent of `enabled` — disabled routes still fail
     // validation if they have errors. Skipping validation for disabled
@@ -669,17 +662,15 @@ enabled = false
     );
 }
 
-// ── Slice 7: Copilot review on slice-5 ──
-//
 // `expected_transform_variant` returned `Some("MidiToOsc")` as a
 // fallback for ANY unsupported cross-protocol pair. That made any
 // cross-protocol route + `transform.type = "MidiToOsc"` incorrectly
 // validate. Fix: return Unsupported for pairs with no defined variant
 // and reject as "unsupported protocol pair" regardless of transform.
 //
-// NOTE (ADR-039-B #1762 step 3): HID→OSC became a SUPPORTED pair
+// NOTE (ADR-039-B): HID→OSC became a SUPPORTED pair
 // (requires `HidToOsc`), so these tests rotated to OSC→Art-Net; then
-// ADR-039-A Slice 1b (#2324) made THAT pair supported too (requires
+// ADR-039-A made THAT pair supported too (requires
 // `OscToArtNet`), so they rotated again to Art-Net→MIDI — Art-Net has
 // no input transform variants until ADR-039-C lands. When 039-C makes
 // this pair supported, rotate to the next still-unsupported pair.
@@ -754,7 +745,7 @@ to = "synth"
     assert_error_about(&report, "unsupported");
 }
 
-// ── ADR-039-B #1762 step 3: HID→OSC is supported, requires HidToOsc ──
+// ── ADR-039-B: HID→OSC is supported, requires HidToOsc ──
 
 #[test]
 fn hid_to_osc_with_wrong_transform_variant_is_rejected_mentioning_hidtoosc() {
@@ -826,11 +817,9 @@ to = "lights-osc"
     assert_error_about(&report, "HidToOsc");
 }
 
-// ── Slice 5: Copilot review on slice-4 finding #1 ──
-
 #[test]
 fn cross_protocol_route_with_wrong_transform_variant_is_rejected() {
-    // Copilot finding on PR #1161: cross-protocol route with the
+    // Cross-protocol route with the
     // wrong transform variant currently slips through. A MIDI→OSC
     // route with `transform.type = "Midi"` is forwarding raw MIDI
     // bytes through what's nominally an OSC translation step but
@@ -953,7 +942,7 @@ note_range = [60, 60]
     );
 }
 
-// ── Slice 2 (ADR-036 D1): route `modes` references + `phase` rules ──
+// ── ADR-036 D1: route `modes` references + `phase` rules ──
 
 #[test]
 fn route_referencing_nonexistent_mode_is_rejected() {

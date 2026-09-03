@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! OSC datagram parser (ADR-039-A Slice 1, #1361).
+//! OSC datagram parser (ADR-039-A).
 //!
 //! Pure decode of an accepted OSC datagram into zero-or-more [`OscInbound`].
 //! NO socket, NO I/O — the ADR-042 listener edge (`crate::listeners`) already
@@ -13,7 +13,7 @@
 //!
 //! The edge rate-limits per *datagram* but cannot see *inside* a bundle, so a
 //! single small datagram could expand into many messages. Three independent
-//! caps bound the work, per the reasoning-tier Council review:
+//! caps bound the work:
 //! - [`OSC_MAX_BUNDLE_DEPTH`] — nesting depth,
 //! - [`OSC_MAX_MSGS_PER_DATAGRAM`] — emitted messages,
 //! - [`OSC_MAX_BUNDLE_NODES`] — **total visited nodes** (messages *and*

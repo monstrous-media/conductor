@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-027 §D18 — MCP client registration (#1214).
+//! ADR-027 §D18 — MCP client registration.
 //!
 //! With D1 (peer-credential IPC auth, Phase 1A) the daemon knows the
 //! connecting binary's exe path on every connect. D18 turns that
@@ -57,14 +57,12 @@ pub struct McpRegistration {
 ///
 /// **`Default` is hand-rolled, NOT derived**: a derived
 /// `Default` would set `version: 0`, but the on-disk invariant
-/// is `version >= 1`. The manual impl mirrors [`Self::new`]
-/// (Council review on PR #1217 round 2).
+/// is `version >= 1`. The manual impl mirrors [`Self::new`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpRegistry {
     /// Schema version. Current: 1. `load()` rejects versions above
     /// [`CURRENT_SCHEMA_VERSION`] so a newer daemon downgrade
-    /// doesn't silently read a forward-incompatible file (Council
-    /// review on PR #1217).
+    /// doesn't silently read a forward-incompatible file.
     #[serde(default = "default_schema_version")]
     pub version: u32,
     /// All registered clients.
@@ -125,8 +123,7 @@ impl McpRegistry {
     ///
     /// Rejects files with `version > CURRENT_SCHEMA_VERSION` so a
     /// downgrade after a future schema bump doesn't silently
-    /// drop fields it doesn't understand (Council review on
-    /// PR #1217 round 1).
+    /// drop fields it doesn't understand.
     ///
     /// **Deduplicates by `exe_path` on load** (last entry wins).
     /// A hand-edited file could legitimately contain two entries
@@ -134,7 +131,7 @@ impl McpRegistry {
     /// return whichever serde decoded first, which is
     /// non-deterministic for the operator. Last-wins matches the
     /// natural "append to bottom of file to override" mental
-    /// model (Council review on PR #1217 round 3).
+    /// model.
     pub fn load(path: &Path) -> io::Result<Self> {
         match fs::read_to_string(path) {
             Ok(s) => {
@@ -158,8 +155,8 @@ impl McpRegistry {
         }
     }
 
-    /// Save atomically. Council review on PR #1217 surfaced three
-    /// concerns over the prior naive `fs::write(tmp) + rename`:
+    /// Save atomically, addressing three concerns with the prior
+    /// naive `fs::write(tmp) + rename`:
     ///
     /// 1. **Tmp filename race**: hardcoded `<path>.json.tmp` meant
     ///    two concurrent `conductorctl mcp register` invocations
@@ -218,8 +215,7 @@ impl McpRegistry {
     /// `PinnedPeer.initial_exe` at connect time. The CLI
     /// (`conductorctl mcp register`) enforces this via
     /// `fs::canonicalize` before calling here; programmatic
-    /// callers that bypass the CLI must do the same (Council
-    /// review on PR #1217 round 3).
+    /// callers that bypass the CLI must do the same.
     pub fn register(&mut self, registration: McpRegistration) {
         if let Some(existing) = self
             .entries
@@ -352,10 +348,9 @@ mod tests {
 
     #[test]
     fn save_leaves_no_temp_files_behind() {
-        // After Council round 2: save now uses
-        // `tempfile::NamedTempFile::new_in` with a randomised
-        // name (Council round 1 surfaced a tmp-filename race
-        // with the prior `<path>.json.tmp` hardcoded name). Assert
+        // `save` uses `tempfile::NamedTempFile::new_in` with a
+        // randomised name to avoid a tmp-filename race with the
+        // prior `<path>.json.tmp` hardcoded name. Assert
         // that the registry-parent dir contains EXACTLY the
         // target file after save — no stray tmp lingering.
         let dir = tempdir().unwrap();
@@ -379,9 +374,9 @@ mod tests {
         assert_eq!(entries[0], "registry.json");
     }
 
-    /// Council round 2 (#1217): the derived `Default` would have
-    /// returned `version: 0` and made `Self::default()` produce a
-    /// malformed registry. Manual impl now mirrors `new()`.
+    /// The derived `Default` would have returned `version: 0` and
+    /// made `Self::default()` produce a malformed registry. Manual
+    /// impl now mirrors `new()`.
     #[test]
     fn default_uses_current_schema_version() {
         let r = McpRegistry::default();
@@ -389,9 +384,9 @@ mod tests {
         assert!(r.entries.is_empty());
     }
 
-    /// Council round 3 (#1217): a hand-edited file with duplicate
-    /// `exe_path` entries must dedupe deterministically. Last-wins
-    /// matches the "append at bottom to override" mental model.
+    /// A hand-edited file with duplicate `exe_path` entries must
+    /// dedupe deterministically. Last-wins matches the "append at
+    /// bottom to override" mental model.
     #[test]
     fn load_dedupes_duplicate_exe_paths_keeping_last() {
         let dir = tempdir().unwrap();
@@ -418,9 +413,9 @@ mod tests {
         assert_eq!(claude.tier, AuditRiskTier::Stateful);
     }
 
-    /// Council round 1 (#1217): `load` must reject files written by
-    /// a future schema bump rather than silently dropping fields
-    /// the current build doesn't understand.
+    /// `load` must reject files written by a future schema bump
+    /// rather than silently dropping fields the current build
+    /// doesn't understand.
     #[test]
     fn load_rejects_future_schema_version() {
         let dir = tempdir().unwrap();

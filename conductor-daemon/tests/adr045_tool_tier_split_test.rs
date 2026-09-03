@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-045 D1/D2 (#2492) — MCP tool-registry tier split.
+//! ADR-045 D1/D2 — MCP tool-registry tier split.
 //!
 //! The free `mcp` surface advertises ONLY ReadOnly inspection tools
 //! (capability rule, ADR-045 D2): a tool is free iff it only inspects
@@ -22,7 +22,7 @@ use conductor_daemon::daemon::mcp_types::ToolRiskTier;
 /// Tools that must NEVER be advertised outside an `mcp-write` build.
 /// (Names live in test code only — the OSS release binary must not
 /// contain them. The ADR-045 D3 negative BINARY assertions that grep the
-/// release artifact for these names land in CI with story A3, #2494.)
+/// release artifact for these names land in CI with story A3.)
 const GATED_TOOLS: &[&str] = &[
     // ConfigChange
     "conductor_create_endpoint",
@@ -150,7 +150,7 @@ mod without_mcp_write {
     }
 }
 
-/// ADR-045 D1 / Council R1 #2 — the BUNDLE profile (`llm-executor` ON,
+/// ADR-045 D1 — the BUNDLE profile (`llm-executor` ON,
 /// `mcp-write` OFF: what Studio ships). Write-tool risk tiers ARE compiled
 /// (the IPC plan/apply path needs them), yet none of those tools may be
 /// advertised or compiled into the MCP catalog: the socket stays read-only.
@@ -208,7 +208,7 @@ mod with_mcp_write {
             assert_eq!(get_tool_risk_tier(gated), ToolRiskTier::Stateful);
         }
         // Spot-check the risk-tier taxonomy is untouched by the split
-        // (Council R1 #1: placement by capability, never by re-tiering).
+        // (Placement by capability, never by re-tiering.)
         assert_eq!(
             get_tool_risk_tier("conductor_create_mapping"),
             ToolRiskTier::ConfigChange

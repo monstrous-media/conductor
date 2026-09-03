@@ -37,7 +37,7 @@
 //! symlinking the daemon's config-dir parent) — that is explicitly out of the
 //! ADR-034 threat model (audit is the detection control). The spec's
 //! `CONFIG_DIR_FD`-captured-at-startup mitigation for ancestor swaps is a
-//! deferred follow-up in #1902; `open_root` re-validates the root's final
+//! deferred follow-up; `open_root` re-validates the root's final
 //! component (`O_NOFOLLOW`) on every call in the meantime.
 
 use std::ffi::OsStr;
@@ -395,9 +395,8 @@ pub fn read_config_to_string(
 /// directory of `config_path` **inside this call**. Co-locating the root
 /// derivation with the safe-walk removes any check-then-use window on the root:
 /// the parent is computed and the root is opened (`O_NOFOLLOW`) in the same
-/// blocking context, immediately before the walk (cloud-review · blocking on
-/// PR #2207). A `config_path` with no parent (e.g. a bare filename) is itself a
-/// validation failure.
+/// blocking context, immediately before the walk. A `config_path` with no
+/// parent (e.g. a bare filename) is itself a validation failure.
 ///
 /// Like [`read_config_to_string`], this performs **blocking** syscalls and must
 /// run on a blocking worker.

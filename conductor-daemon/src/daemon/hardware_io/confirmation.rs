@@ -18,7 +18,7 @@ use uuid::Uuid;
 /// Token expiration time (60 seconds)
 const TOKEN_EXPIRATION_SECS: u64 = 60;
 
-/// A MIDI message to send via conductor_send_midi (v4.26.67)
+/// A MIDI message to send via conductor_send_midi
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MidiSendMessage {
     /// Message type: "note_on", "note_off", "cc", "program_change"
@@ -260,7 +260,7 @@ impl ConfirmationManager {
         data: &[u8],
         existing_token: Option<&str>,
     ) -> Result<ConfirmationStatus, HardwareIoError> {
-        // #1619: drop any expired pending tokens before any per-call
+        // Drop any expired pending tokens before any per-call
         // work so the HashMap stays bounded under abuse.
         self.cleanup_expired();
 
@@ -276,7 +276,7 @@ impl ConfirmationManager {
             });
         }
 
-        // If we have an existing token, try to use it. #1477: the
+        // If we have an existing token, try to use it. The
         // token MUST be bound to the same (op type, device, payload)
         // it was issued for — `confirm_operation` enforces this and
         // rejects mismatches as `InvalidToken`.
@@ -340,11 +340,11 @@ impl ConfirmationManager {
         reset_type: &str,
         existing_token: Option<&str>,
     ) -> Result<ConfirmationStatus, HardwareIoError> {
-        // #1619: drop any expired pending tokens before any per-call
+        // Drop any expired pending tokens before any per-call
         // work so the HashMap stays bounded under abuse.
         self.cleanup_expired();
 
-        // If we have an existing token, try to use it. #1477: bind
+        // If we have an existing token, try to use it. Bind
         // the token to (op_type="reset", device, payload=reset_type
         // bytes) — the same triple stored on the issue path below.
         if let Some(token_id) = existing_token {
@@ -420,8 +420,8 @@ impl ConfirmationManager {
     /// `expected_op_type`, `expected_device`, and `expected_payload`
     /// MUST match the stored `ConfirmationRequest` exactly. If they
     /// don't, the token is consumed (removed) and `InvalidToken` is
-    /// returned — preventing the confused-deputy attack from #1477
-    /// where a token issued for one operation could approve another.
+    /// returned — preventing the confused-deputy attack where a token
+    /// issued for one operation could approve another.
     ///
     /// Mismatched-descriptor tokens are consumed (not left in `pending`)
     /// so an attacker can't retry until they guess a matching
@@ -458,7 +458,7 @@ impl ConfirmationManager {
             });
         }
 
-        // #1477: bind the token to its issued operation. Reject any
+        // Bind the token to its issued operation. Reject any
         // mismatch on operation type, target device, or payload bytes.
         // The mismatch reason names what the token was for vs. what
         // was attempted so legitimate flow errors are diagnosable
@@ -536,7 +536,7 @@ impl ConfirmationManager {
         warnings
     }
 
-    /// Request confirmation for a MIDI send operation (v4.26.67)
+    /// Request confirmation for a MIDI send operation
     ///
     /// Standard MIDI messages (note_on, note_off, cc, program_change) are low risk
     /// and auto-confirm. They still get audit-logged via the HardwareIO path.
@@ -546,7 +546,7 @@ impl ConfirmationManager {
         messages: &[MidiSendMessage],
         existing_token: Option<&str>,
     ) -> Result<ConfirmationStatus, HardwareIoError> {
-        // #1619: drop any expired pending tokens before any per-call
+        // Drop any expired pending tokens before any per-call
         // work so the HashMap stays bounded under abuse.
         self.cleanup_expired();
 
@@ -555,7 +555,7 @@ impl ConfirmationManager {
         // request, so any stored token must be for a different
         // operation (sysex or reset) — and `confirm_operation` will
         // reject the op_type mismatch as `InvalidToken`. This blocks
-        // the #1477 replay where a SysEx/reset token would have been
+        // the replay where a SysEx/reset token would have been
         // accepted here to confirm an unrelated MIDI send.
         //
         // The payload bytes don't matter for the rejection (op_type
@@ -572,7 +572,7 @@ impl ConfirmationManager {
             return self.confirm_operation(token_id, "midi_send", port, &payload);
         }
 
-        // #1618: validate each message at the gate. A malformed message
+        // Validate each message at the gate. A malformed message
         // (channel out of range, missing required field) used to slip
         // past here and surface later in the executor's `to_bytes()`
         // call as a less-contextual error. Block at the gate with the
@@ -790,7 +790,7 @@ mod tests {
         assert_eq!(manager.pending_count(), 1);
     }
 
-    // MidiSendMessage tests (v4.26.67)
+    // MidiSendMessage tests
 
     #[test]
     fn test_midi_send_note_on_to_bytes() {
@@ -892,7 +892,7 @@ mod tests {
     }
 
     // ────────────────────────────────────────────────────────────────
-    // #1477 — token binding (descriptor-match) sentinels.
+    // Token binding (descriptor-match) sentinels.
     //
     // The exhaustive matrix of cross-operation, cross-device and
     // cross-payload replay rejections lives in the integration test
@@ -918,7 +918,7 @@ mod tests {
         };
 
         // Replay the SysEx token against a reset on the same device.
-        // Pre-#1477 this Confirmed the reset using the stored SysEx
+        // Before the fix, this Confirmed the reset using the stored SysEx
         // request's identity — the confused-deputy bug.
         let result = manager
             .request_reset_confirmation("Device", "factory", Some(&token_id))

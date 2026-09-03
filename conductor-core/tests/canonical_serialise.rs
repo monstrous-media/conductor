@@ -130,7 +130,7 @@ mappings = []
 #[test]
 fn nested_table_keys_are_sorted() {
     // Verify lex sort applies inside `[advanced_settings]`, not just
-    // at the top level (Council R1: Opus §3.1 / GPT-5.4 Issue 3).
+    // at the top level.
     let config = parse_minimal();
     let bytes = canonical::serialise(&config).expect("serialise");
     let s = std::str::from_utf8(&bytes).unwrap();
@@ -224,11 +224,11 @@ fn config_revision_from_canonical_bytes_matches_direct_sha256() {
     assert_eq!(rev.to_string(), direct);
 }
 
-// #1356 — `MidiToArtNet { cc_to_dmx: HashMap<u8, u16>, note_to_dmx:
+// `MidiToArtNet { cc_to_dmx: HashMap<u8, u16>, note_to_dmx:
 // HashMap<u8, u16> }` failed canonical serialise on any populated map
 // because TOML requires string keys. Daemon startup panicked at
-// `live_config` init for any real Art-Net config. Pure transform tests
-// in slice 5 / slice 6 missed this because they bypassed canonical;
+// `live_config` init for any real Art-Net config. Earlier pure transform
+// tests missed this because they bypassed canonical;
 // the existing exclusion tests used empty maps which serialise as `{}`
 // and pass.
 //
@@ -322,7 +322,7 @@ fn serialise_rejects_or_normalises_out_of_range_u8_keys_via_typed_round_trip() {
     // otherwise a config could serialize one way and parse another, or silently
     // drop the entry.
     //
-    // #1519: the fixture must be a *RouteConfig* (root `from`/`to` + a
+    // The fixture must be a *RouteConfig* (root `from`/`to` + a
     // `[transform]` table), NOT a `[[routes]]` array. The old fixture used
     // `[[routes]]` and deserialised as `RouteConfig`, so it errored on the
     // shape mismatch BEFORE the u8 key was ever parsed — a false positive that

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! End-to-End Integration Tests for Mode Management (Issue #321 - Phase 5)
+//! End-to-End Integration Tests for Mode Management
 //!
 //! These tests verify the complete mode management system across all interfaces:
 //! - MCP tools → config persistence → daemon reload
@@ -148,7 +148,7 @@ impl TestConfigManager {
     }
 
     /// Resolve the startup mode INDEX via the REAL production resolver,
-    /// [`Config::resolve_startup_mode`] in conductor-core (#1567). The daemon's
+    /// [`Config::resolve_startup_mode`] in conductor-core. The daemon's
     /// `engine_manager::resolve_startup_mode` delegates to the same function, so
     /// the index this test asserts is the one production computes.
     ///
@@ -167,7 +167,7 @@ impl TestConfigManager {
     }
 
     /// Validate an MCP `switch_mode` via the REAL production validator,
-    /// [`Config::resolve_mode_switch`] (#1567). The MCP `switch_mode` tool
+    /// [`Config::resolve_mode_switch`]. The MCP `switch_mode` tool
     /// delegates to the same function, so the "Mode not found … Available
     /// modes …" contract asserted here is the one production emits.
     fn validate_mcp_mode_switch(

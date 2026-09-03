@@ -5,7 +5,7 @@
 //! (`trigger_info_from_trigger`, `default_value_for`, `synthesize_midi_bytes`,
 //! `is_redundant_processed_event`, `detect_pc_transition`,
 //! `emit_processed_event_with_transition`), extracted from
-//! `engine_manager::events` (refactor #2073).
+//! `engine_manager::events`.
 
 use super::*;
 
@@ -128,7 +128,7 @@ impl EngineManager {
                 number: *pc,
                 value: None,
             },
-            // OSC triggers (ADR-039-A Slice 2, #2325): no MIDI number/value —
+            // OSC triggers (ADR-039-A): no MIDI number/value —
             // the address lives in the trigger config, not in FiredTriggerInfo's
             // numeric fields.
             Trigger::OscMessage { device, .. } => FiredTriggerInfo {
@@ -213,7 +213,7 @@ impl EngineManager {
                 notes.first().map(|note| vec![0x90, *note, vel])
             }
             Trigger::PolyAftertouch { note, channel, .. } => {
-                // Polyphonic aftertouch: status 0xA0, note, pressure (#575).
+                // Polyphonic aftertouch: status 0xA0, note, pressure.
                 let ch = channel.unwrap_or(0) & 0x0F;
                 Some(vec![0xA0 | ch, *note, vel])
             }
@@ -222,7 +222,7 @@ impl EngineManager {
         }
     }
     /// Returns true if the processed event is redundant with a raw monitor
-    /// event when `capture_midi` is enabled (Issue #589). These processed
+    /// event when `capture_midi` is enabled. These processed
     /// variants carry identical data to the raw InputEvent, causing
     /// duplicate rows in the GUI event stream.
     pub(crate) fn is_redundant_processed_event(
@@ -423,7 +423,7 @@ impl EngineManager {
                 }
             }
             ProcessedEvent::Raw(_) => return, // Skip raw passthrough
-            // ADR-039-A Slice 2 (#2325): inbound OSC reaching the mapping
+            // ADR-039-A: inbound OSC reaching the mapping
             // engine. The raw gamepad/MIDI monitor stream already shows the
             // datagram via the route path; this is the mapping-engine-visible
             // form.
@@ -432,7 +432,7 @@ impl EngineManager {
                 event.detail = Some(format!("{} ({} args)", address, args.len()));
             }
         }
-        // #835: stamp the structured pattern annotation onto the always-on
+        // Stamp the structured pattern annotation onto the always-on
         // processed-monitor stream so gesture badges (DoubleTap / Chord /
         // LongPress / GamepadChord) render in EVERY mode — normal, manual
         // Learn, and LLM Learn — sourced from the event buffer the panel
@@ -450,8 +450,8 @@ impl EngineManager {
     }
 }
 
-/// Structured pattern annotation for the always-on processed-monitor stream
-/// (#835). Returns `None` for non-gesture events. Mirrors the PatternType set,
+/// Structured pattern annotation for the always-on processed-monitor stream.
+/// Returns `None` for non-gesture events. Mirrors the PatternType set,
 /// `pattern_*` field names, and detection-window constants that
 /// `capture_pattern_events` writes to the MIDI Learn buffer, so a badge looks
 /// the same whether it came from the monitor stream or a polled Learn buffer.

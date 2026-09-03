@@ -311,9 +311,9 @@ fn create_inverse_changes(
     // Track how many mappings have been added to each mode
     // so we can calculate correct indices for batch CreateMapping
     let mut mode_additions: HashMap<String, usize> = HashMap::new();
-    // Slice 17 / gap B (#1143) — routes are a flat Vec (not
-    // mode-scoped) so a single counter suffices for the CreateRoute
-    // inverse's post-apply index calculation.
+    // Routes are a flat Vec (not mode-scoped) so a single counter
+    // suffices for the CreateRoute inverse's post-apply index
+    // calculation.
     let mut route_additions: usize = 0;
 
     for (change_pos, change) in forward_changes.iter().enumerate() {
@@ -354,7 +354,7 @@ fn create_inverse_changes(
 /// * `change` - The forward change to create inverse for
 /// * `config_before` - The configuration state before any changes
 /// * `mode_additions` - Number of mappings already added to each mode in this batch
-/// * `route_additions` - Number of routes already added in this batch (#1143 slice 17)
+/// * `route_additions` - Number of routes already added in this batch
 fn create_single_inverse_with_offset(
     change: &ConfigChange,
     config_before: &Config,
@@ -434,15 +434,15 @@ fn create_single_inverse_with_offset(
                 .count();
             let effective_index = index.saturating_sub(prior_lower_deletes);
 
-            // #2121: restore via InsertMapping so undo reproduces the exact
+            // Restore via InsertMapping so undo reproduces the exact
             // configuration. In batched deletes we must target the same
             // effective index that `apply_atomic` deleted from.
             Ok(ConfigChange::InsertMapping {
                 mode: mode.clone(),
-                // #2121 follow-up: `apply_atomic` adjusts batch DeleteMapping
-                // indices for index safety, so undo must restore at the
-                // deletion-time effective index to preserve order when inverses
-                // run in reverse.
+                // `apply_atomic` adjusts batch DeleteMapping indices for
+                // index safety, so undo must restore at the deletion-time
+                // effective index to preserve order when inverses run in
+                // reverse.
                 index: effective_index,
                 trigger: original_mapping.trigger.clone(),
                 action: original_mapping.action.clone(),
@@ -458,7 +458,7 @@ fn create_single_inverse_with_offset(
         }
 
         ConfigChange::DeleteMode { name } => {
-            // #2121: restore the mode IN FULL — all mappings and fields, at its
+            // Restore the mode IN FULL — all mappings and fields, at its
             // original index — via RestoreMode. (Previously this emitted
             // CreateMode, which recreates an empty mode and silently drops every
             // mapping, so an undo did NOT restore the original configuration.)
@@ -507,12 +507,12 @@ fn create_single_inverse_with_offset(
         }
 
         ConfigChange::CreateEndpoint { alias, .. } => {
-            // ADR-035 Slice 8 (#1745) — `CreateEndpoint` ships before its
-            // `DeleteEndpoint` inverse (a follow-up slice), mirroring how
-            // `CreateConnector` was non-invertible until `DeleteConnector`
-            // landed (#1243). Until then, an endpoint create is not
-            // undoable via history — surface that clearly rather than
-            // fabricating an inverse that can't be applied.
+            // ADR-035: `CreateEndpoint` ships before its `DeleteEndpoint`
+            // inverse (a follow-up slice), mirroring how `CreateConnector`
+            // was non-invertible until `DeleteConnector` landed. Until
+            // then, an endpoint create is not undoable via history —
+            // surface that clearly rather than fabricating an inverse
+            // that can't be applied.
             Err(HistoryError::CannotCreateInverse(format!(
                 "CreateEndpoint ('{}') has no inverse yet — DeleteEndpoint lands in a follow-up slice (ADR-035)",
                 alias
@@ -520,8 +520,8 @@ fn create_single_inverse_with_offset(
         }
 
         ConfigChange::CreateRoute { .. } => {
-            // Slice 17 / gap B (#1143) — `CreateRoute` is append-only,
-            // so the post-apply index is `config_before.routes.len() +
+            // `CreateRoute` is append-only, so the post-apply index
+            // is `config_before.routes.len() +
             // route_additions` (offset accounts for sibling CreateRoute
             // ops earlier in the same batch). Same shape as the
             // CreateMapping → DeleteMapping inverse above.
@@ -531,8 +531,8 @@ fn create_single_inverse_with_offset(
         }
 
         ConfigChange::DeleteRoute { index } => {
-            // Slice 17 / gap B (#1143) — look the deleted route up in
-            // `config_before` by its index and emit a `CreateRoute`
+            // Look the deleted route up in `config_before` by its
+            // index and emit a `CreateRoute`
             // carrying the original fields. The post-undo route lands
             // appended at the END of `config.routes` (not at the
             // original `index`), since `CreateRoute` is append-only.
@@ -557,8 +557,8 @@ fn create_single_inverse_with_offset(
         }
 
         ConfigChange::UpdateRoute { index, .. } => {
-            // Slice 17 / gap B (#1143) — `UpdateRoute` total-replaces;
-            // inverse total-replaces back to the pre-update fields
+            // `UpdateRoute` total-replaces; inverse total-replaces
+            // back to the pre-update fields
             // pulled from `config_before` at the same index. Same
             // pattern as `UpdateMapping`'s inverse above.
             let original_route = config_before.routes.get(*index).ok_or_else(|| {
@@ -938,7 +938,7 @@ mod tests {
 
         let entry = stack.undo().unwrap();
 
-        // #2121: the inverse must restore the mapping at its ORIGINAL index
+        // The inverse must restore the mapping at its ORIGINAL index
         // (InsertMapping), not append it (CreateMapping).
         match &entry.inverse_changes[0] {
             ConfigChange::InsertMapping {
@@ -981,7 +981,7 @@ mod tests {
 
         let entry = stack.undo().unwrap();
 
-        // #2121: the inverse must restore the mode IN FULL (RestoreMode with all
+        // The inverse must restore the mode IN FULL (RestoreMode with all
         // mappings + index), not an empty CreateMode that drops the mappings.
         match &entry.inverse_changes[0] {
             ConfigChange::RestoreMode { index, mode } => {
@@ -998,7 +998,7 @@ mod tests {
         }
     }
 
-    /// #2121 end-to-end: deleting a mode then applying the recorded inverse
+    /// End-to-end: deleting a mode then applying the recorded inverse
     /// must restore the ORIGINAL configuration exactly — every mapping, color,
     /// and position — not an empty mode.
     #[test]
@@ -1050,7 +1050,7 @@ mod tests {
         assert_eq!(m.mappings[1].description, Some("Paste".to_string()));
     }
 
-    /// #2121 end-to-end: deleting a non-last mapping then applying the inverse
+    /// End-to-end: deleting a non-last mapping then applying the inverse
     /// must restore it at its ORIGINAL index, not append it at the end.
     #[test]
     fn test_undo_delete_mapping_restores_position() {
@@ -1101,7 +1101,7 @@ mod tests {
         assert_eq!(maps[1].description, Some("Paste".to_string()));
     }
 
-    /// #2121 review (batch): deleting MULTIPLE mappings in one entry then
+    /// Batch: deleting MULTIPLE mappings in one entry then
     /// undoing must restore every mapping at its original index — not the
     /// descending order the blanket `reverse()` produced.
     #[test]
@@ -1202,7 +1202,7 @@ mod tests {
         assert_eq!(m[2].description, Some("Cut".to_string()));
     }
 
-    /// #2121 review (batch): deleting MULTIPLE modes in one entry then undoing
+    /// Batch: deleting MULTIPLE modes in one entry then undoing
     /// must restore them all at their original positions.
     #[test]
     fn test_undo_batch_delete_modes_restores_order() {
@@ -1500,11 +1500,11 @@ mod tests {
     }
 }
 
-// ── ADR-031 P3 slice 17 (gap B from the 2026-05-16 mid-flight audit
-// on #1143) — undo/redo for route + connector ops. The 6 arms below
-// were `CannotCreateInverse(...)` placeholders until this slice; each
-// test pins one inverse-creation contract so a future regression
-// dropping the inverse fails CI rather than silently no-op-ing undo.
+// ── ADR-031 P3 — undo/redo for route + connector ops. The 6 arms
+// below were `CannotCreateInverse(...)` placeholders until this
+// landed; each test pins one inverse-creation contract so a future
+// regression dropping the inverse fails CI rather than silently
+// no-op-ing undo.
 
 #[cfg(test)]
 mod route_inverse_tests {

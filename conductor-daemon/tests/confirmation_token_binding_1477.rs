@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Regression tests for #1477 — confirmation tokens must be bound to
+//! Regression tests for confirmation tokens that must be bound to
 //! the operation they approve.
 //!
 //! ## The bug
@@ -269,7 +269,7 @@ fn matching_reset_descriptor_confirms_successfully() {
 // 5. Brute-force-retry invariant
 // ────────────────────────────────────────────────────────────────────
 //
-// Surfaced by Copilot review on PR #1617: the previous test set proved
+// Surfaced by Copilot review: the previous test set proved
 // that a mismatched-descriptor confirm returns `InvalidToken`, but
 // nothing pinned the *consumption* semantic that prevents an attacker
 // from retrying the same token until they happen to guess (or grind

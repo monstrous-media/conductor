@@ -366,7 +366,7 @@ fn test_plugin_unload() {
     println!("✅ Plugin removed from loaded list");
 }
 
-/// #1507: every other test in this file is `#[ignore]`d because it needs
+/// Every other test in this file is `#[ignore]`d because it needs
 /// pre-built plugin binaries under `~/.config/conductor/plugins/` (or Spotify
 /// credentials), so `cargo test --workspace` executes none of them — plugin
 /// manager regressions slip through the default suite.

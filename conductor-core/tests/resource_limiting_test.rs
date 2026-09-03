@@ -13,7 +13,7 @@
 //! limits. Note that every test skips when the corresponding plugin isn't
 //! built, so these are within-limits smoke checks, not enforcement proofs.
 //!
-//! #1557: the ENFORCEMENT (negative) cases — over-limit memory growth and table
+//! The ENFORCEMENT (negative) cases — over-limit memory growth and table
 //! growth are DENIED, and a runaway loop TRAPS once its fuel budget is spent —
 //! live as deterministic unit tests in `conductor_core::plugin::wasm_runtime`
 //! (`resource_limiter_denies_memory_growth_beyond_limit`,
@@ -37,7 +37,7 @@ use std::time::Duration;
 /// The WASM plugin crates live under `plugins/wasm-<name>/` (e.g.
 /// `plugins/wasm-spotify`), each building `conductor_wasm_<name>.wasm` into its
 /// own `target/wasm32-wasip1/release/` (they're excluded from the workspace).
-/// #1558: the directory was previously `plugins/<name>/`, which never exists —
+/// The directory was previously `plugins/<name>/`, which never exists —
 /// so these tests skipped unconditionally even when the plugins were built.
 fn get_plugin_path(plugin_name: &str) -> PathBuf {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -58,7 +58,7 @@ fn get_plugin_path(plugin_name: &str) -> PathBuf {
 /// Plugins whose built WASM artifacts the plugin-dependent tests below require.
 const REQUIRED_PLUGIN_FIXTURES: &[&str] = &["spotify", "obs-control", "system-utils"];
 
-/// #1558: whether a missing WASM fixture must be a HARD ERROR rather than a
+/// Whether a missing WASM fixture must be a HARD ERROR rather than a
 /// silent skip. Set `CONDUCTOR_REQUIRE_WASM_FIXTURES=1` in any environment that
 /// prebuilds the plugin `.wasm` artifacts (e.g. a dedicated CI job) so these
 /// plugin-dependent tests actually run there — without it, a missing artifact
@@ -100,7 +100,7 @@ fn fixture_or_skip(plugin_name: &str) -> Option<PathBuf> {
     None
 }
 
-/// #1558 CI-facing setup assertion: when fixtures are REQUIRED, every plugin
+/// CI-facing setup assertion: when fixtures are REQUIRED, every plugin
 /// artifact the suite depends on must be present. A CI job that prebuilds the
 /// WASM plugins and sets `CONDUCTOR_REQUIRE_WASM_FIXTURES=1` fails HERE — loudly
 /// and in one place — if fixture preparation was skipped or failed, rather than

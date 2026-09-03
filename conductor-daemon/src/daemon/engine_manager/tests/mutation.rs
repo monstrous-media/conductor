@@ -3,7 +3,7 @@
 
 use super::*;
 
-// ── ADR-034 §D2 / D4.C IPC mutation surface (#1901) ──────────────────
+// ── ADR-034 §D2 / D4.C IPC mutation surface ──────────────────
 //
 // Free-function tests (no `EngineManager`, so they run on Linux too):
 // provenance mapping, mutate-error → IPC-code mapping, path lexical checks.
@@ -136,11 +136,11 @@ async fn save_config_applies_and_advances_generation() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn save_config_does_not_write_the_user_file() {
-    // ADR-043 Option C (#2554): SaveConfig writes ONLY `live.toml` (the sole
+    // ADR-043 Option C: SaveConfig writes ONLY `live.toml` (the sole
     // durable authority) — it must NOT write back to the user/profile file
-    // (`self.config_path`). The #2260 guarantee (a GUI ENDPOINTS Delete stays
+    // (`self.config_path`). The guarantee (a GUI ENDPOINTS Delete stays
     // deleted) now holds via `live.toml`, which the daemon resumes on the next
-    // boot (#2540) and the GUI reads via GetConfigBody (#2552) — not via a
+    // boot and the GUI reads via GetConfigBody — not via a
     // profile write-back that used to diverge the two files.
     let tmp = tempfile::NamedTempFile::new().unwrap();
     let path = tmp.path().to_path_buf();
@@ -156,7 +156,7 @@ async fn save_config_does_not_write_the_user_file() {
     .expect("engine builds");
 
     let base = mgr.live_config.load().state_generation;
-    // #2554 (cloud-review): seed the user file with a sentinel so "unchanged" is a
+    // Seed the user file with a sentinel so "unchanged" is a
     // strong assertion — if SaveConfig wrote the config back, the sentinel would be
     // gone (rather than relying on the file merely being empty).
     let user_file_sentinel = "# untouched-by-saveconfig-option-c\n";
@@ -187,8 +187,8 @@ async fn save_config_does_not_write_the_user_file() {
         user_file_sentinel,
         "SaveConfig must NOT write the user/profile file (Option C removes the §D11 write-through)"
     );
-    // #2554 (Council): no stale self-write-suppress arm left behind — the mutate
-    // writes only live.toml (unwatched post-#2551), so arming would wrongly drop a
+    // No stale self-write-suppress arm left behind — the mutate
+    // writes only live.toml (unwatched), so arming would wrongly drop a
     // genuine external config.toml edit within its window.
     assert!(
         mgr.config_write_suppress.lock().await.is_none(),
@@ -210,7 +210,7 @@ async fn save_config_rejects_stale_base_generation() {
         shutdown_tx,
     )
     .expect("engine builds");
-    // #2533: the boot publishes the first snapshot at gen 1 (new_published), so
+    // The boot publishes the first snapshot at gen 1 (new_published), so
     // capture it rather than hard-coding 0 — a rejected save must leave it here.
     let boot_gen = mgr.live_config.load().state_generation;
 
@@ -227,7 +227,7 @@ async fn save_config_rejects_stale_base_generation() {
     );
     // Snapshot did NOT advance.
     assert_eq!(mgr.live_config.load().state_generation, boot_gen);
-    // ADR-043 Option C (#2554): the user/profile file is never written by
+    // ADR-043 Option C: the user/profile file is never written by
     // SaveConfig at all now, so a rejected CAS trivially leaves it untouched.
     assert_eq!(
         std::fs::read_to_string(tmp.path()).unwrap(),
@@ -531,7 +531,7 @@ async fn import_config_accepts_valid_toml_beneath_root() {
     );
 }
 
-// ── ADR-034 §D9 ConfigWatcher demotion (#1903) ───────────────────────
+// ── ADR-034 §D9 ConfigWatcher demotion ───────────────────────
 //
 // Behavioural tests for `handle_external_config_change`: in the managed
 // default an external write to the watched file must NOT reload the live
@@ -632,7 +632,7 @@ async fn external_change_in_legacy_file_mode_reloads() {
     );
 }
 
-// ── ADR-034 §D8.3 — GetStatus surfaces pending-at-crash (#1902) ───────
+// ── ADR-034 §D8.3 — GetStatus surfaces pending-at-crash ───────
 
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
@@ -671,7 +671,7 @@ async fn status_includes_audit_pending_at_crash_array() {
     );
 }
 
-// ── GetConfigBody read IPC (#1779 / B2) ──────────────────────────────
+// ── GetConfigBody read IPC ──────────────────────────────
 //
 // The GUI's `get_config` previously read `config.toml` from disk, so it could
 // display a config the running daemon was NOT serving (after an LLM/IPC mutate
@@ -748,7 +748,7 @@ async fn get_config_body_returns_canonical_config_and_generation() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn get_config_body_serves_freshly_booted_config_without_a_mutate() {
-    // #2533 regression: a cold-booted daemon (NO mutate yet) must serve its live
+    // Regression: a cold-booted daemon (NO mutate yet) must serve its live
     // config via GetConfigBody — not blank it as the gen-0 sentinel. Before the boot
     // published at gen 1 (`LiveConfig::new_published`, ADR-034 KI-A2/R6-A8), the boot
     // seeded gen 0, `handle_get_config_body` blanked the body, and the GUI fell back
@@ -793,9 +793,9 @@ async fn get_config_body_serves_freshly_booted_config_without_a_mutate() {
     );
 }
 
-// ── SaveConfig content-hash guard (#2417 / B2 completion) ────────────
+// ── SaveConfig content-hash guard ────────────
 //
-// #1779 closed the stale-DISPLAY clobber (GUI now reads the canonical tree).
+// An earlier fix closed the stale-DISPLAY clobber (GUI now reads the canonical tree).
 // The residual race: save_config re-fetches a FRESH base_generation, so the
 // mutate CAS always passes — an LLM/conductorctl mutation landing between the
 // GUI's display and the user's save is silently overwritten. The guard: an
@@ -976,7 +976,7 @@ async fn save_config_without_base_revision_skips_content_guard() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn save_config_rejects_present_non_string_base_revision() {
-    // Copilot #2418: `base_revision` is OPTIONAL, but a PRESENT value must be a
+    // `base_revision` is OPTIONAL, but a PRESENT value must be a
     // string. A non-string (null / number / object) must NOT silently disable
     // the guard — that would let a malformed client reintroduce the clobber. Only
     // an ABSENT key skips the guard; a present non-string is a malformed request.
@@ -1017,10 +1017,10 @@ async fn save_config_rejects_present_non_string_base_revision() {
     }
 }
 
-// ── GetConfigDiff IPC (#2414, ADR-034 §D4.D) ─────────────────────────
+// ── GetConfigDiff IPC (ADR-034 §D4.D) ─────────────────────────
 //
 // Structured diff of the in-memory live config vs the on-disk drift source.
-// Precursor for #2284's drift-banner Review-diff / Overwrite.
+// Precursor for the drift-banner Review-diff / Overwrite.
 
 #[test]
 fn config_changed_sections_lists_only_differing_top_level_keys() {
@@ -1155,7 +1155,7 @@ async fn get_config_diff_missing_on_disk_file_is_config_not_found() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn overwrite_config_file_writes_live_over_drifted_disk() {
-    // #2284 "Overwrite user.toml": the on-disk file drifted from the daemon's
+    // "Overwrite user.toml": the on-disk file drifted from the daemon's
     // live config; Overwrite makes disk match live ("my live config wins").
     let tmp = tempfile::tempdir().unwrap();
     // Canonical dir (macOS $TMPDIR is /var → /private/var) + a `.toml` name so
@@ -1174,7 +1174,7 @@ async fn overwrite_config_file_writes_live_over_drifted_disk() {
         shutdown_tx,
     )
     .expect("engine builds");
-    // #2533: the boot publishes at gen 1 (new_published), so OverwriteConfigFile's
+    // The boot publishes at gen 1 (new_published), so OverwriteConfigFile's
     // gen-0 sentinel guard already passes. Commit a marked live config (threading
     // the boot generation as the CAS base) — this is the "live wins" config.
     let boot_gen = mgr.live_config.load().state_generation;
@@ -1233,7 +1233,7 @@ async fn overwrite_config_file_writes_live_over_drifted_disk() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn overwrite_config_file_writes_the_user_file_not_the_authority() {
-    // #2553: the "Overwrite user.toml" action must write the operator-editable
+    // The "Overwrite user.toml" action must write the operator-editable
     // USER file (`config.toml`), NOT the daemon's `live.toml` authority. The
     // reported symptom was `config.toml`'s mtime staying stale while `live.toml`
     // was fresh — `armed_profile_write` was targeting `config_path` (the
@@ -1309,7 +1309,7 @@ async fn overwrite_config_file_writes_the_user_file_not_the_authority() {
     );
 
     // The authority file (live.toml) on disk is UNTOUCHED — it's the LiveConfig's
-    // in-memory backing store; armed_profile_write must not clobber it (#2553).
+    // in-memory backing store; armed_profile_write must not clobber it.
     assert_eq!(
         std::fs::read_to_string(&authority).unwrap(),
         authority_sentinel,
@@ -1320,7 +1320,7 @@ async fn overwrite_config_file_writes_the_user_file_not_the_authority() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn profile_switch_persists_identity_with_id_and_reports_it() {
-    // #2564 S1: a successful SwitchProfile (with the additive profile_id arg)
+    // A successful SwitchProfile (with the additive profile_id arg)
     // commits identity through the choke point — in-memory ArcSwap (reported by
     // GetActiveProfile, including the id the GUI keys by) AND the durable
     // `active_profile.json` in the persist dir.
@@ -1395,7 +1395,7 @@ async fn profile_switch_persists_identity_with_id_and_reports_it() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn failed_profile_switch_does_not_touch_persisted_identity() {
-    // #2564 (Council D4): identity is written LAST and only on SUCCESS — a
+    // Identity is written LAST and only on SUCCESS — a
     // failed switch leaves active_profile.json holding the previous,
     // still-true identity.
     use crate::daemon::active_profile_persist::{self, LoadOutcome, PersistedActiveProfile};
@@ -1455,7 +1455,7 @@ async fn failed_profile_switch_does_not_touch_persisted_identity() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn retarget_watched_user_file_keeps_overwrite_target_aligned_with_watcher() {
-    // #2553 (Copilot): a profile switch retargets the §D9 watcher to the new
+    // A profile switch retargets the §D9 watcher to the new
     // profile file. The "Overwrite user.toml" write target (`user_file_path`)
     // must move to the SAME file, or Overwrite + §D9 self-write suppression
     // would target the stale boot user file while the watcher watches the new
@@ -1503,7 +1503,7 @@ async fn retarget_watched_user_file_keeps_overwrite_target_aligned_with_watcher(
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new (Enigo) needs a display server
 async fn retarget_watched_user_file_does_not_move_target_when_retarget_fails() {
-    // #2553 (Council): `user_file_path` moves ONLY when the watcher retarget is
+    // `user_file_path` moves ONLY when the watcher retarget is
     // successfully queued. If the retarget send fails (watcher receiver gone),
     // the watcher is still on the PREVIOUS file — so the Overwrite/§D9 target
     // must stay there too, not point at a file nothing watches.

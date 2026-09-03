@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-039-B #1762 step 4a — byte-filters / no-transform on HID routes.
+//! ADR-039-B — byte-filters / no-transform on HID routes.
 //!
 //! §6.2.1: a HID source serializes to MIDI bytes lossily (gamepad button
 //! 128 → `pad & 0x7F` = MIDI note 0). A byte-filter (channels / cc_range /
@@ -13,8 +13,8 @@
 //! ArtNet} all require an explicit transform); the regression test pins it.
 //!
 //! Split into its own integration-test file (not `route_validation_test.rs`)
-//! so the cohesive guard suite stays small enough for the LLM-Council review
-//! window (ADR-034 char budget).
+//! so the cohesive guard suite stays small enough for the review window
+//! (ADR-034 char budget).
 
 use conductor_core::Config;
 use conductor_core::config::validation::validate_config;

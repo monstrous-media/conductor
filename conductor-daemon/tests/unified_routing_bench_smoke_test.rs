@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Smoke test for the Slice 9 (#1667) unified routing passthrough
+//! Smoke test for the Slice 9 unified routing passthrough
 //! benchmark (ADR-036 D7). The benchmark itself is a `harness = false`
 //! binary that `cargo test` does not execute, so this mirrors the
 //! pipeline it measures — rule-engine miss → post-mapping route forward

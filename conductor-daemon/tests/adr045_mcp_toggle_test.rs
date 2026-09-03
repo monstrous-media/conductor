@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-045 D4 (#2495) — the runtime `[mcp] enabled` toggle.
+//! ADR-045 D4 — the runtime `[mcp] enabled` toggle.
 //!
 //! Even read-only MCP is a local socket surface; `[mcp] enabled = false`
 //! must leave the socket unbound entirely (ADR-027 minimal-surface).
@@ -12,8 +12,7 @@
 //!
 //! The parse-level tests run in EVERY composition (the `McpConfig` type is
 //! ungated core config); only the service bind-decision seam is `mcp`-gated
-//! — so a feature mix-up in CI can never silently skip the core property
-//! (Council review on PR #2607).
+//! — so a feature mix-up in CI can never silently skip the core property.
 
 use conductor_core::config::Config;
 use std::io::Write;

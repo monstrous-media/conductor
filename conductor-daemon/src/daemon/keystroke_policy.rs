@@ -76,12 +76,11 @@ pub const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(1);
 
 /// Daemon-wide policy mode for keystroke simulation.
 ///
-/// **Currently set programmatically only.** PR #1030 review
-/// (2026-05-02) flagged that earlier doc comments here implied
-/// a `[security.keystroke] policy` config field that doesn't
+/// **Currently set programmatically only.** Earlier doc comments here
+/// implied a `[security.keystroke] policy` config field that doesn't
 /// exist in the repo. The config-file plumbing for this is a
 /// follow-up — when D5's capability/tier surface lands, that
-/// PR will wire `[security.keystroke]` through to construction
+/// work will wire `[security.keystroke]` through to construction
 /// of [`KeystrokePolicyEnforcer`] and emit the startup warning
 /// for `Unrestricted`. Until then, callers construct directly
 /// via [`KeystrokePolicyEnforcer::new`] / [`Self::Standard`]
@@ -101,7 +100,7 @@ pub enum KeystrokePolicy {
     /// Fully bypassable. Used only when the operator has
     /// explicitly opted out and accepts the risk. **The
     /// startup warning the spec asks for is part of D5's
-    /// config-wiring follow-up; this PR doesn't emit one
+    /// config-wiring follow-up; this doesn't emit one
     /// because it doesn't read config.** When D5 lands the
     /// startup-warning emit goes there.
     Unrestricted,
@@ -116,8 +115,7 @@ pub enum KeystrokePolicyError {
     /// `combo_label` identifies the rule that fired (e.g.
     /// `"Cmd+Q force-quit"`). `modifiers` is the concrete
     /// modifier set the caller requested. `key` is the
-    /// concrete *requested* key that matched (PR #1030 review,
-    /// 2026-05-02): pre-fix this was the rule's key (e.g.
+    /// concrete *requested* key that matched: pre-fix this was the rule's key (e.g.
     /// always `'q'` even when the caller asked for `'Q'`),
     /// which lost case information for audit/debug logs.
     /// `combo_label` still identifies which rule matched.
@@ -136,7 +134,7 @@ pub enum KeystrokePolicyError {
         max_per_window: u32,
     },
 
-    /// PR #1030 round-3 review (2026-05-02): the rate-limit
+    /// The rate-limit
     /// `Mutex` was poisoned (a previous panic on a different
     /// thread left the `RateState` in an unknown shape). We
     /// fail closed — keystrokes are denied — but surface this
@@ -313,7 +311,7 @@ impl KeystrokePolicyEnforcer {
         // its key to be present (case-insensitively for ASCII
         // letters) in the requested keys list.
         //
-        // PR #1030 review (2026-05-02): linear `contains` over
+        // Linear `contains` over
         // the small `modifiers` slice (max 4 ModifierKey
         // variants) is faster and allocation-free vs. the
         // previous per-call `HashSet`.
@@ -329,7 +327,7 @@ impl KeystrokePolicyEnforcer {
             // rule (not the rule's key). Captures case
             // correctly so the error/audit log can report
             // "user pressed 'Q'" rather than "rule fired with
-            // 'q'" (PR #1030 review).
+            // 'q'".
             let matched_requested = keys
                 .iter()
                 .copied()
@@ -349,16 +347,15 @@ impl KeystrokePolicyEnforcer {
         let requested = keys.len() as u32;
         let mut state = match self.rate_state.lock() {
             Ok(g) => g,
-            // PR #1030 round-3 review (2026-05-02): poisoning
-            // is a genuine safety problem for a security
+            // Poisoning is a genuine safety problem for a security
             // limiter — we don't know whether the prior panic
             // left the timestamps deque in a consistent state.
-            // Pre-fix this used `into_inner()` which proceeded
+            // An earlier version used `into_inner()` which proceeded
             // with possibly-corrupt state; that could
             // undercount and let through more keystrokes than
-            // the cap. Round-2 returned a synthetic
+            // the cap. A later revision returned a synthetic
             // RateLimitExceeded with maxed counters, but that
-            // mis-attributed the cause. Round-3: dedicated
+            // mis-attributed the cause. This settled on a dedicated
             // `InternalStateCorrupt` variant. Callers fail
             // closed and operator audit logs / metrics see the
             // root cause cleanly.
@@ -398,7 +395,7 @@ impl Default for KeystrokePolicyEnforcer {
     }
 }
 
-/// Stateless deny-list check (issue #1040, ADR-027 D8 save-time
+/// Stateless deny-list check (ADR-027 D8 save-time
 /// surfacing).
 ///
 /// Runs only the deny-list portion of [`KeystrokePolicyEnforcer::check_at`],
@@ -452,8 +449,8 @@ pub fn check_combo_only(
 /// `Unicode('q')` and `Unicode('Q')` as the same key — adding
 /// Shift to a deny-listed letter mustn't bypass the deny.
 ///
-/// Case folding is **ASCII-only** (`eq_ignore_ascii_case`); PR
-/// #1030 review (2026-05-02). The deny-list keys are all ASCII
+/// Case folding is **ASCII-only** (`eq_ignore_ascii_case`).
+/// The deny-list keys are all ASCII
 /// letters, so non-ASCII inputs (e.g. `'Ä'`) are deliberately
 /// outside the deny scope and compare via plain `==`. Implementing
 /// full Unicode case folding here would expand the matcher's

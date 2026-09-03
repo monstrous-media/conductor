@@ -28,7 +28,7 @@ fn get_wasm_template_path() -> PathBuf {
         .join("../plugins/wasm-minimal/target/wasm32-wasip1/release/conductor_wasm_minimal.wasm")
 }
 
-/// Path to the built no-WASI minimal plugin (#1467). Built with
+/// Path to the built no-WASI minimal plugin. Built with
 /// `cd plugins/wasm-minimal-no-wasi && cargo build --release --target wasm32-unknown-unknown`.
 fn get_no_wasi_plugin_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
@@ -231,7 +231,7 @@ async fn test_wasm_plugin_metadata_retrieval() {
     assert!(!metadata.description.is_empty());
 }
 
-/// #1467 regression. The no-WASI minimal plugin previously returned a
+/// Regression: the no-WASI minimal plugin previously returned a
 /// hardcoded init result (ptr=1, len=152) that did NOT point at any metadata,
 /// so `init()` read arbitrary linear memory and should have failed with
 /// invalid UTF-8 / invalid JSON rather than yielding valid `PluginMetadata`.

@@ -11,7 +11,7 @@ pub struct MidiFeedback {
     pub(crate) config: Option<MidiLedConfig>,
     /// Channel-voice messages that would have been sent while no real output
     /// port is connected. Captured so LED feedback (custom mappings, lighting
-    /// schemes) can be unit-tested without hardware (#1460). Always empty in
+    /// schemes) can be unit-tested without hardware. Always empty in
     /// production: a connected `MidiFeedback` sends to the port instead.
     captured: Vec<[u8; 3]>,
 }
@@ -34,7 +34,7 @@ impl MidiFeedback {
     }
 
     /// Messages captured while not connected to a real port (test
-    /// observability for LED feedback, #1460). Each entry is the 3-byte
+    /// observability for LED feedback). Each entry is the 3-byte
     /// channel-voice message `[status, data1, data2]`.
     pub fn captured(&self) -> &[[u8; 3]] {
         &self.captured
@@ -131,7 +131,7 @@ impl MidiFeedback {
     }
 
     // Flash a pad LED (if device supports MIDI note LED feedback)
-    /// Flash a pad LED on, then off after `duration_ms` (#1464).
+    /// Flash a pad LED on, then off after `duration_ms`.
     ///
     /// Synchronous: sends note-on, sleeps for `duration_ms`, then sends
     /// note-off — so the LED is actually turned back off. Previously this only

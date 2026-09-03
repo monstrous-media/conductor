@@ -6,7 +6,7 @@ use super::*;
 impl EngineManager {
     pub(crate) fn handle_start_midi_learn(&mut self, id: String) -> IpcResponse {
         self.midi_learn_active.store(true, Ordering::SeqCst);
-        // #838 / #2386: use the dedicated Learn chord window
+        // Use the dedicated Learn chord window
         // (`advanced_settings.chord_learn_timeout_ms`, default 150) — the single
         // source of truth the Settings panel displays — replacing the prior
         // `chord_timeout_ms × 3` (clamped) heuristic, so this IPC-Learn path, the
@@ -36,7 +36,7 @@ impl EngineManager {
 
     pub(crate) async fn handle_stop_midi_learn(&mut self, id: String) -> IpcResponse {
         self.midi_learn_active.store(false, Ordering::SeqCst);
-        // Restore chord timeout from config (#838)
+        // Restore chord timeout from config
         let default_ms = self
             .live_config
             .load()

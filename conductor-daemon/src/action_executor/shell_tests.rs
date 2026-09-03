@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Unit tests for the `shell` module (#1719 extraction from `shell.rs`).
+//! Unit tests for the `shell` module (extraction from `shell.rs`).
 //!
 //! Declared from `shell.rs` as `#[cfg(test)] #[path = "shell_tests.rs"]
 //! mod tests;` — still a child module of `shell`, so `use super::*;`
@@ -9,7 +9,7 @@
 //! (`parse_command_line_with_status`, `sanitised_shell_env`,
 //! `execute_shell`) without exposing them more broadly. The split keeps
 //! production-only `shell.rs` under the LLM Council `verify` 50K-char
-//! ceiling — see PR #1718's audit comment for the motivating numbers.
+//! ceiling.
 
 use super::*;
 use crate::action_executor::test_support::test_executor;
@@ -74,7 +74,7 @@ fn test_parse_empty_command() {
 
 #[test]
 fn test_parse_with_status_detects_unbalanced_double_quote() {
-    // #1717: parse_command_line stays lenient (extracts tokens it can
+    // parse_command_line stays lenient (extracts tokens it can
     // find), but the internal *_with_status variant exposes whether
     // the parser ended mid-quoted-segment so callers like
     // derive_shell_argv / execute_shell can reject the input.
@@ -102,7 +102,7 @@ fn test_parse_with_status_balanced_quotes_unflagged() {
         !unbalanced,
         "balanced quoted segments must not flag unbalanced"
     );
-    // The empty-quoted-arg case from #1711 is also balanced.
+    // The empty-quoted-arg case is also balanced.
     let (_parts, unbalanced) = parse_command_line_with_status(r#"cmd "" foo"#);
     assert!(!unbalanced, "explicit empty quoted arg is still balanced");
 }
@@ -123,7 +123,7 @@ fn test_parse_with_status_quote_only_inputs_unbalanced_when_odd() {
 
 #[test]
 fn test_parse_preserves_empty_quoted_args() {
-    // #1711: an empty `""` or `''` between other tokens is a real,
+    // An empty `""` or `''` between other tokens is a real,
     // intentional positional argument in POSIX shell semantics
     // (`argc` for `cmd "" foo` is 3, not 2). The naive parser
     // dropped it silently because the inter-quote `current`
@@ -227,7 +227,7 @@ fn test_parse_does_not_expand_globs() {
 
 #[test]
 fn shell_returns_err_for_nonexistent_binary_argv_form() {
-    // #1479: a shell action whose program can't be spawned (ENOENT)
+    // A shell action whose program can't be spawned (ENOENT)
     // must surface as Err — pre-fix `execute_shell` swallowed the
     // spawn error and `execute` returned Ok(Completed), so the
     // monitor/metrics pipeline saw a "completed" action that never
@@ -277,7 +277,7 @@ fn shell_returns_err_for_nonexistent_binary_legacy_form() {
 #[test]
 fn shell_returns_err_for_empty_command() {
     // An empty command starts no process; reporting Completed would
-    // be the same false-success #1479 fixes.
+    // be the same false-success case fixed above.
     let mut executor = test_executor();
     let action = Action::Shell {
         sandbox: None,
@@ -295,7 +295,7 @@ fn shell_returns_err_for_empty_command() {
 
 #[test]
 fn shell_returns_err_for_unbalanced_quotes() {
-    // #1717: an unbalanced quote means the user's intent is
+    // An unbalanced quote means the user's intent is
     // ambiguous — surface as a parse error rather than silently
     // swallowing the rest of the line as one argument.
     let mut executor = test_executor();
@@ -437,7 +437,7 @@ fn sanitised_env_passes_through_allowlist() {
 #[cfg(windows)]
 #[test]
 fn sanitised_env_passes_through_windows_essentials() {
-    // PR #1026 review (2026-05-02): Windows child processes
+    // Windows child processes
     // need a richer baseline because of how the OS itself
     // works. Stripping `SystemRoot`/`WINDIR`/`PATHEXT`/etc.
     // would make almost every shell action fail (even
@@ -482,7 +482,7 @@ fn sanitised_env_passes_through_windows_essentials() {
 #[cfg(windows)]
 #[test]
 fn sanitised_env_collapses_case_variant_duplicates_on_windows() {
-    // #1717: Windows env names are case-insensitive at the OS
+    // Windows env names are case-insensitive at the OS
     // level, but `vars_os()` can yield both `PATH=...` and
     // `Path=...` if a parent process set them with different
     // case. Pre-fix, `sanitised_shell_env` inserted under each
@@ -511,8 +511,7 @@ fn sanitised_env_collapses_case_variant_duplicates_on_windows() {
 #[cfg(windows)]
 #[test]
 fn sanitised_env_windows_allowlist_is_case_insensitive() {
-    // Regression test for PR #1026 round-3 review (Copilot,
-    // 2026-05-02 12:47): pre-fix the Windows allowlist
+    // Regression test: pre-fix the Windows allowlist
     // matcher used exact-case `OsStr::new(allowed)`
     // comparisons, which would silently drop
     // parent-supplied `SYSTEMROOT`, `WINDIR`, `path`, etc.
@@ -536,7 +535,7 @@ fn sanitised_env_windows_allowlist_is_case_insensitive() {
     let cleaned = sanitised_shell_env(source);
 
     for (k, _) in &pairs {
-        // #1717 canonicalisation: cleaned env now stores keys
+        // Canonicalisation: cleaned env now stores keys
         // uppercased on Windows (so case-variant duplicates
         // collapse before spawn — Windows env lookups are
         // case-insensitive, so this is behaviour-preserving).

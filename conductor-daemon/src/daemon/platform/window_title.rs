@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-040 §4.3 (Slice 6 #1769) — focused-window-title detection.
+//! ADR-040 §4.3 — focused-window-title detection.
 //!
 //! Window TITLE is a **real OS permission escalation** beyond the app-name
 //! detection in [`crate::daemon::app_detector`] — on macOS it needs
@@ -102,7 +102,7 @@ pub fn mask_title(title: Option<&str>, log_titles: bool) -> String {
 /// reading [`flag`](Self::flag)/[`is_degraded`](Self::is_degraded); a `Relaxed`
 /// read of a `bool` status flag is intentionally fine (worst case it observes a
 /// one-poll-stale value — eventual consistency, no torn read on a `bool`). No
-/// stronger ordering or lock is warranted (Council #2323).
+/// stronger ordering or lock is warranted.
 #[derive(Clone)]
 pub struct DegradationTracker {
     /// Shared with the status surface (read by `mode_status_json`).
@@ -274,7 +274,7 @@ mod tests {
     fn opted_in_titles_are_escaped_against_log_injection() {
         // A title is attacker-influenced text. Debug-quoting escapes embedded
         // quotes and newlines so a crafted title can't forge a second log line
-        // or break out of the quoted field (Copilot review #2323).
+        // or break out of the quoted field (Copilot review).
         assert_eq!(
             mask_title(Some("evil\nINJECTED"), true),
             "\"evil\\nINJECTED\""
@@ -369,8 +369,8 @@ mod macos {
     use super::{TitleRead, WindowTitleSource};
     // Reuse core-foundation's own `CFTypeRef` rather than a local `*const c_void`
     // alias, so our extern signatures and `wrap_under_create_rule` agree on one
-    // pointer type — no cross-alias `as` casts that could mask a type confusion
-    // (Council #2323). An `AXUIElementRef` is a `CFTypeRef` in the AX API.
+    // pointer type — no cross-alias `as` casts that could mask a type confusion.
+    // An `AXUIElementRef` is a `CFTypeRef` in the AX API.
     use core_foundation::base::{CFType, CFTypeRef, TCFType};
     use core_foundation::string::{CFString, CFStringRef};
     use std::ptr;
@@ -381,7 +381,7 @@ mod macos {
 
     /// Per-element messaging timeout for AX calls (seconds). Bounds a blocking
     /// `AXUIElementCopyAttributeValue` so an unresponsive target app can't stall
-    /// the (background) title poll indefinitely (Council #2323). The poll runs
+    /// the (background) title poll indefinitely. The poll runs
     /// off the engine hot path, so a short bound is plenty.
     const AX_MESSAGING_TIMEOUT_SECS: f32 = 0.25;
 
@@ -400,7 +400,7 @@ mod macos {
     unsafe extern "C" {
         /// Whether this process is trusted for Accessibility. Returns Apple's
         /// `Boolean` (`unsigned char`), NOT a C99 `_Bool` — declaring it as Rust
-        /// `bool` would be UB if the byte is neither 0 nor 1 (Council #2323). We
+        /// `bool` would be UB if the byte is neither 0 nor 1. We
         /// take it as `u8` and test `!= 0`. `false` ⇒ title reads fail →
         /// `PermissionDenied`.
         fn AXIsProcessTrusted() -> u8;
@@ -452,8 +452,8 @@ mod macos {
     /// when an app is busy, `kAXErrorInvalidUIElement` on a stale element) — is a
     /// "no title this read": app-name rules apply and we retry next tick, WITHOUT
     /// flipping the user-visible `window_permission_degraded` flag for a transient
-    /// or app-specific condition (Council #2323 — the prior `_ => PermissionDenied`
-    /// over-degraded).
+    /// or app-specific condition — the prior `_ => PermissionDenied`
+    /// over-degraded.
     fn err_to_read(err: AXError) -> TitleRead {
         match err {
             KAX_ERROR_API_DISABLED => TitleRead::PermissionDenied,
@@ -476,7 +476,7 @@ mod macos {
                 return TitleRead::PermissionDenied;
             }
             // Bound how long the AX calls below can block on an unresponsive
-            // app — the title poll must not hang (Council #2323). Per Apple's
+            // app — the title poll must not hang. Per Apple's
             // AXUIElement docs, setting the timeout on the **system-wide** element
             // (the one from AXUIElementCreateSystemWide) sets it GLOBALLY for this
             // process — i.e. it applies to the AXFocusedApplication/Window/Title
@@ -492,7 +492,7 @@ mod macos {
             // RAII: wrap under the create rule so the system-wide element is
             // CFRelease'd by `Drop` on EVERY exit — including a panic inside
             // `read_focused_title` — rather than via a manual call that an early
-            // return or unwind could skip (Council #2323).
+            // return or unwind could skip.
             let system_wide = unsafe { CFType::wrap_under_create_rule(system_wide) };
             unsafe { read_focused_title(system_wide.as_concrete_TypeRef()) }
         }
@@ -539,7 +539,7 @@ mod macos {
                 TitleRead::PermissionDenied
             );
             // Transient / app-specific errors are "no title this read", NOT a
-            // permission failure — they must not flip the degraded flag (#2323).
+            // permission failure — they must not flip the degraded flag.
             const KAX_ERROR_CANNOT_COMPLETE: AXError = -25204; // app busy/timeout
             const KAX_ERROR_INVALID_UI_ELEMENT: AXError = -25202; // stale element
             for transient in [

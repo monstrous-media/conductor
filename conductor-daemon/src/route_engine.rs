@@ -4,7 +4,7 @@
 //! Route Engine — runtime evaluation of the signal routing graph
 //! (ADR-031 § 4.4 / Phase 2B).
 //!
-//! Plugs in as a **9th stage, after the post-#1118 8-stage rule-engine
+//! Plugs in as a **9th stage, after the 8-stage rule-engine
 //! matcher** (per spec § 4.5 + ADR § D2). When the 8-stage rule
 //! matcher doesn't match an input event, the daemon's event pump
 //! asks this engine which routes (if any) want to forward the event
@@ -39,8 +39,7 @@ use std::collections::HashMap;
 /// field is excluded at compile time (`ExclusionReason::OscFilterUnsupported`)
 /// since no MIDI event can satisfy an OSC-domain constraint, so a
 /// `CompiledFilter` that actually reaches the runtime never has one.
-/// Keeping the field here would be permanently-`None` dead state
-/// (Council review on PR #1175 finding #2).
+/// Keeping the field here would be permanently-`None` dead state.
 #[derive(Debug, Clone)]
 pub struct CompiledFilter {
     pub message_types: Vec<conductor_core::config::MidiMessageType>,
@@ -57,9 +56,8 @@ impl CompiledFilter {
     /// True when every dimension is empty/None — i.e. the filter
     /// constrains nothing and matches every event. An unconstrained
     /// `Some(filter)` must behave identically to `filter: None`
-    /// (Council review on PR #1175 finding #1 — the prior code
-    /// dropped system messages for an empty filter but forwarded
-    /// them for no filter, a behavioral asymmetry).
+    /// (the prior code dropped system messages for an empty filter
+    /// but forwarded them for no filter, a behavioral asymmetry).
     fn is_unconstrained(&self) -> bool {
         self.message_types.is_empty()
             && self.channels.is_empty()
@@ -77,13 +75,13 @@ pub struct CompiledRoute {
     pub to_alias: String,
     pub filter: Option<CompiledFilter>,
     /// Compiled transform. Typed as `Option<SignalTransform>` to admit
-    /// cross-protocol variants (`MidiToOsc` and — when slices 5-7 of
-    /// P5 land — `MidiToArtNet`, `HidToArtNet`). `compile()` still
+    /// cross-protocol variants (`MidiToOsc` and — once their transform
+    /// runtimes land — `MidiToArtNet`, `HidToArtNet`). `compile()` still
     /// excludes the variants that have NOT yet shipped a runtime
     /// (currently `OscToMidi`, `MidiToArtNet`, `HidToArtNet`); only
     /// `Midi` and `MidiToOsc` reach the runtime today. The original
-    /// `Option<MidiTransform>` shape (PR #1175) was correct then —
-    /// widened in P5 slice 3 once `MidiToOsc` became executable. The
+    /// `Option<MidiTransform>` shape was correct then —
+    /// widened once `MidiToOsc` became executable. The
     /// per-event branch in `route_destinations` dispatches based on
     /// variant.
     pub transform: Option<SignalTransform>,
@@ -102,7 +100,7 @@ fn mode_eligible(modes: &[String], active_mode: &str) -> bool {
 }
 
 /// One output produced by a route for a given input event (ADR-031
-/// § 4.4 / P5 slice 3). `kind` discriminates the destination protocol
+/// § 4.4). `kind` discriminates the destination protocol
 /// so stage-9 dispatch can branch: MIDI bytes go through the action
 /// executor's `Action::MidiForward` path; OSC packet bytes go
 /// directly through `ConnectorRegistry::send_osc`.
@@ -134,8 +132,8 @@ pub enum RouteOutputKind {
     /// 512-channel DMX frame and emits OpDmx UDP packets.
     ///
     /// Why 3 bytes inside the existing `RouteOutput.bytes: Vec<u8>` shape
-    /// instead of a new structured payload field: keeps the slice 8
-    /// change tightly scoped (no `RouteOutput` shape refactor, no
+    /// instead of a new structured payload field: keeps the change
+    /// tightly scoped (no `RouteOutput` shape refactor, no
     /// test-fixture churn). The bytes-as-wire-format invariant was
     /// already strained by OSC (encoded UDP packet, not raw wire); for
     /// Art-Net the "wire format" requires per-connector frame state
@@ -146,7 +144,7 @@ pub enum RouteOutputKind {
 }
 
 /// The MIDI filter dimension that rejected an event, for the
-/// `conductor_explain_route_match` MCP tool (ADR-036 D5 / Slice 9).
+/// `conductor_explain_route_match` MCP tool (ADR-036 D5).
 /// Returned by [`filter_match_detail`]; `None` there means the filter
 /// matched. Serialised `snake_case` for the tool payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -168,7 +166,7 @@ pub enum FilterDimension {
 }
 
 /// Why a candidate route did NOT fire for a given event, in the
-/// `conductor_explain_route_match` trace (ADR-036 D5 / Slice 9).
+/// `conductor_explain_route_match` trace (ADR-036 D5).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum RouteSkipReason {
@@ -210,8 +208,7 @@ enum RouteEval {
 /// A route excluded at compile time, with the reason. Surfaced via
 /// `RouteEngine::excluded_routes()` so the IPC / MCP layer (Phase 2C)
 /// can tell the user *which* declared routes are inactive and *why*
-/// — a `tracing::warn!` alone is not API-level feedback (Council
-/// review on PR #1175 finding #2).
+/// — a `tracing::warn!` alone is not API-level feedback.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExcludedRoute {
     pub from_alias: String,
@@ -229,7 +226,7 @@ pub enum ExclusionReason {
     /// not yet implemented. Valid declaration; not yet executable.
     ///
     /// The variant name deliberately avoids encoding a project phase
-    /// number (Council review on PR #1175) — when cross-protocol
+    /// number — when cross-protocol
     /// routing ships, this variant simply stops being produced, with
     /// no breaking rename of the public API.
     CrossProtocolTransformUnsupported,
@@ -237,8 +234,7 @@ pub enum ExclusionReason {
     /// constraint. AND-combined with every other dimension, no MIDI
     /// event can satisfy it, so the route is inert in the (MIDI-only)
     /// input pipeline. Excluded at compile time rather than dropped
-    /// silently per-event inside `filter_matches` (Council review on
-    /// PR #1175 finding #3). Stops being produced once OSC event
+    /// silently per-event inside `filter_matches`. Stops being produced once OSC event
     /// matching ships.
     OscFilterUnsupported,
 }
@@ -253,7 +249,7 @@ pub enum ExclusionReason {
 /// **Pre-validated input**: `RouteEngine` is the *runtime* half of
 /// the routing graph and assumes its `&[RouteConfig]` input has
 /// already passed `conductor_core::config::validation::validate_routes`
-/// (Phase 2A, PR #1161). That validator rejects nonexistent endpoint
+/// (Phase 2A). That validator rejects nonexistent endpoint
 /// aliases, self-referencing routes, direct A→B + B→A cycles, and
 /// cross-protocol routes without a compatible transform, and warns
 /// on overlap/shadowing. The engine therefore does NOT re-check
@@ -265,8 +261,8 @@ pub enum ExclusionReason {
 /// no interior mutability). The daemon holds it in
 /// `Arc<ArcSwap<RouteEngine>>` for wait-free hot-path reads, which
 /// requires `Send + Sync`; the static assertion below is a
-/// compile-time canary (memory note from PR #909 — diagnose the
-/// invariant break here, not via a misleading downstream error).
+/// compile-time canary — diagnose the
+/// invariant break here, not via a misleading downstream error.
 #[derive(Debug, Clone, Default)]
 pub struct RouteEngine {
     /// Routes indexed by source alias for O(1) lookup. All routes are
@@ -319,7 +315,7 @@ impl RouteEngine {
     ///
     /// `compile()` is a **pure function** — it produces a `RouteEngine`
     /// with the `excluded` list populated but performs no I/O or
-    /// logging (Council review on PR #1175 — no side effects in the
+    /// logging — no side effects in the
     /// compiler). Callers that want a startup log of excluded routes
     /// call [`RouteEngine::log_exclusions`] explicitly.
     ///
@@ -340,22 +336,21 @@ impl RouteEngine {
             }
 
             // Admit transforms that have a runtime today; exclude the
-            // rest. As each P5 slice ships, the exclusion list shrinks:
-            // - P5 slice 1 (#1341): `MidiToOsc` transform pure function
-            // - P5 slice 2 (#1344): OSC sender in registry
-            // - P5 slice 3+4 (#1347): `MidiToOsc` is now executable —
-            //   no longer excluded
-            // - P5 slice 5 (#1350): `MidiToArtNet` pure transform
-            // - P5 slice 6 (#1353): Art-Net sender in registry
-            // - P5 slice 7 (#1354): `HidToArtNet` pure transform
-            // - P5 slice 8 (#1357): `MidiToArtNet` is now executable
-            //   via stage-9 — no longer excluded.
-            // - ADR-039-B (#1762): `HidToArtNet` is now executable — the
+            // rest. As each stage ships, the exclusion list shrinks:
+            // - `MidiToOsc` transform pure function landed
+            // - OSC sender landed in registry
+            // - `MidiToOsc` is now executable — no longer excluded
+            // - `MidiToArtNet` pure transform landed
+            // - Art-Net sender landed in registry
+            // - `HidToArtNet` pure transform landed
+            // - `MidiToArtNet` is now executable via stage-9 — no longer
+            //   excluded.
+            // - ADR-039-B: `HidToArtNet` is now executable — the
             //   route engine threads the structured `InputEvent` to the
             //   transform via `RouteEvalContext` (spec §6.2.1), so the pure
             //   `hid_to_artnet::apply(&InputEvent)` fn has its dispatch path.
-            // - `OscToMidi` (ADR-039-A #1361): OSC input listener landed;
-            //   admitted below. `OscToArtNet` (Slice 1b #2324) likewise.
+            // - `OscToMidi` (ADR-039-A): OSC input listener landed;
+            //   admitted below. `OscToArtNet` likewise.
             //
             // `compile()` stays a pure function: the exclusion is
             // recorded in `excluded` (structured feedback via
@@ -368,11 +363,11 @@ impl RouteEngine {
                 | Some(SignalTransform::HidToArtNet { .. })
                 | Some(SignalTransform::HidToMidi { .. })
                 | Some(SignalTransform::HidToOsc { .. })
-                // ADR-039-A Slice 1 (#1361): OSC input listener has landed, so
+                // ADR-039-A: OSC input listener has landed, so
                 // OscToMidi now has a dispatch path (structured, reads
                 // ctx.input.osc()).
                 | Some(SignalTransform::OscToMidi { .. })
-                // ADR-039-A Slice 1b (#2324): OscToArtNet rides the same
+                // ADR-039-A: OscToArtNet rides the same
                 // structured OSC path, dispatching RouteOutputKind::ArtNet.
                 | Some(SignalTransform::OscToArtNet { .. }) => {
                     Some(route.transform.as_ref().expect("matched Some").clone())
@@ -387,8 +382,7 @@ impl RouteEngine {
             // OSC-domain — AND-combined with every other dimension, no
             // MIDI event can satisfy it, so the route is inert in the
             // MIDI-only input pipeline. Exclude the whole route at
-            // compile time (Council review on PR #1175 finding #3)
-            // rather than dropping its events silently per-event in
+            // compile time rather than dropping its events silently per-event in
             // `filter_matches` — `excluded_routes()` then surfaces it
             // as structured feedback. OSC event matching is Phase 5.
             if route
@@ -407,7 +401,7 @@ impl RouteEngine {
             let compiled = CompiledRoute {
                 to_alias: route.to.clone(),
                 // Normalize an unconstrained `Some(filter)` to `None`
-                // at compile time (Council review on PR #1175) — so
+                // at compile time — so
                 // the per-event hot path never runs an
                 // `is_unconstrained()` check. `compile_filter`
                 // returns `None` for an all-empty filter.
@@ -442,7 +436,7 @@ impl RouteEngine {
     /// compile time because it is not yet *executable* — cross-protocol
     /// transforms and OSC-filter routes. Callers (e.g. `EngineManager`
     /// after `compile()` / `reload_config()`) opt into this — keeping
-    /// `compile()` itself pure (Council review on PR #1175). Disabled
+    /// `compile()` itself pure. Disabled
     /// routes are intentionally NOT logged: `enabled = false` is a
     /// user-deliberate choice, not a surprise.
     pub fn log_exclusions(&self) {
@@ -498,7 +492,7 @@ impl RouteEngine {
     /// excluded from the compiled map by `compile()`, so any route
     /// reaching this method has either no transform or a MIDI one.
     ///
-    /// ADR-039 #1759 — protocol-tagged route entry point.
+    /// ADR-039 — protocol-tagged route entry point.
     ///
     /// This is the public route API: it accepts a [`ProtocolEvent`] so the
     /// route stage is no longer tied to MIDI byte streams (the prerequisite
@@ -515,8 +509,8 @@ impl RouteEngine {
     /// path calls [`route_destinations_midi`](Self::route_destinations_midi)
     /// directly with the `raw_midi` it already extracted for dispatch, so this
     /// shim's extraction does NOT run on the hot path — production instructions
-    /// are unchanged from pre-refactor `main`. This shim is the API that #1760
-    /// (pump rewrite) and the 039-A/C listeners call once they thread a
+    /// are unchanged from pre-refactor `main`. This shim is the API that the
+    /// pump rewrite and the 039-A/C listeners call once they thread a
     /// `ProtocolEvent` to the route stage.
     #[inline]
     pub fn route_destinations(
@@ -528,14 +522,14 @@ impl RouteEngine {
         match event {
             ProtocolEvent::Input(input_event) => {
                 // Preserve the byte-core's "unknown source is allocation-free"
-                // property (Copilot review): when no route is registered from
+                // property: when no route is registered from
                 // this source, skip the wire-byte reconstruction entirely —
-                // matters once #1760 callers route through this shim.
+                // matters once callers route through this shim.
                 if !self.routes.contains_key(source_alias) {
                     return Vec::new();
                 }
                 match extract_raw_midi(input_event) {
-                    // ADR-039-B (#1762): thread the structured `input_event`
+                    // ADR-039-B: thread the structured `input_event`
                     // alongside the extracted bytes so structured HID transforms
                     // (HidToArtNet, …) can recover gamepad-native semantics the
                     // lossy byte form drops (spec §6.2.1).
@@ -550,7 +544,7 @@ impl RouteEngine {
                     None => Vec::new(),
                 }
             }
-            // ADR-039-A Slice 1 (#1361): OSC inbound routes through the engine
+            // ADR-039-A: OSC inbound routes through the engine
             // ONLY (never the mapping engine). The decoded `OscInbound` is
             // threaded via `RouteInput::Osc`; there are no MIDI bytes
             // (`raw_midi` empty) and no `InputEvent`. Structured
@@ -573,7 +567,7 @@ impl RouteEngine {
     }
 
     /// MIDI byte-stream route core (ADR-031 §4.4; was `route_destinations`
-    /// pre-ADR-039-#1759). The hot path calls this directly with bytes it has
+    /// before the ADR-039 protocol-tagged rewrite). The hot path calls this directly with bytes it has
     /// already materialized, so it incurs no extra allocation. The protocol-
     /// tagged [`route_destinations`](Self::route_destinations) shim delegates
     /// here for the `Input` variant.
@@ -687,17 +681,17 @@ impl RouteEngine {
 /// Carried as a struct (not widened args) so future per-event context
 /// (timestamps, clock) extends the seam without churning every signature. The
 /// structured payload borrows `&InputEvent` (not `&ProtocolEvent`) because the
-/// post-#1760 pump unwraps to `InputEvent` before the route stage (a
-/// `ProtocolEvent` here would force a hot-path clone). ADR-039-A (#1361)
-/// initially landed OSC as a separate `Option` field; Slice 1b (#2324)
-/// collapsed the per-protocol fields into [`RouteInput`] per the Council R2
-/// mandate — one borrowed enum, so ADR-039-C's Art-Net `Dmx` is a new variant
+/// pump unwraps to `InputEvent` before the route stage (a
+/// `ProtocolEvent` here would force a hot-path clone). ADR-039-A
+/// initially landed OSC as a separate `Option` field; a later pass
+/// collapsed the per-protocol fields into [`RouteInput`] as
+/// one borrowed enum, so ADR-039-C's Art-Net `Dmx` is a new variant
 /// rather than a third field. MIDI/HID byte-path stays zero-cost.
 pub struct RouteEvalContext<'a> {
     /// Wire MIDI bytes already extracted from the event (byte path + filters).
     pub raw_midi: &'a [u8],
-    /// The structured source payload, when the caller has one (ADR-039-A
-    /// Slice 1b, #2324 — Council R2 mandate). One enum, not per-protocol
+    /// The structured source payload, when the caller has one
+    /// (ADR-039-A). One enum, not per-protocol
     /// `Option` fields, so a third structured source (Art-Net `Dmx`,
     /// ADR-039-C) is a new variant — not another field every caller must
     /// initialise. [`RouteInput::None`] ⇒ structured transforms skip.
@@ -706,7 +700,7 @@ pub struct RouteEvalContext<'a> {
     pub mode: &'a str,
 }
 
-/// Structured source payload for route evaluation (#2324).
+/// Structured source payload for route evaluation.
 ///
 /// Borrowed, `Copy` — building a context stays allocation-free and the MIDI
 /// byte hot path (always [`RouteInput::None`]) is unchanged.
@@ -777,7 +771,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             // Passthrough (no transform) forwards the wire MIDI bytes as-is.
             // ADR-039-A: an OSC-sourced route reaches here with `raw_midi`
             // empty (OSC carries no MIDI bytes); a bare passthrough of OSC is
-            // not implemented in Slice 1, so skip rather than emit an empty
+            // not yet implemented, so skip rather than emit an empty
             // MIDI message. Harmless for MIDI (its `raw_midi` is never empty
             // when a route fires).
             if raw_midi.is_empty() {
@@ -796,7 +790,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             (out, RouteOutputKind::Midi)
         }
         Some(t @ SignalTransform::MidiToOsc { .. }) => {
-            // P5 slice 3 — cross-protocol path. The transform returns
+            // Cross-protocol path (MIDI → OSC). The transform returns
             // `None` for inputs that don't match its template fields (e.g.
             // CC bytes when only `note_to_address` is set) OR for invalid
             // MIDI; drop the contribution either way.
@@ -806,7 +800,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             }
         }
         Some(t @ SignalTransform::MidiToArtNet { .. }) => {
-            // P5 slice 8 — MIDI → Art-Net. The pure transform returns
+            // MIDI → Art-Net. The pure transform returns
             // `None` for inputs not in any mapping table (e.g. NoteOn for a
             // CC-only transform). We serialize the DmxUpdate as 3 bytes —
             // `[channel_high, channel_low, value]` (BE u16 channel + u8
@@ -825,7 +819,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             }
         }
         Some(t @ SignalTransform::HidToArtNet { .. }) => {
-            // ADR-039-B (#1762) — HID → Art-Net. STRUCTURED transform: the
+            // ADR-039-B — HID → Art-Net. STRUCTURED transform: the
             // byte serialization is lossy/ambiguous for gamepad (button 128 →
             // note 0), so this reads the original `InputEvent` from the context
             // (§6.2.1). A byte-only caller (`ctx.input.event()` is `None`) cannot serve
@@ -849,7 +843,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             }
         }
         Some(t @ SignalTransform::HidToMidi { .. }) => {
-            // ADR-039-B (#1762 step 2) — HID → MIDI. STRUCTURED transform like
+            // ADR-039-B (step 2) — HID → MIDI. STRUCTURED transform like
             // HidToArtNet: reads the original `InputEvent` from the context
             // (§6.2.1), since the lossy byte form can't recover the gamepad
             // trigger. Emits a 3-byte CC; `RouteOutputKind::Midi` routes it
@@ -865,7 +859,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             }
         }
         Some(t @ SignalTransform::HidToOsc { .. }) => {
-            // ADR-039-B (#1762 step 3) — HID → OSC. STRUCTURED transform: reads
+            // ADR-039-B (step 3) — HID → OSC. STRUCTURED transform: reads
             // the original `InputEvent` from the context (§6.2.1). Emits an
             // encoded OSC packet; `RouteOutputKind::Osc` routes it through the
             // OSC sender (same as MidiToOsc). Skips for a byte-only caller
@@ -880,7 +874,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             }
         }
         Some(t @ SignalTransform::OscToMidi { .. }) => {
-            // ADR-039-A Slice 1 (#1361) — OSC → MIDI. STRUCTURED transform: reads
+            // ADR-039-A — OSC → MIDI. STRUCTURED transform: reads
             // the decoded `OscInbound` from the context (no byte re-parse, since
             // OSC has no canonical MIDI wire form). Emits a 3-byte CC/NoteOn;
             // `RouteOutputKind::Midi` routes it through the existing MIDI output
@@ -896,7 +890,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
             }
         }
         Some(t @ SignalTransform::OscToArtNet { .. }) => {
-            // ADR-039-A Slice 1b (#2324) — OSC → Art-Net. STRUCTURED transform
+            // ADR-039-A — OSC → Art-Net. STRUCTURED transform
             // reading the decoded `OscInbound` (same as the OscToMidi arm);
             // the DmxUpdate is serialized to the same 3-byte
             // `[channel_high, channel_low, value]` form as the MidiToArtNet /
@@ -919,7 +913,7 @@ fn evaluate_route(r: &CompiledRoute, ctx: &RouteEvalContext) -> RouteEval {
                 }
                 None => return RouteEval::Skipped(RouteSkipReason::TransformProducedNoOutput),
             }
-        } // Every `SignalTransform` variant is handled above (ADR-039-A Slice 1b
+        } // Every `SignalTransform` variant is handled above (ADR-039-A
           // wired the last one, `OscToArtNet`), so this match is exhaustive. A
           // future variant added without a dispatch arm will fail to compile
           // here — intentional.
@@ -949,17 +943,17 @@ pub enum ReentrancyError {
 /// depth without a full graph-cycle analysis (ADR-036 D4.3 / spec § 4.5).
 ///
 /// Constructed per dispatch chain with `max_depth` from
-/// `advanced_settings.max_route_depth`. The event pump wiring lands in
-/// Slice 7; this is the reusable guard the pump will drive.
+/// `advanced_settings.max_route_depth`. This is the reusable guard the
+/// event pump drives.
 ///
-/// **Cloning (Slice 7 contract)**: a guard instance models a single
+/// **Cloning contract**: a guard instance models a single
 /// linear chain, not the whole dispatch tree. For fan-out — one source
 /// with multiple destination routes — the caller MUST clone the guard
 /// before descending into each branch. Sharing one guard across siblings
 /// would make a legitimate diamond (A→{B,C}, B→D, C→D) report a false
 /// `CycleDetected("D")` on the second branch, since D was already visited
 /// on the first. Clone-per-branch keeps each path's visited-set
-/// independent. (Copilot review on PR #1685.)
+/// independent.
 #[derive(Debug, Clone)]
 pub struct DispatchGuard {
     visited: Vec<String>,
@@ -980,7 +974,7 @@ impl DispatchGuard {
     ///
     /// The cycle check runs first: when a repeat alias arrives at max
     /// depth, `CycleDetected` is the more actionable diagnosis than
-    /// `DepthExceeded` (Copilot review on PR #1685).
+    /// `DepthExceeded`.
     pub fn enter(&mut self, alias: &str) -> Result<(), ReentrancyError> {
         if self.visited.iter().any(|a| a == alias) {
             return Err(ReentrancyError::CycleDetected(alias.to_string()));
@@ -1019,14 +1013,14 @@ impl DispatchGuard {
 /// naming the FIRST dimension that rejected the event. The hot path
 /// (`evaluate_route`) treats `None` as "matched"; the same call yields the
 /// failing dimension for the `conductor_explain_route_match` trace
-/// (Slice 9) — one source of truth so explanation and dispatch can never
+/// — one source of truth so explanation and dispatch can never
 /// diverge.
 fn filter_match_detail(filter: &CompiledFilter, raw_midi: &[u8]) -> Option<FilterDimension> {
     // `compile_filter` normalizes unconstrained filters to `None` —
     // a `CompiledRoute.filter` of `Some(_)` always carries a
     // genuinely-constrained filter, so we don't pay an
-    // `is_unconstrained()` check on every event in release builds
-    // (Copilot review on PR #1175). The `debug_assert!` documents and
+    // `is_unconstrained()` check on every event in release builds.
+    // The `debug_assert!` documents and
     // catches any invariant slip in debug builds; if a future direct
     // caller bypasses `compile_filter`, the assertion fires loudly.
     debug_assert!(
@@ -1055,7 +1049,7 @@ fn filter_match_detail(filter: &CompiledFilter, raw_midi: &[u8]) -> Option<Filte
 
     // Message-type filter.
     //
-    // MIDI convention (Council review on PR #1175 finding #4): a
+    // MIDI convention: a
     // `NoteOn` with velocity 0 is semantically a `NoteOff` — many
     // devices use it for running-status efficiency. For message-type
     // classification we honour that: `0x90` with data byte 2 == 0
@@ -1083,8 +1077,7 @@ fn filter_match_detail(filter: &CompiledFilter, raw_midi: &[u8]) -> Option<Filte
         // validator accepts and the rest of the pipeline uses
         // (event_processor, action_executor, the Aftertouch trigger).
         // `MidiMessageType::ChannelPressure` is validator-rejected as
-        // reserved, so it must NOT be produced here (Copilot review on
-        // PR #1175).
+        // reserved, so it must NOT be produced here.
         0xD0 => Some(MidiMessageType::Aftertouch),
         0xE0 => Some(MidiMessageType::PitchBend),
         _ => None,
@@ -1132,7 +1125,7 @@ fn filter_match_detail(filter: &CompiledFilter, raw_midi: &[u8]) -> Option<Filte
 /// `None` when the filter constrains nothing.
 ///
 /// Normalizing an unconstrained filter to `None` at compile time
-/// (Council review on PR #1175) means the per-event hot path never
+/// means the per-event hot path never
 /// runs an `is_unconstrained()` check — a `CompiledRoute` either has
 /// no filter or a genuinely-constrained one. It also makes an empty
 /// `Some(filter)` behave identically to `filter: None` by
@@ -1161,7 +1154,7 @@ fn compile_filter(f: &SignalFilter) -> Option<CompiledFilter> {
 
 #[cfg(test)]
 mod osc_route_tests {
-    //! ADR-039-A Slice 1 (#1361): OSC inbound → route engine → MIDI output.
+    //! ADR-039-A: OSC inbound → route engine → MIDI output.
     use super::*;
     use conductor_core::actions::OscArg;
     use std::time::Instant;
@@ -1235,7 +1228,7 @@ mod osc_route_tests {
         );
     }
 
-    // ── ADR-039-A Slice 1b (#2324): OSC inbound → route engine → Art-Net ──
+    // ── ADR-039-A: OSC inbound → route engine → Art-Net ──
 
     fn osc_to_artnet_route() -> RouteConfig {
         RouteConfig {
@@ -1254,7 +1247,7 @@ mod osc_route_tests {
     #[test]
     fn osc_catch_all_route_produces_dmx_via_osctoartnet() {
         let engine = RouteEngine::compile(&[osc_to_artnet_route()]);
-        // OscToArtNet must be admitted (Slice 1b dispatch path).
+        // OscToArtNet must be admitted (it has a dispatch path).
         assert!(
             engine.excluded_routes().is_empty(),
             "OscToArtNet should be admitted, not excluded: {:?}",

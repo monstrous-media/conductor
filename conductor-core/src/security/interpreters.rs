@@ -1,12 +1,12 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Wrapper-chain resolution and interpreter classification (ADR-027 D3 3/N,
+//! Wrapper-chain resolution and interpreter classification (ADR-027 D3,
 //! spec §3.2).
 //!
 //! ## Why this exists
 //!
-//! The single biggest bypass of v1.0's `Shell` action gating was running an
+//! The single biggest bypass of the original `Shell` action gating was running an
 //! interpreter via a wrapper binary. `command = "/usr/bin/env python3 -c
 //! '…'"` walks straight past an interpreter blocklist that only checks
 //! `argv[0]`, because `argv[0]` is `/usr/bin/env` — not on the list — while
@@ -26,7 +26,7 @@
 //!    grant for raw `ShellExec` does **not** transitively grant the
 //!    ability to run a Python script.
 //!
-//! ## Scope of (3/N)
+//! ## Scope
 //!
 //! Pure functions — [`resolve_effective_executable`] and
 //! [`classify_interpreter`]. No call sites yet. The runtime path that
@@ -1337,7 +1337,7 @@ mod tests {
     // ─── chpst, runuser, schedtool, taskset ─────────────────────────
     //
     // These wrappers were dispatch-table residents without test coverage
-    // until #1058's review caught the gap. Each test exercises a
+    // until a review caught the gap. Each test exercises a
     // value-taking option (the security-critical option-parsing path —
     // wrong argv-counting here would shift the wrapped program offset
     // and let a value masquerade as the program).

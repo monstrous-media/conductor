@@ -220,13 +220,13 @@ fn bash_c_append_redirect_vetoed() {
 
 #[test]
 fn sh_c_read_redirect_allowed() {
-    // `<` is a READ — Council's explicit must-not-veto case.
+    // `<` is a READ — an explicit must-not-veto case.
     allow("sh", &["-c", "cat < ~/.conductor/config.toml"]);
 }
 
 #[test]
 fn sh_c_read_then_write_safe_allowed() {
-    // Council example: read protected, write /tmp → allowed.
+    // Read protected, write /tmp → allowed.
     allow("sh", &["-c", "cat ~/.conductor/config.toml > /tmp/out"]);
 }
 
@@ -299,7 +299,7 @@ fn awk_without_protected_redirect_allowed() {
     allow("awk", &["{ print $0 > \"/tmp/out\" }"]);
 }
 
-// ───── Council R1 round-1 bypasses (regression) ─────
+// ───── Regression: prior bypasses ─────
 
 #[test]
 fn cp_target_directory_flag_vetoed() {

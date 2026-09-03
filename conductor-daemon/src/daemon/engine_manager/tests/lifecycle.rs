@@ -71,7 +71,7 @@ port = 0
     );
 }
 
-/// ADR-042 Phase B-early bind gate (#1899): a non-loopback listener with no
+/// ADR-042 Phase B-early bind gate: a non-loopback listener with no
 /// approval is **withheld** (never binds), while a loopback listener in the same
 /// config binds unconditionally. Uses an injected gate whose keychain is
 /// unavailable → fail-closed; this proves the bind loop honours the gate verdict
@@ -336,7 +336,7 @@ network_acl = ["192.168.1.0/24"]
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn prepare_runtime_rejects_malformed_listener_config() {
-    // #2100 / ADR-044 Phase 1: PREPARE (`prepare_runtime`) is the fallible
+    // ADR-044 Phase 1: PREPARE (`prepare_runtime`) is the fallible
     // seam — it parses the network-listener set (among compiling the mapping
     // engine and normalizing endpoints) without installing anything. A config
     // whose listener ACL can't be parsed must fail PREPARE. Phase 2 runs this
@@ -380,7 +380,7 @@ network_acl = ["not-a-valid-cidr"]
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn prepare_runtime_builds_for_valid_config() {
-    // #2100 / ADR-044 Phase 1: PREPARE succeeds for a valid config (compiles
+    // ADR-044 Phase 1: PREPARE succeeds for a valid config (compiles
     // the mapping engine, normalizes endpoints, parses the loopback OSC
     // listener) — producing artifacts the infallible APPLY phase installs.
     let initial = create_test_config();
@@ -419,7 +419,7 @@ port = 0
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn save_config_rejects_unbuildable_config_atomically() {
-    // #2100 Phase 2 (ADR-044) — ATOMICITY: a SaveConfig whose config can't
+    // ADR-044 Phase 2 — ATOMICITY: a SaveConfig whose config can't
     // build (malformed listener ACL) is rejected BEFORE the commit, so
     // `live_config` is left untouched (no committed-but-stale window). PREPARE
     // runs before the mutate; its failure returns an error without publishing.
@@ -477,7 +477,7 @@ network_acl = ["not-a-valid-cidr"]
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn rejected_save_config_does_not_mutate_shell_security() {
-    // #2100 Phase 2 (ADR-044) R2 (Council) — `set_shell_security` is a side
+    // ADR-044 Phase 2 — `set_shell_security` is a side
     // effect, so it must run only in the infallible APPLY (post-commit), never
     // pre-commit. A SaveConfig whose config flips `allow_unsandboxed` to false
     // but can't build (malformed ACL) is rejected in PREPARE; the executor's
@@ -561,7 +561,7 @@ network_acl = ["not-a-valid-cidr"]
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn apply_committed_guarded_reprepares_on_revision_mismatch() {
-    // #2100 Phase 2 (ADR-044) — the revision-equivalence guard. If the config
+    // ADR-044 Phase 2 — the revision-equivalence guard. If the config
     // committed between PREPARE and APPLY differs from what was prepared (a
     // future content-transforming ConfigOp, or — defensively — a competing
     // commit), the prepared bundle is DISCARDED and re-prepared from the
@@ -628,7 +628,7 @@ async fn apply_committed_guarded_reprepares_on_revision_mismatch() {
 
     // APPLY the stale prepared-A: the guard must detect the revision mismatch
     // and re-prepare from the committed B.
-    // Infallible (ADR-044 / Council #2168 R3): returns an ApplyReport, not a Result.
+    // Infallible (ADR-044): returns an ApplyReport, not a Result.
     manager
         .apply_committed_guarded(prepared_a, "test-guard")
         .await;
@@ -647,7 +647,7 @@ async fn apply_committed_guarded_reprepares_on_revision_mismatch() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn failed_reload_config_restores_state_not_stuck_reloading() {
-    // #2100 Phase 2 (Council #2168 R1) — a FAILED reload must restore the
+    // ADR-044 Phase 2 — a FAILED reload must restore the
     // pre-reload lifecycle state, not leave the daemon stuck in `Reloading`.
     // Otherwise the top-of-`reload_config` "skip while Reloading" guard would
     // silently no-op every subsequent reload (run_loop only logs the error and
@@ -716,7 +716,7 @@ port = 9000
 
 #[tokio::test]
 async fn rebuild_connector_registry_replaces_contents_in_place() {
-    // ADR-031 P1B slice 2 — `reload_config()` rebuilds the registry
+    // ADR-031 P1B — `reload_config()` rebuilds the registry
     // from the new config in place. Test the helper directly: start
     // with a registry containing alias "old", call the helper with
     // a config that has only "new", verify the swap.
@@ -775,7 +775,7 @@ async fn rebuild_connector_registry_replaces_contents_in_place() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // Enigo requires display server
 async fn test_engine_manager_populates_connector_registry_from_config() {
-    // ADR-031 P1B slice 1 — the daemon must own a ConnectorRegistry
+    // ADR-031 P1B — the daemon must own a ConnectorRegistry
     // built from config, exposed via SharedDaemonStateRefs so MCP /
     // IPC code paths can read the live signal-routing graph.
     //
@@ -845,7 +845,7 @@ async fn test_engine_manager_populates_connector_registry_from_config() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn reload_from_cached_config_rebuilds_connector_registry() {
-    // #1365 — `reload_from_cached_config` (the profile-switch /
+    // `reload_from_cached_config` (the profile-switch /
     // batch-apply reload path) rebuilt the route engine but NOT the
     // connector registry. Connectors added via `conductor_batch_changes`
     // never reached the runtime registry that `conductor_get_resolved_routing_graph`
@@ -944,9 +944,9 @@ async fn reload_from_cached_config_rebuilds_connector_registry() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn reload_config_rebuilds_connector_registry() {
-    // #1602 Gap A — symmetric twin of `reload_from_cached_config_rebuilds_connector_registry`.
+    // Symmetric twin of `reload_from_cached_config_rebuilds_connector_registry`.
     // `reload_config` (the non-cached / file-watcher / IPC reload
-    // path) was silently skipping the registry rebuild — the #1367
+    // path) was silently skipping the registry rebuild — an earlier
     // fix comment falsely claimed it already did, when in fact only
     // the cached path did. Result: after any non-cached reload,
     // `list_connectors` returned the old view until daemon restart.
@@ -989,7 +989,7 @@ async fn reload_config_rebuilds_connector_registry() {
         .unwrap();
 
     // Write a NEW config to disk: one binding + one explicit
-    // (Output-direction, per #1602 §3.4) connector.
+    // (Output-direction) connector.
     use conductor_core::config::types::{ConnectorDirection, EndpointConfig, EndpointKind};
     // ADR-035 Phase 2: Config::load now rejects legacy [[bindings]]/
     // [[connectors]], so the round-trip-through-disk fixture must be
@@ -1049,7 +1049,7 @@ async fn reload_config_rebuilds_connector_registry() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn known_good_backup_comes_from_validated_in_memory_config() {
-    // #2173: the post-validation `*.toml.known_good` backup must be written from
+    // The post-validation `*.toml.known_good` backup must be written from
     // the VALIDATED IN-MEMORY config, not `std::fs::copy`-ied from the on-disk
     // file (which a concurrent edit could mutate between load+validate and the
     // copy — TOCTOU). Deterministic witness: the on-disk config carries a
@@ -1106,7 +1106,7 @@ async fn known_good_backup_comes_from_validated_in_memory_config() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn save_config_ipc_rebuilds_connector_registry() {
-    // #2051 (ADR-043 D2) — the `SaveConfig` IPC handler committed the new
+    // ADR-043 D2 — the `SaveConfig` IPC handler committed the new
     // config via `live_config.mutate(ReplaceWhole)` but returned success
     // WITHOUT rebuilding the daemon's runtime connector registry /
     // device_output_map / route engine. A GUI-created endpoint therefore
@@ -1188,10 +1188,10 @@ async fn save_config_ipc_rebuilds_connector_registry() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn sync_config_after_apply_rebuilds_connector_registry() {
-    // #1598 Phase 2 Step B regression — third twin of
-    // `reload_config_rebuilds_connector_registry` (#1602 Gap A)
-    // and `reload_from_cached_config_rebuilds_connector_registry`
-    // (#1365 via #1367). The LLM plan-apply path
+    // Regression — third twin of
+    // `reload_config_rebuilds_connector_registry`
+    // and `reload_from_cached_config_rebuilds_connector_registry`.
+    // The LLM plan-apply path
     // (`sync_config_after_apply`, called from `IpcCommand::ApplyPlan`
     // at engine_manager.rs:2239) updates live_config + route_engine
     // + mapping_engine but was NOT rebuilding `connector_registry`.
@@ -1301,7 +1301,7 @@ async fn sync_config_after_apply_rebuilds_connector_registry() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn reload_from_cached_config_reapplies_probe_toggle() {
-    // #2071 (ADR-043 D2) — the cached profile-switch path
+    // ADR-043 D2 — the cached profile-switch path
     // (`reload_from_cached_config`) committed the config and rebuilt the
     // connector registry but did NOT re-apply the master SysEx probe
     // toggle (nor the network listeners, port rescan, device_output_map,
@@ -1354,7 +1354,7 @@ async fn reload_from_cached_config_reapplies_probe_toggle() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn sync_config_after_apply_reapplies_probe_toggle() {
-    // #2071 — the LLM plan-apply path (`sync_config_after_apply`) skipped
+    // The LLM plan-apply path (`sync_config_after_apply`) skipped
     // even MORE of the rebuild than the cached path: no probe toggle,
     // listeners, rate limiter, capture flags, port rescan,
     // device_output_map, or device status. The same unification fix routes
@@ -1406,7 +1406,7 @@ async fn sync_config_after_apply_reapplies_probe_toggle() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn sync_config_after_apply_does_not_write_profile_on_prepare_failure() {
-    // #2316 — split-brain regression. `sync_config_after_apply` (the LLM
+    // Split-brain regression. `sync_config_after_apply` (the LLM
     // plan-apply path) previously saved the new config to the profile file on
     // disk BEFORE calling the fallible `prepare_runtime`. A config that fails
     // PREPARE (e.g. a malformed listener ACL) therefore left the profile file
@@ -1484,9 +1484,9 @@ network_acl = ["not-a-valid-cidr"]
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn sync_config_after_apply_does_not_write_the_user_file() {
-    // ADR-043 Option C (#2554): plan-apply commits to `live.toml` (the sole
+    // ADR-043 Option C: plan-apply commits to `live.toml` (the sole
     // durable authority) and rebuilds the runtime, but must NOT write back to the
-    // user/profile file. (Previously #2320 covered best-effort handling of a §D11
+    // user/profile file. (Earlier behaviour covered best-effort handling of a §D11
     // profile write-through *failure*; that write-through is now removed — the
     // authority is `live.toml`, which boot resumes and the GUI reads via
     // GetConfigBody.) The config flips the probe toggle so APPLY is observable.
@@ -1494,7 +1494,7 @@ async fn sync_config_after_apply_does_not_write_the_user_file() {
 
     let tmp = NamedTempFile::new().unwrap();
     let config_path = tmp.path().to_path_buf();
-    // #2554 (cloud-review): seed the user file with a sentinel so "unchanged" is a
+    // Seed the user file with a sentinel so "unchanged" is a
     // strong assertion — a write-back would replace it (not relying on "empty").
     let user_file_sentinel = "# untouched-by-plan-apply-option-c\n";
     std::fs::write(&config_path, user_file_sentinel).unwrap();
@@ -1533,8 +1533,8 @@ async fn sync_config_after_apply_does_not_write_the_user_file() {
         user_file_sentinel,
         "plan-apply must NOT write the user/profile file (Option C removes the §D11 write-through)"
     );
-    // #2554 (Council): no stale self-write-suppress arm left behind on the success
-    // path — the mutate writes only live.toml (unwatched post-#2551).
+    // No stale self-write-suppress arm left behind on the success
+    // path — the mutate writes only live.toml (unwatched).
     assert!(
         manager.config_write_suppress.lock().await.is_none(),
         "plan-apply must not arm config_write_suppress (the live.toml write is unwatched)"
@@ -1544,7 +1544,7 @@ async fn sync_config_after_apply_does_not_write_the_user_file() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn ipc_dispatch_backstop_rebuilds_after_out_of_band_commit() {
-    // #2071 / ADR-043 Q2 — the rebuild guarantee must be STRUCTURAL: a
+    // ADR-043 Q2 — the rebuild guarantee must be STRUCTURAL: a
     // committed `LiveConfig` mutation must not be able to leave the runtime
     // registry/bindings stale even if the committing handler forgets to
     // reconcile. `handle_ipc_request` reconciles after EVERY command
@@ -1645,9 +1645,9 @@ async fn ipc_dispatch_backstop_rebuilds_after_out_of_band_commit() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new enumerates MIDI ports
 async fn reload_config_extends_device_output_map_with_connectors() {
-    // #1611 — output-side twin of #1602.
+    // Output-side twin of the registry-rebuild regression tests.
     //
-    // Symptom (issue #1611): `MidiForward { target = "absynth_output" }`
+    // Symptom: `MidiForward { target = "absynth_output" }`
     // emitted "MIDI output port 'absynth_output' not found" even though
     // a matching output connector existed in config, because
     // `resolve_output_port` only consulted `device_output_map`, which
@@ -1656,7 +1656,7 @@ async fn reload_config_extends_device_output_map_with_connectors() {
     // Fix: `device_output_map` now carries (output/bidirectional-alias →
     // physical-port) entries from the unified `build_output_map` over the
     // normalized endpoint set, at every store site (reload_config /
-    // reload_from_cached_config / hot-plug rescan) — ADR-035 Slice 9.5.
+    // reload_from_cached_config / hot-plug rescan) — ADR-035.
     //
     // Smallest provable shape uses `EndpointKind::MidiVirtualPort`
     // — alias maps directly to `port_name` without needing a real
@@ -1732,9 +1732,9 @@ async fn reload_config_extends_device_output_map_with_connectors() {
 #[ignore] // Requires CoreMIDI (macOS) / ALSA seq (Linux) — creates real OS virtual ports
 #[cfg(not(target_os = "windows"))]
 async fn reload_creates_and_tears_down_virtual_midi_port() {
-    // #2063: a MidiVirtualPort endpoint must materialize a real OS MIDI port on
+    // A MidiVirtualPort endpoint must materialize a real OS MIDI port on
     // reload (so routes resolve + external apps see it), and removing the
-    // endpoint must tear the OS port down. Mirrors the #1611 reload setup.
+    // endpoint must tear the OS port down. Mirrors the output-map reload setup.
     use conductor_core::config::types::{ConnectorDirection, EndpointConfig, EndpointKind};
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -1820,9 +1820,9 @@ async fn reload_creates_and_tears_down_virtual_midi_port() {
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // Enigo requires display server
 async fn test_engine_manager_populates_route_engine_from_config() {
-    // ADR-031 P2B slice 5 — the daemon must own a RouteEngine
+    // ADR-031 P2B — the daemon must own a RouteEngine
     // built from `config.routes`, exposed at the stage-9 hook
-    // (slice 6 wires the actual call site). Smallest end-to-end
+    // (the actual call site is wired separately). Smallest end-to-end
     // check: build a config with one route, construct an
     // EngineManager, look up via the route_engine field's
     // `route_destinations()` for the source alias.
@@ -1936,7 +1936,7 @@ async fn run_probe_device_identity_returns_no_paired_output_when_port_unknown() 
     }
 }
 
-/// ADR-045 D5 invariant 3 (#2493): with NO audit sink available, network
+/// ADR-045 D5 invariant 3: with NO audit sink available, network
 /// listeners refuse to start (fail-closed) — their audit trail is a
 /// security control (ADR-042), not telemetry. The rest of the daemon keeps
 /// running (fail-open is exercised implicitly by every other test).

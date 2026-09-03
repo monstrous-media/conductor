@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Stateful/ConfigChange/HardwareIO/ArtifactRender MCP tool definitions.
-//! Split out of `mcp_tools.rs` in #2601 (file exceeded the review window).
+//! Split out of `mcp_tools.rs` (file exceeded the review window).
 
 use super::super::mcp_types::ToolDefinition;
 use serde_json::json;
@@ -164,18 +164,16 @@ pub(super) fn write_tier_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["mode", "index"]
             }),
         },
-        // Batch operations (P3-07; ADR-031 P3 slice 12 = gap F — first
-        // publication of `conductor_batch_changes` on the daemon's MCP
-        // socket. Until this slice the tool existed only in the
-        // executor's dispatch (line ~2373 of this file) + the GUI-side
-        // duplicate at `conductor-gui/src-tauri/src/llm_commands.rs`
-        // (issue #1138 tracks deduplicating the two schemas). External
-        // MCP clients calling `tools/list` couldn't see this tool
-        // before slice 12 — so they could `conductor_list_routes` but
-        // had no way to author route mutations.
+        // Batch operations (ADR-031 P3, gap F — first publication of
+        // `conductor_batch_changes` on the daemon's MCP socket. Previously
+        // the tool existed only in the executor's dispatch (line ~2373 of
+        // this file) plus a duplicate schema in the downstream GUI client.
+        // External MCP clients calling `tools/list` couldn't see this tool
+        // before then — so they could `conductor_list_routes` but had no
+        // way to author route mutations.
         //
-        // Schema mirrors the GUI-side duplicate (issue #1138). ADR-035
-        // Phase 2 #1748 removed the connector ops (create/update/delete_connector)
+        // Schema mirrors the GUI-side duplicate. ADR-035 Phase 2 removed
+        // the connector ops (create/update/delete_connector)
         // — endpoints are authored via the singleton conductor_create_endpoint.
         ToolDefinition {
             name: "conductor_batch_changes".to_string(),
@@ -349,7 +347,7 @@ pub(super) fn write_tier_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["device", "reset_type"]
             }),
         },
-        // Stateful: Switch mode (v4.26.69)
+        // Stateful: Switch mode
         ToolDefinition {
             name: "conductor_switch_mode".to_string(),
             description: "DEPRECATED (ADR-040): prefer conductor_set_mode. Switches the active mapping mode by name WITHOUT acquiring or releasing a manual lock; if a mode is locked, use conductor_unlock_mode first or conductor_set_mode to relock.".to_string(),
@@ -364,7 +362,7 @@ pub(super) fn write_tier_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["mode"]
             }),
         },
-        // ADR-040 D4 §4.2 (Slice 4c): mode set + lock / unlock / status.
+        // ADR-040 D4 §4.2: mode set + lock / unlock / status.
         ToolDefinition {
             name: "conductor_set_mode".to_string(),
             description: "Set the active mapping mode by name and (by default) lock it against automatic per-app/window switching. Pass lock=false to switch without locking. Prefer this over conductor_switch_mode.".to_string(),
@@ -382,7 +380,7 @@ pub(super) fn write_tier_tool_definitions() -> Vec<ToolDefinition> {
             description: "Release the manual mode lock, resuming automatic per-app/window mode switching.".to_string(),
             input_schema: json!({ "type": "object", "properties": {} }),
         },
-        // Stateful: Switch profile (Phase 1 - Issue #323)
+        // Stateful: Switch profile (Phase 1)
         ToolDefinition {
             name: "conductor_switch_profile".to_string(),
             description: "Switch the active profile by name and config path. The profile's config will be hot-loaded into the daemon.".to_string(),
@@ -401,7 +399,7 @@ pub(super) fn write_tier_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["profile_name", "config_path"]
             }),
         },
-        // HardwareIO: Send MIDI (v4.26.67)
+        // HardwareIO: Send MIDI
         ToolDefinition {
             name: "conductor_send_midi".to_string(),
             description: "Send MIDI messages to a connected output port. Low risk: standard MIDI messages (note, CC, program change) auto-confirm.".to_string(),

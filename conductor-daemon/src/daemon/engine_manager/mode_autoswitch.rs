@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-040 Slice 5 (#1768) — app/window → mode auto-switch producer.
+//! ADR-040 — app/window → mode auto-switch producer.
 //!
 //! The app detector ([`crate::daemon::app_detector`]) emits a
 //! [`DaemonCommand::ResolveContextMode`](crate::daemon::types::DaemonCommand)
@@ -24,7 +24,7 @@ impl EngineManager {
     /// `app` is the frontmost application *name* (the key `[per_app_modes].rules`
     /// and `window_rules` match on — distinct from the bundle id that profiles
     /// key on). `window_title` is the reconciled title (`None` after an app
-    /// change invalidated the stale cache, §4.5; populated by Slice 6).
+    /// change invalidated the stale cache, §4.5; populated elsewhere).
     ///
     /// Best-effort: a missing `[per_app_modes]`, a no-match-no-default resolve, a
     /// lock-suppressed switch, or an unknown target mode all leave the mode
@@ -40,8 +40,8 @@ impl EngineManager {
         let rules = match ResolverRules::compile(&pam) {
             Ok(rules) => rules,
             Err(e) => {
-                // The config validator already rejects bad regexes at load
-                // (Slice 2); this is the defensive boundary.
+                // The config validator already rejects bad regexes at load;
+                // this is the defensive boundary.
                 warn!("per_app_modes resolve skipped — rule compile failed: {e}");
                 return;
             }

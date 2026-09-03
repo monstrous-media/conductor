@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Durable active-profile IDENTITY, owned by the daemon (#2564, ADR-034).
+//! Durable active-profile IDENTITY, owned by the daemon (ADR-034).
 //!
 //! `<state_dir>/active_profile.json` records *which profile is active* —
 //! `{version, profile_id, name, config_path}` — written atomically by the
@@ -15,7 +15,7 @@
 //!   watcher / "Overwrite user.toml" target — the daemon still reloads content
 //!   from `live.toml` (the sole authority), never from this pointer.
 //!
-//! Design notes (Council-consulted, #2564):
+//! Design notes:
 //! - **Corrupt ≠ absent.** A present-but-unparseable file is `Corrupt` and the
 //!   boot precedence falls through to the *default config*, NOT the GUI's
 //!   `profiles.json` migration fallback — otherwise a corrupt daemon file would
@@ -37,7 +37,7 @@ use tracing::warn;
 pub struct PersistedActiveProfile {
     pub version: u8,
     /// The GUI's profile id (`profile-<timestamp>`); `None` for the built-in
-    /// Default (explicit state — see module docs) and for pre-#2564 switches
+    /// Default (explicit state — see module docs) and for earlier switches
     /// that didn't carry an id.
     pub profile_id: Option<String>,
     pub name: String,
@@ -88,7 +88,7 @@ pub fn load(state_dir: &Path) -> LoadOutcome {
         }
     };
     match serde_json::from_str::<PersistedActiveProfile>(&contents) {
-        // Version gate (Council #2565): only the schema we know. A future
+        // Version gate: only the schema we know. A future
         // version that happens to deserialize must not be silently
         // reinterpreted as v1 — treat as Corrupt (→ default config at boot,
         // never the manifest migration).
@@ -113,7 +113,7 @@ pub fn load(state_dir: &Path) -> LoadOutcome {
 }
 
 /// Atomically persist the identity, aligned with the `StateManager::save`
-/// pattern (Copilot #2565): tmp write → owner-only perms on Unix → fsync →
+/// pattern: tmp write → owner-only perms on Unix → fsync →
 /// atomic rename, so a crash/power loss right after a profile switch can't
 /// lose or expose the identity update. `config_path` is absolutized against
 /// the current dir if relative. Errors are returned for the caller to WARN
@@ -123,7 +123,7 @@ pub fn persist(state_dir: &Path, profile: &PersistedActiveProfile) -> std::io::R
     use std::io::Write;
 
     let mut record = profile.clone();
-    // Version symmetry with load()'s `version == 1` gate (Council #2565 R2): a
+    // Version symmetry with load()'s `version == 1` gate: a
     // caller-supplied stray version would write a file the next boot declares
     // Corrupt — a self-inflicted default-config boot. The writer owns the
     // schema version; force it.
@@ -134,17 +134,17 @@ pub fn persist(state_dir: &Path, profile: &PersistedActiveProfile) -> std::io::R
     let json = serde_json::to_string_pretty(&record)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     let path = file_path(state_dir);
-    // Pid-suffixed tmp name (Council #2565): callers are the single-threaded
+    // Pid-suffixed tmp name: callers are the single-threaded
     // engine loop + pre-engine startup migration, so there is no in-process
     // concurrency today — but a unique name makes a cross-process collision
     // (however the singleton flock is bypassed) harmless rather than a torn
     // write. load() only ever reads the canonical name.
     let tmp = path.with_extension(format!("json.tmp.{}", std::process::id()));
 
-    // Create with owner-only mode ATOMICALLY (Council #2565: creating then
+    // Create with owner-only mode ATOMICALLY (creating then
     // chmod-ing leaves a window where the record is briefly world-readable
     // under a permissive umask — create-with-0600 removes it) and with
-    // `create_new` (Council R2: fails on a pre-existing path, so a planted
+    // `create_new` (fails on a pre-existing path, so a planted
     // symlink or crash-stale tmp can't be silently followed/overwritten). A
     // stale tmp from a crashed earlier run of the SAME pid is removed and
     // retried once — the pid suffix makes a live concurrent writer at that
@@ -175,7 +175,7 @@ pub fn persist(state_dir: &Path, profile: &PersistedActiveProfile) -> std::io::R
     std::fs::rename(&tmp, &path)?;
 
     // Fsync the parent directory so the rename itself is durable across power
-    // loss (Council #2565: POSIX only guarantees the rename's durability once
+    // loss (POSIX only guarantees the rename's durability once
     // the containing directory is synced).
     #[cfg(unix)]
     {
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn persist_forces_version_1_regardless_of_caller_input() {
-        // Council #2565 R2: writer/reader version symmetry — a stray caller
+        // Writer/reader version symmetry — a stray caller
         // version must not produce a file the next boot declares Corrupt.
         let tmp = tempfile::tempdir().unwrap();
         let mut p = sample(Some("profile-123"));
@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn persist_recovers_from_a_crash_stale_tmp() {
-        // Council #2565 R2: create_new fails on a pre-existing tmp (stale from
+        // create_new fails on a pre-existing tmp (stale from
         // a crashed run / planted path) — persist removes it and retries once.
         let tmp = tempfile::tempdir().unwrap();
         let stale = tmp
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn unknown_version_is_corrupt_not_valid() {
-        // Council #2565: a future schema version that happens to deserialize
+        // A future schema version that happens to deserialize
         // must not be silently reinterpreted as v1 — boot falls to the default
         // config (never the manifest migration).
         let tmp = tempfile::tempdir().unwrap();
@@ -323,7 +323,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn persist_sets_owner_only_permissions() {
-        // Copilot #2565: align with StateManager::save — the state dir holds
+        // Align with StateManager::save — the state dir holds
         // user-private data, so the identity file is rw------- like state.json.
         use std::os::unix::fs::PermissionsExt;
         let tmp = tempfile::tempdir().unwrap();

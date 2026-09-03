@@ -1,12 +1,12 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager` methods extracted from `engine_manager::mod` (refactor #2073).
+//! `EngineManager` methods extracted from `engine_manager::mod`.
 
 use super::*;
 
 impl EngineManager {
-    /// ADR-025 Phase 3.F (#886): abort the deferred PC-observation check
+    /// ADR-025 Phase 3.F: abort the deferred PC-observation check
     /// if one is pending. Called both when a new check is about to be
     /// scheduled (so the old one doesn't fire against a stale expected
     /// set) and at every shutdown entry point (so a late-wake can't
@@ -29,7 +29,7 @@ impl EngineManager {
             handle.abort();
         }
     }
-    /// ADR-025 Phase 3.F runtime check (#886): after each config-swap,
+    /// ADR-025 Phase 3.F runtime check: after each config-swap,
     /// wait a grace period and then warn about any `(device, channel)`
     /// tuples the config expects but that are still absent from the
     /// control-state store snapshot when the deferred check fires.

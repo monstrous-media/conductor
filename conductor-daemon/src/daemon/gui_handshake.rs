@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-027 §D19 — GUI launch handshake (#1215).
+//! ADR-027 §D19 — GUI launch handshake.
 //!
 //! Phase 1A's peer pinning defeats most GUI impersonation, but a
 //! same-user attacker who places a binary at a path the user happens
@@ -39,8 +39,8 @@ pub const HANDSHAKE_NONCE_BYTES: usize = 32;
 /// be compared against arbitrary `[u8; 32]` keys, and so the
 /// constant-time `PartialEq` impl below can't be bypassed.
 ///
-/// **Equality is constant-time** via `subtle::ConstantTimeEq`
-/// (Council review on PR #1222). A naive derived `PartialEq` on
+/// **Equality is constant-time** via `subtle::ConstantTimeEq`.
+/// A naive derived `PartialEq` on
 /// `[u8; 32]` short-circuits on the first byte mismatch, which
 /// leaks the matching prefix length to a local attacker who can
 /// time the daemon's IPC responses. For a 256-bit nonce on a
@@ -153,8 +153,7 @@ impl GuiHandshakeRegistry {
     /// poison-protected and returns `NoPending` on the same
     /// condition, so the registry overall fails closed (no
     /// handshake match → no elevation) — but the warning surfaces
-    /// the prior panic so operators can investigate
-    /// (Council review on PR #1222).
+    /// the prior panic so operators can investigate.
     pub fn register_pending(&self, child_pid: u32, nonce: HandshakeNonce) {
         match self.pending.lock() {
             Ok(mut pending) => {
@@ -202,7 +201,7 @@ impl GuiHandshakeRegistry {
     /// actually connects. Idempotent.
     ///
     /// On poisoned `Mutex`, logs a warning. Mirrors
-    /// `register_pending`'s posture (Council review on PR #1222).
+    /// `register_pending`'s posture.
     pub fn forget(&self, child_pid: u32) {
         match self.pending.lock() {
             Ok(mut pending) => {

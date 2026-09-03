@@ -25,7 +25,7 @@ fn default_enabled_true() -> bool {
     true
 }
 
-/// Format a serializable value as compact JSON, falling back to Debug format (#271)
+/// Format a serializable value as compact JSON, falling back to Debug format
 fn format_value<T: Serialize + Debug>(v: &T) -> String {
     serde_json::to_string(v).unwrap_or_else(|_| format!("{:?}", v))
 }
@@ -96,7 +96,7 @@ pub enum ConfigChange {
         action: ActionConfig,
         description: Option<String>,
         /// ADR-038: fire the action AND let the event continue to routes.
-        /// `#[serde(default)]` so plans serialized before Slice 6 (no field)
+        /// `#[serde(default)]` so plans serialized before this field existed
         /// still deserialize to the pre-ADR-038 swallow behaviour.
         #[serde(default)]
         let_through: bool,
@@ -120,7 +120,7 @@ pub enum ConfigChange {
     /// Delete a mode
     DeleteMode { name: String },
 
-    /// Restore a previously-deleted mapping at its ORIGINAL index (#2121).
+    /// Restore a previously-deleted mapping at its ORIGINAL index.
     ///
     /// This is the inverse of [`ConfigChange::DeleteMapping`]. Unlike
     /// `CreateMapping` — which always appends — `InsertMapping` preserves the
@@ -137,7 +137,7 @@ pub enum ConfigChange {
         let_through: bool,
     },
 
-    /// Restore a previously-deleted mode IN FULL at its ORIGINAL index (#2121).
+    /// Restore a previously-deleted mode IN FULL at its ORIGINAL index.
     ///
     /// This is the inverse of [`ConfigChange::DeleteMode`]. `CreateMode` only
     /// recreates an empty mode (name + color), silently dropping the mode's
@@ -148,9 +148,9 @@ pub enum ConfigChange {
         mode: conductor_core::config::Mode,
     },
 
-    /// Create a unified endpoint in [[endpoints]] (ADR-035 Slice 8). Pushed onto
-    /// `config.endpoints` by `apply()`. `direction` is required (no serde default
-    /// — R2 P1); `protocol` is optional (inferred from `kind` at load when
+    /// Create a unified endpoint in [[endpoints]] (ADR-035). Pushed onto
+    /// `config.endpoints` by `apply()`. `direction` is required (no serde
+    /// default); `protocol` is optional (inferred from `kind` at load when
     /// omitted). Alias must be unique across endpoints + bindings + connectors
     /// (the shared namespace `normalize_to_endpoints` enforces at load).
     CreateEndpoint {
@@ -167,10 +167,10 @@ pub enum ConfigChange {
         channels: Vec<u8>,
     },
 
-    /// Create a new route in [[routes]] (ADR-031 P3 § 5.4 — issue #1143).
+    /// Create a new route in [[routes]] (ADR-031 P3 § 5.4).
     ///
     /// Pushed onto `config.routes` by `apply()`. The ConfigPlan-level
-    /// `validate_config` call (PR #1025) catches structural problems —
+    /// `validate_config` call catches structural problems —
     /// nonexistent endpoint aliases, self-referencing routes,
     /// A→B + B→A cycles, cross-protocol routes without a compatible
     /// transform — before the change is committed; the per-variant
@@ -191,7 +191,7 @@ pub enum ConfigChange {
     },
 
     /// Delete a route from [[routes]] by 0-based index (ADR-031 P3
-    /// § 5.4 — issue #1143). Index is into the route list as it
+    /// § 5.4). Index is into the route list as it
     /// appears at plan-apply time — the ConfigPlan TOCTOU
     /// machinery already guards against the underlying list mutating
     /// between plan creation and apply (base_state_hash), so the
@@ -200,7 +200,7 @@ pub enum ConfigChange {
 
     /// Replace the route at 0-based `index` with a new RouteConfig
     /// composed from the same fields as `CreateRoute` (ADR-031 P3
-    /// § 5.4 — issue #1143). Total-update semantics: the LLM
+    /// § 5.4). Total-update semantics: the LLM
     /// supplies the complete new shape, the apply replaces the
     /// whole entry. Same TOCTOU guarantees as `DeleteRoute`.
     /// `from`/`to` non-empty enforced at apply-time; structural
@@ -346,23 +346,23 @@ pub struct ConfigPlan {
     #[serde(default)]
     pub change_descriptions: Vec<String>,
 
-    /// Validation warnings for the proposed config (v4.26.77)
+    /// Validation warnings for the proposed config
     #[serde(default)]
     pub validation_warnings: Vec<String>,
 
-    /// Validation errors for the proposed config (v4.26.77)
+    /// Validation errors for the proposed config
     #[serde(default)]
     pub validation_errors: Vec<String>,
 
     /// Set when this plan was produced via a DEPRECATED tool that delegated to
-    /// the canonical codepath (ADR-035 Slice 8). Surfaces the replacement tool +
+    /// the canonical codepath (ADR-035). Surfaces the replacement tool +
     /// removal horizon to the caller. `None` for plans from non-deprecated tools.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deprecation: Option<Deprecation>,
 }
 
 /// Structured deprecation notice attached to a [`ConfigPlan`] produced by a
-/// deprecated tool (ADR-035 §4.5 R2). Mirrors the documented response shape:
+/// deprecated tool (ADR-035 §4.5). Mirrors the documented response shape:
 /// `{ since, replacement, removal }`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Deprecation {
@@ -389,7 +389,7 @@ impl ConfigPlan {
         let now = Utc::now();
         let change_descriptions = changes.iter().map(|c| c.description()).collect();
 
-        // Validate proposed config by applying changes to a clone (v4.26.77)
+        // Validate proposed config by applying changes to a clone
         let mut proposed = current_config.clone();
         let mut validation_warnings = Vec::new();
         let mut validation_errors = Vec::new();
@@ -463,9 +463,9 @@ impl ConfigPlan {
     ///
     /// Thin wrapper over [`ConfigPlan::apply_atomic`] kept for call sites that
     /// don't need the applied-change count. It is **not** a separate, lighter
-    /// code path: #2115 (clawpatch #2103) flagged the previous implementation,
-    /// which ran only the TOCTOU `validate_state` check and then mutated the
-    /// caller's config in place, as a bypass of the ADR-027 D2 post-mutation
+    /// code path: the previous implementation, which ran only the TOCTOU
+    /// `validate_state` check and then mutated the caller's config in place,
+    /// was a bypass of the ADR-027 D2 post-mutation
     /// `validate_config` gate and the D8 keystroke deny-list. Delegating keeps a
     /// single validated, atomic apply path so an invalid plan can never be
     /// silently committed (and the caller's config is left untouched on error).
@@ -507,7 +507,7 @@ impl ConfigPlan {
         let mut config_clone = config.clone();
         let changes_count = self.changes.len();
 
-        // Pre-process changes to avoid index drift (#259)
+        // Pre-process changes to avoid index drift
         let changes = reorder_for_index_safety(self.changes);
 
         // Apply all changes to the clone
@@ -516,8 +516,8 @@ impl ConfigPlan {
         }
 
         // ADR-027 D2 — re-validate the post-mutation config before
-        // committing. Audit Attack Chain C: previously this method
-        // mutated the caller's config without revalidating, so a
+        // committing. Previously this method mutated the caller's
+        // config without revalidating, so a
         // plan that produced an invalid configuration (empty
         // Keystroke keys, unknown LED scheme, shell command failing
         // the metacharacter check, etc.) was silently applied. With
@@ -525,7 +525,7 @@ impl ConfigPlan {
         // the post-state passes the same structural validator that
         // runs on file load.
         //
-        // PR #1025 review: call `validate_config` directly rather
+        // Call `validate_config` directly rather
         // than `validate_for_loading`. The latter prints all
         // validation warnings via `eprintln!` (fine for the
         // file-load path, noisy on every plan apply) and wraps
@@ -535,9 +535,8 @@ impl ConfigPlan {
         // route warnings through `tracing` instead of stderr.
         let report = conductor_core::config::validation::validate_config(&config_clone);
         for w in &report.warnings {
-            // PR #1025 round-2 review: `tracing` auto-binds the
-            // event's `message` field to the trailing string
-            // literal. A structured field also named `message`
+            // `tracing` auto-binds the event's `message` field to
+            // the trailing string literal. A structured field also named `message`
             // would clobber that in JSON sinks and be confusing in
             // text output. Use `finding_message` so the per-warning
             // text is preserved alongside the human label without
@@ -555,7 +554,7 @@ impl ConfigPlan {
             });
         }
 
-        // ADR-027 D8 save-time deny-list (issue #1040). The structural
+        // ADR-027 D8 save-time deny-list. The structural
         // validator above doesn't know about the keystroke deny-list —
         // that list lives in `daemon::keystroke_policy` because it's a
         // runtime enforcement concern. Catching deny-listed combos at
@@ -794,7 +793,7 @@ impl ConfigPlan {
 /// Panics if Config serialization fails — this should never happen since
 /// all Config types implement Serialize with standard serde types. A panic
 /// is preferable to silently producing an empty-string hash that would
-/// make all TOCTOU comparisons pass (#260).
+/// make all TOCTOU comparisons pass.
 fn hash_config(config: &Config) -> String {
     let serialized = serde_json::to_string(config)
         .expect("Config serialization failed — all Config types implement Serialize");
@@ -803,7 +802,7 @@ fn hash_config(config: &Config) -> String {
     hex::encode(hasher.finalize())
 }
 
-/// Adjust index-based operations to account for prior deletes in the same mode (#259).
+/// Adjust index-based operations to account for prior deletes in the same mode.
 ///
 /// All plan indices reference the original config state, but sequential application
 /// shifts indices after each delete. This function adjusts DeleteMapping and
@@ -863,7 +862,7 @@ fn reorder_for_index_safety(changes: Vec<ConfigChange>) -> Vec<ConfigChange> {
 }
 
 /// Walk every `Action::Keystroke` reachable from `config` and check it
-/// against the keystroke deny-list (ADR-027 D8, issue #1040). Returns
+/// against the keystroke deny-list (ADR-027 D8). Returns
 /// `Ok(())` when all combos are safe, or `Err(msg)` describing every
 /// denied combo found.
 ///
@@ -991,7 +990,7 @@ pub fn apply_change(config: &mut Config, change: ConfigChange) -> Result<(), Pla
                 trigger,
                 action,
                 description,
-                // ADR-038 Slice 6: threaded from the MCP create_mapping arg.
+                // ADR-038: threaded from the MCP create_mapping arg.
                 let_through,
             });
             Ok(())
@@ -1091,7 +1090,7 @@ pub fn apply_change(config: &mut Config, change: ConfigChange) -> Result<(), Pla
 
             // Clamp to len so a restore against a (legitimately) shorter list
             // appends rather than panicking; for a true undo the index is in
-            // range and position is preserved exactly (#2121).
+            // range and position is preserved exactly.
             let at = index.min(mode_obj.mappings.len());
             mode_obj.mappings.insert(
                 at,
@@ -1161,7 +1160,7 @@ pub fn apply_change(config: &mut Config, change: ConfigChange) -> Result<(), Pla
             // Cheap "did you fill in the form" guards. The endpoint-
             // existence / cycle / cross-protocol-transform checks live
             // in `validate_config`, which the ConfigPlan invokes
-            // before committing the change (PR #1025), so we don't
+            // before committing the change, so we don't
             // duplicate them here.
             if from.trim().is_empty() {
                 return Err(PlanError::InvalidAction(
@@ -1229,9 +1228,8 @@ pub fn apply_change(config: &mut Config, change: ConfigChange) -> Result<(), Pla
             // UpdateRoute's payload was designed before ADR-036 added
             // `modes` to RouteConfig. Since the change-type has no field
             // for it, preserve whatever the existing route already has —
-            // otherwise an update silently strips mode-scoping (PR #1673
-            // Copilot finding). (Phase 3 removed `phase`; all routes are
-            // post-mapping.)
+            // otherwise an update silently strips mode-scoping. (Phase 3
+            // removed `phase`; all routes are post-mapping.)
             let existing_modes = config.routes[index].modes.clone();
             config.routes[index] = conductor_core::config::types::RouteConfig {
                 from,
@@ -1584,7 +1582,7 @@ mod tests {
     }
 
     // ────────────────────────────────────────────────────────────────
-    // ADR-027 D8 save-time deny-list validation (issue #1040)
+    // ADR-027 D8 save-time deny-list validation
     //
     // Pre-fix, deny-listed Keystroke combos (Cmd+Q force-quit,
     // Cmd+Ctrl+Q screen-lock, etc.) saved silently and only failed at
@@ -1772,8 +1770,8 @@ mod tests {
         assert_eq!(config.modes[0].mappings.len(), original_mapping_count + 2,);
     }
 
-    /// Regression test for #2115 (clawpatch #2103): the non-atomic
-    /// `ConfigPlan::apply` path must enforce the SAME post-mutation gates as
+    /// Regression test: the non-atomic `ConfigPlan::apply` path must enforce
+    /// the SAME post-mutation gates as
     /// `apply_atomic` (ADR-027 D2 structural validation + D8 keystroke
     /// deny-list), not bypass them. A plan whose post-state is rejected by the
     /// deny-list (Cmd+Q force-quit) must fail through `apply` too, and — like

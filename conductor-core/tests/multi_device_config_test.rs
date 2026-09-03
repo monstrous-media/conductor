@@ -119,7 +119,7 @@ keys = "space"
 
 /// Map a parsed `Trigger` to its variant name and the device alias it carries.
 ///
-/// #1549: the device scope is the semantic value the multi-device work adds, so
+/// The device scope is the semantic value the multi-device work adds, so
 /// the test must inspect the parsed value — not merely that the TOML parses. The
 /// match is exhaustive over every variant, so adding or renaming a variant (or
 /// dropping its `device` field) is a compile error here, keeping this guard in
@@ -224,7 +224,7 @@ fn test_all_trigger_variants_retain_device_field() {
             "GamepadTrigger",
             "gamepad",
         ),
-        // OSC triggers (ADR-039-A Slice 2, #2325)
+        // OSC triggers (ADR-039-A)
         (
             "type = \"OscMessage\"\naddress = \"/eos/go\"\ndevice = \"osc-in\"",
             "OscMessage",

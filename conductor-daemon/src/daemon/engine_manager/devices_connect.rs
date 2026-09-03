@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 //! `EngineManager::connect_multi_device`, extracted from
-//! `engine_manager::devices` (refactor #2073).
+//! `engine_manager::devices`.
 
 use super::*;
 
 impl EngineManager {
-    /// Connect in multi-device mode (v4.20.0 - ADR-009 Phase 2)
+    /// Connect in multi-device mode (ADR-009 Phase 2)
     pub(crate) async fn connect_multi_device(&mut self, config: &Config) -> Result<()> {
         info!("Connecting in multi-device mode (ADR-009 Phase 2)");
 
@@ -19,7 +19,7 @@ impl EngineManager {
         let mut manager =
             InputManager::with_deadzone(None, false, input_mode, stick_deadzone, trigger_deadzone);
 
-        // Auto-exclude virtual output ports from input scanning (v4.26.0 - ADR-009 D21)
+        // Auto-exclude virtual output ports from input scanning (ADR-009 D21)
         {
             let executor = self.action_executor.lock().await;
             let virtual_names = executor.virtual_port_names();
@@ -32,10 +32,10 @@ impl EngineManager {
             }
         }
 
-        // Share MIDI Learn flag for Ambiguous port handling (v4.26.0 - ADR-009 D11)
+        // Share MIDI Learn flag for Ambiguous port handling (ADR-009 D11)
         manager.set_midi_learn_flag(Arc::clone(&self.midi_learn_active));
 
-        // #943: surface ambiguous-port resolver decisions to GUI / MCP / CLI
+        // Surface ambiguous-port resolver decisions to GUI / MCP / CLI
         // through the existing daemon event broadcast (in addition to
         // `tracing::warn!` which stays as the durable log record).
         manager.set_event_broadcast_tx(self.event_broadcast_tx.clone());
@@ -52,15 +52,15 @@ impl EngineManager {
             )
             .map_err(|e| DaemonError::Ipc(format!("Multi-device connection failed: {}", e)))?;
 
-        // #885: `multi_device_active` removed — every config now uses
+        // `multi_device_active` removed — every config now uses
         // the multi-device dispatcher unconditionally.
 
         // Build device port statuses from bindings
         let device_bindings = manager.get_device_bindings();
 
-        // ADR-021 Phase 1B / ADR-035 Slice 9.5: enumerate output ports and
+        // ADR-021 Phase 1B / ADR-035: enumerate output ports and
         // build the output map from the unified endpoint set. `build_output_map`
-        // subsumes the legacy device + connector builders (including the #1611
+        // subsumes the legacy device + connector builders (including the
         // output/bidirectional alias resolution for `MidiForward`).
         let output_ports = crate::daemon::output_resolver::enumerate_output_ports_async().await;
         let input_bindings: Vec<(String, String)> = device_bindings
@@ -83,7 +83,7 @@ impl EngineManager {
             .collect();
         self.device_output_map.store(Arc::new(flat_map));
 
-        // #2063: create the OS virtual MIDI ports declared by MidiVirtualPort
+        // Create the OS virtual MIDI ports declared by MidiVirtualPort
         // endpoints so routes resolve and external apps can see them.
         self.sync_virtual_ports(&endpoints);
 
@@ -104,7 +104,7 @@ impl EngineManager {
                     output_connected: io.output_connected,
                     output_port_name: io.output_port_name,
                     output_auto_paired: io.output_auto_paired,
-                    // TODO(#742): Currently MIDI-only. Derive from binding source
+                    // TODO: Currently MIDI-only. Derive from binding source
                     // when HID/OSC devices are added to the binding path.
                     protocol: "midi".to_string(),
                 }
@@ -141,7 +141,7 @@ impl EngineManager {
         // hot-plug ticks only probe newly-arrived ports.
         self.dispatch_probe_on_connect_for_new_ports(config).await;
 
-        // #2404: spawn the daemon-lifetime timer-tick (D12) + hot-plug (Phase 4)
+        // Spawn the daemon-lifetime timer-tick (D12) + hot-plug (Phase 4)
         // background tasks exactly ONCE. `connect_multi_device` re-runs on every
         // MIDI `DeviceReconnected`; these tasks only poll `command_tx` for the
         // daemon's life (never tied to a connect session) and must survive
@@ -161,7 +161,7 @@ impl EngineManager {
         Ok(())
     }
 
-    /// #2404: spawn the daemon-lifetime timer-tick (D12, 50ms) and hot-plug
+    /// Spawn the daemon-lifetime timer-tick (D12, 50ms) and hot-plug
     /// (ADR-009 Phase 4, 5s) background tasks **exactly once** per `EngineManager`
     /// (one exists per daemon process).
     ///
@@ -200,7 +200,7 @@ impl EngineManager {
             }
         });
 
-        // Hot-plug detection loop (v4.22.0 - ADR-009 Phase 4) — 5s interval.
+        // Hot-plug detection loop (ADR-009 Phase 4) — 5s interval.
         let hotplug_command_tx = self.command_tx.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));

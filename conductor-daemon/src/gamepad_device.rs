@@ -160,8 +160,8 @@ fn load_user_mappings(path: &Path, ignore: bool) -> Option<String> {
         return None;
     }
     // Bounded read: cap the allocation at the limit + 1 byte so a file that
-    // grows between a stat and the read (TOCTOU) still can't blow memory
-    // (Copilot review). Absent file is the normal case — silent.
+    // grows between a stat and the read (TOCTOU) still can't blow memory.
+    // Absent file is the normal case — silent.
     let file = match std::fs::File::open(path) {
         Ok(f) => f,
         Err(_) => return None,
@@ -187,8 +187,8 @@ fn load_user_mappings(path: &Path, ignore: bool) -> Option<String> {
         );
         return None;
     }
-    // gilrs's `add_mappings` silently drops malformed lines (no error/log — see
-    // spike #2424), so scan ourselves for user-facing diagnostics.
+    // gilrs's `add_mappings` silently drops malformed lines (no error/log),
+    // so scan ourselves for user-facing diagnostics.
     let (mut loaded, mut skipped) = (0usize, 0usize);
     for (i, raw) in content.lines().enumerate() {
         let line = raw.trim();
@@ -233,7 +233,7 @@ fn load_user_mappings(path: &Path, ignore: bool) -> Option<String> {
     Some(content)
 }
 
-/// Build `Gilrs` with conductor's SDL mapping layering (ADR-047 §D1 / spike #2424).
+/// Build `Gilrs` with conductor's SDL mapping layering (ADR-047 §D1).
 ///
 /// Precedence, lowest → highest: **user override file < gilrs bundled SDL DB <
 /// `SDL_GAMECONTROLLERCONFIG`**. We keep gilrs's bundled DB *and* its native env
@@ -246,7 +246,7 @@ fn load_user_mappings(path: &Path, ignore: bool) -> Option<String> {
 ///
 /// Public so tools like `gamepad_diagnostic` initialise gilrs through the *same*
 /// mapping layer as the daemon (otherwise the diagnostic's button ids wouldn't
-/// reflect a user override file — Copilot review, PR #2440).
+/// reflect a user override file).
 pub fn build_gilrs() -> Result<gilrs::Gilrs, String> {
     let ignore = IGNORE_USER_MAPPINGS.load(Ordering::Relaxed);
     // Defaults: included (bundled) + env mappings both ON.
@@ -260,7 +260,7 @@ pub fn build_gilrs() -> Result<gilrs::Gilrs, String> {
 /// Polling interval for gamepad events (1ms)
 const POLL_INTERVAL_MS: u64 = 1;
 
-/// ADR-039-B #2229: how long `connect()` pumps gilrs events while waiting for
+/// ADR-039-B: how long `connect()` pumps gilrs events while waiting for
 /// an already-connected controller to register before giving up.
 ///
 /// macOS registers Bluetooth-LE HID gamepads (e.g. the Xbox Wireless
@@ -284,7 +284,7 @@ const GAMEPAD_DISCOVERY_POLL_MS: u64 = 50;
 /// controller, if present, is almost always already registered. Measured BLE
 /// registration is ~50 ms, so 500 ms keeps a 10× margin for detection while
 /// bounding the no-controller case (incl. CI's `test_list_gamepads`) to 500 ms
-/// instead of 2 s (Copilot review, PR #2289). The connection path keeps the
+/// instead of 2 s. The connection path keeps the
 /// full 2 s window where reliably catching a just-connected pad matters most.
 const GAMEPAD_ENUM_WINDOW_MS: u64 = 500;
 
@@ -362,7 +362,7 @@ pub struct HidDeviceManager {
     polling_thread: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
-/// Type alias for backward compatibility (v3.0)
+/// Type alias for backward compatibility
 ///
 /// Use `HidDeviceManager` for new code. This alias ensures existing code
 /// using `GamepadDeviceManager` continues to work without modification.
@@ -449,15 +449,15 @@ impl HidDeviceManager {
     pub fn list_gamepads() -> Result<Vec<(gilrs::GamepadId, String, String)>, String> {
         let mut gilrs = build_gilrs()?;
 
-        // ADR-039-B #2229: pump events briefly so an async-registering
+        // ADR-039-B: pump events briefly so an async-registering
         // Bluetooth-LE HID gamepad (Xbox Wireless Controller) appears in the
         // enumeration, instead of a single immediate check that races the macOS
         // IOKit match callback (same fix as `connect`). Without this, a
         // controller that is connected and streaming events still reports
         // "No HID devices found" from this one-shot enumeration path (used by
         // `conductorctl list-devices` and the MCP/LLM device tools). Uses the
-        // shorter enumeration window so the no-controller case returns quickly
-        // (Copilot review, PR #2289); the connection path keeps the full 2 s.
+        // shorter enumeration window so the no-controller case returns quickly;
+        // the connection path keeps the full 2 s.
         let deadline = Instant::now() + Duration::from_millis(GAMEPAD_ENUM_WINDOW_MS);
         loop {
             while gilrs.next_event().is_some() {}
@@ -525,7 +525,7 @@ impl HidDeviceManager {
         // Initialize gilrs
         let mut gilrs = build_gilrs()?;
 
-        // Find first connected game controller. ADR-039-B #2229: pump events
+        // Find first connected game controller. ADR-039-B: pump events
         // for a short window so a controller that registers asynchronously
         // (Bluetooth-LE HID gamepads on macOS) is detected, instead of a single
         // immediate check that races the IOKit match callback.
@@ -583,7 +583,7 @@ impl HidDeviceManager {
     ///
     /// Pumps gilrs events across `window` (draining `next_event()` to advance
     /// the macOS IOKit run-loop) so an async-arriving controller (Bluetooth-LE
-    /// HID on macOS, #2229) registers. Returns immediately on the first scan
+    /// HID on macOS) registers. Returns immediately on the first scan
     /// when a controller is already present (e.g. a USB pad enumerated
     /// synchronously by `Gilrs::new()`).
     ///
@@ -772,7 +772,7 @@ impl HidDeviceManager {
                         }
                     }
                     gilrs::EventType::AxisChanged(axis, value, code) => {
-                        // #599: suppress spurious 0.0 readings from duplicate
+                        // Suppress spurious 0.0 readings from duplicate
                         // HID elements (macOS) — see AxisZeroFilter (inline
                         // keep/hold, no buffering of non-zero signal). Held
                         // zeros that turn out to be genuine recenters are
@@ -796,7 +796,7 @@ impl HidDeviceManager {
                             None => Self::log_unmapped_axis(&mut unmapped_logged, axis, code),
                         }
                     }
-                    // #599: on macOS (and some other backends) gilrs delivers
+                    // On macOS (and some other backends) gilrs delivers
                     // analog trigger travel as ButtonChanged(LeftTrigger2 /
                     // RightTrigger2, value), not AxisChanged(LeftZ / RightZ).
                     // Convert to the analog trigger encoder stream (132-133);
@@ -840,10 +840,10 @@ impl HidDeviceManager {
                 }
             }
 
-            // #599: release any held zero whose suppression window expired
+            // Release any held zero whose suppression window expired
             // with no newer non-zero reading — it was a genuine recenter on
             // hardware that recenters faster than the window, not a
-            // duplicate-element twin (cloud-review, PR #2337). Worst-case
+            // duplicate-element twin. Worst-case
             // recenter delay is the 4ms window.
             for axis in axis_filter.due_recenters(Instant::now()) {
                 // Recenter is a derived event for an axis already seen above; an
@@ -1021,19 +1021,19 @@ impl Drop for HidDeviceManager {
     }
 }
 
-/// ADR-039 §4.1 (#1758) — the HID [`InputSource`].
+/// ADR-039 §4.1 — the HID [`InputSource`].
 ///
 /// Wraps a [`HidDeviceManager`] (which keeps its existing push-based gilrs
 /// polling-thread delivery) and tags it with the protocol + endpoint alias the
 /// unified pump needs, plus a live-ready [`InputSourceMetricsHandle`].
 ///
-/// As with [`crate::midi_device::MidiInputSource`], #1758 defines and
-/// conformance-tests this type; #1760 adds `start(tx)` and routes the polling
+/// As with [`crate::midi_device::MidiInputSource`], this type is defined and
+/// conformance-tested, and `start(tx)` routes the polling
 /// loop's sends through this source's
 /// [`metrics_handle`](HidInputSource::metrics_handle).
 ///
 /// The symbol path `conductor_daemon::gamepad_device::HidInputSource` is what
-/// the ADR-039 lifecycle-coverage matrix (#1761) asserts resolves.
+/// the ADR-039 lifecycle-coverage matrix asserts resolves.
 pub struct HidInputSource {
     /// Endpoint alias — the route `from` key this source serves.
     alias: String,
@@ -1043,7 +1043,7 @@ pub struct HidInputSource {
     device_id: DeviceId,
     /// The wrapped device manager (retains its existing delivery path).
     manager: HidDeviceManager,
-    /// Live-ready observability counters (incremented by the #1760 push path).
+    /// Live-ready observability counters (incremented by the push path).
     metrics: InputSourceMetricsHandle,
     /// Intermediate `InputEvent` receiver retained by [`connect`](Self::connect)
     /// so [`start`](InputSource::start) can pump it into the unified channel.
@@ -1071,7 +1071,7 @@ impl HidInputSource {
 
     /// Set the [`DeviceId`] events from this source are tagged with, in place.
     ///
-    /// The live daemon path (ADR-039-B #1762 step 4c) constructs the source
+    /// The live daemon path (ADR-039-B step 4c) constructs the source
     /// before the config's HID input endpoint alias is known, then sets the tag
     /// here once `resolve_hid_input_alias` has run — so a catch-all route
     /// `from = "<alias>"` matches the gamepad's events.
@@ -1086,7 +1086,7 @@ impl HidInputSource {
 
     /// Connect the wrapped manager to the first available gamepad, retaining the
     /// intermediate `InputEvent` receiver so [`start`](InputSource::start) can
-    /// pump it into the unified channel (#1760). Wraps the manager's existing
+    /// pump it into the unified channel. Wraps the manager's existing
     /// gilrs polling-thread delivery — no behaviour change to how events are
     /// produced.
     pub fn connect(
@@ -1109,7 +1109,7 @@ impl HidInputSource {
         &mut self.manager
     }
 
-    /// Clone the metrics handle so the #1760 push path can increment it from
+    /// Clone the metrics handle so the push path can increment it from
     /// inside the polling loop without locking the hot path.
     pub fn metrics_handle(&self) -> InputSourceMetricsHandle {
         self.metrics.clone()
@@ -1198,7 +1198,7 @@ mod input_source_tests {
 
     #[tokio::test]
     async fn start_pumps_source_events_onto_the_unified_channel() {
-        // ADR-039 #1760: start(tx) wires the gilrs polling stream to the pump via
+        // ADR-039: start(tx) wires the gilrs polling stream to the pump via
         // the §4.3 shed-load policy. Exercised hardware-free through the test
         // channel seam (no real gilrs device).
         use std::time::Instant;
@@ -1237,7 +1237,7 @@ mod input_source_tests {
 
     #[tokio::test]
     async fn set_device_id_tags_pumped_events_with_the_endpoint_alias() {
-        // ADR-039-B #1762 (step 4c): the live cutover sets the source's
+        // ADR-039-B (step 4c): the live cutover sets the source's
         // DeviceId from the configured `[[endpoints]]` Input/Hid alias before
         // `start`, so a gamepad's events reach the route engine under that
         // alias (`route_destinations_ctx(device_id.as_str(), …)`) and a

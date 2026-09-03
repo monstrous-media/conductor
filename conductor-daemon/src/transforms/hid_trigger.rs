@@ -6,7 +6,7 @@
 //! `InputEvent` to a canonical trigger *name* + a 7-bit value, then look that
 //! name up in a per-transform table. The name table and the 7-bit/8-bit scaler
 //! live here so the transforms agree on the gamepad vocabulary (extracted from
-//! `hid_to_artnet` in #1762 step 2 when the second HID transform landed).
+//! `hid_to_artnet` in step 2 when the second HID transform landed).
 
 use conductor_core::events::InputEvent;
 
@@ -20,7 +20,7 @@ use conductor_core::events::InputEvent;
 /// choice, and so the L2/R2 digital↔analog alias has a single, documented home
 /// (see [`Control::name`]). Inner `u8` is the positional id. [`Control::name`]
 /// currently resolves button ids 128-144 and axis/encoder ids 128-133; the
-/// #2428 reserved extras (buttons 145/146, d-pad-as-axis 147/148) are valid
+/// reserved extras (buttons 145/146, d-pad-as-axis 147/148) are valid
 /// trigger ids but have no canonical *transform* name yet, so `name()` returns
 /// `None` for them (forwarding those via HID transforms is a possible follow-up).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,7 +133,7 @@ pub(crate) fn encoder_name(encoder: u8) -> Option<&'static str> {
 
 /// Scale a 7-bit gamepad value (0-127) to an 8-bit level (0-255).
 /// 0 → 0, 127 → 255, 64 → 128. The `debug_assert + clamp` defends against an
-/// upstream ingest bug producing out-of-range values (Council R1 / P5 slice 5).
+/// upstream ingest bug producing out-of-range values.
 pub(crate) fn scale_7bit_to_8bit(v: u8) -> u8 {
     debug_assert!(
         v <= 127,
@@ -192,7 +192,7 @@ mod tests {
         assert_eq!(scale_7bit_to_8bit(64), 128);
     }
 
-    // ---- ADR-039-B typed control namespace (#2437, ex-ADR-047 D7) ----
+    // ---- ADR-039-B typed control namespace (ex-ADR-047 D7) ----
 
     #[test]
     fn control_from_button_event_is_typed_button() {

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Workflow security policy test (#1444).
+//! Workflow security policy test.
 //!
 //! Self-hosted runners must never execute code from fork pull requests:
 //! cargo build scripts, proc-macros, tests, and benches run arbitrary
@@ -111,7 +111,7 @@ fn self_hosted_runners_are_gated_off_pull_requests() {
     assert!(
         violations.is_empty(),
         "Jobs pin a literal `self-hosted` runner without gating off \
-         pull_request events (#1444) — fork-PR code could execute on a \
+         pull_request events — fork-PR code could execute on a \
          self-hosted runner. Offending jobs in .github/workflows/ci.yml: {}. \
          Route pull-request jobs through the `runner-policy` job.",
         violations.join(", ")

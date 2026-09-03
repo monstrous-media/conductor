@@ -3,7 +3,7 @@
 
 //! Serde `with =` helper for `HashMap<u8, V>` fields that must serialise
 //! to TOML — TOML requires string-typed table keys, so a bare `HashMap<u8, _>`
-//! errors with `KeyNotString` during canonical serialise (#1356).
+//! errors with `KeyNotString` during canonical serialise.
 //!
 //! Usage on a field:
 //!
@@ -48,8 +48,8 @@ use std::str::FromStr;
 /// [`canonical::sort_value`](super::canonical)). This makes the helper
 /// independently deterministic — two calls with the same logical map
 /// produce byte-identical output, even when used outside the canonical
-/// pipeline. Council R1 on PR (#1356-fix) flagged the prior unordered-
-/// HashMap iteration as a determinism bug.
+/// pipeline. Prior unordered HashMap iteration had been flagged as a
+/// determinism bug this ordering fixes.
 ///
 /// Lex (not numeric) order is deliberate: it matches what the
 /// canonical layer would re-sort to anyway. Keys `7`, `11`, `200`
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn serialise_is_byte_deterministic_across_runs() {
-        // Council FAIL on the initial revision: HashMap iteration is
+        // HashMap iteration is
         // unordered, so calling `to_string` twice on the same map
         // could yield different byte orderings — violates the very
         // canonical-serialise determinism the parent helper is meant

@@ -23,9 +23,9 @@ use std::fmt;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-/// PR #997 round-12 review: Apple's `x-apple.systempreferences:`
+/// Apple's `x-apple.systempreferences:`
 /// URL for the Input Monitoring pane, exported here so both the
-/// daemon's `open` invocation and the GUI's `commands.rs` deep-link
+/// daemon's `open` invocation and the downstream GUI's deep-link
 /// reference one source of truth. If macOS ever renames this anchor
 /// across versions, this is the only string to update.
 pub const INPUT_MONITORING_DEEPLINK: &str =
@@ -159,7 +159,7 @@ pub mod macos;
 mod tests {
     use super::*;
 
-    /// PR #997 round-10 review: both tests below mutate the global
+    /// Both tests below mutate the global
     /// `PROBE_CACHE` static, so they MUST run serially. cargo test
     /// (and nextest) parallelises by default, so without this lock
     /// one test's `invalidate` could run between another's

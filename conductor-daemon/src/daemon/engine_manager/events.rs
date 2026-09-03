@@ -1,14 +1,14 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager` methods extracted from `engine_manager::mod` (refactor #2073).
+//! `EngineManager` methods extracted from `engine_manager::mod`.
 
 use super::*;
 
 impl EngineManager {
-    /// Process timer tick — check holds on all per-device EventProcessors (v4.20.0, D12)
+    /// Process timer tick — check holds on all per-device EventProcessors (D12)
     pub(crate) async fn process_timer_tick(&mut self) -> Result<()> {
-        // Lock-free mode + rules read (v4.21.0 - ADR-009 Phase 3 / D4.A.3.3.A)
+        // Lock-free mode + rules read (ADR-009 Phase 3 / D4.A.3.3.A)
         let mode = self.current_mode.load();
         let snap = self.live_config.load();
         let rules = &snap.rules;
@@ -34,13 +34,13 @@ impl EngineManager {
             }
         }
 
-        // #836: Suppress dispatch when MIDI Learn is active. Symmetric
+        // Suppress dispatch when MIDI Learn is active. Symmetric
         // with the process_device_event guard. The timer-tick path produces
         // ProcessedEvent::HoldDetected events from `check_holds()`
         // (LongPress comes from a different path inside the raw event
         // processor) — without this guard, a hold-triggered mapping
         // during Learn would still fire
-        // its action (third dispatch site flagged by Copilot review).
+        // its action.
         // `check_holds()` itself has already run above; we only skip
         // the dispatch loop body.
         let suppress_during_learn = self.midi_learn_active.load(Ordering::SeqCst);
@@ -234,7 +234,7 @@ impl EngineManager {
             value: None,
         }
     }
-    /// Handle the result of an action dispatch (v4.25.0 - ADR-009 Gap 1)
+    /// Handle the result of an action dispatch (ADR-009 Gap 1)
     ///
     /// Processes `DispatchResult` from `ActionExecutor::execute()`:
     /// - `ModeChangeRequested`: Updates `ArcSwap<ModeState>` atomically
@@ -245,7 +245,7 @@ impl EngineManager {
             Ok(DispatchOutcome::ModeChangeRequested { mode }) => {
                 // Emit action event to monitor (R897)
                 self.emit_action_event("mode_change", Some(&format!("Mode → {}", mode)));
-                // ADR-040 D4/§4.2 (#2350): a `ModeChange` action is a *manual*
+                // ADR-040 D4/§4.2: a `ModeChange` action is a *manual*
                 // selection, so it pins the mode against auto-switch (origin
                 // Action). `apply_modechange_action` locks via `set_mode_manual`
                 // (which updates in-memory state first, then persists — backwards
@@ -298,7 +298,7 @@ impl EngineManager {
         // recording them would cause false positive echo suppression.
         // Uses try_lock to avoid blocking the async event loop.
         //
-        // Issue #555: when `allow_cascade = false` (the default), ALSO open
+        // When `allow_cascade = false` (the default), ALSO open
         // a per-port blanket-suppression window for the output port so any
         // MIDI input arriving on that port within `cascade_ttl_ms` is
         // dropped — catches the cross-note cascade case the per-message
@@ -313,8 +313,7 @@ impl EngineManager {
             // hold across the hot path).
             //
             // `cascade_ports` is the list of resolved output ports the
-            // executor wrote to during this dispatch (issue #555 +
-            // Copilot review on PR #1211). Wrapper actions like
+            // executor wrote to during this dispatch. Wrapper actions like
             // `Sequence`/`Repeat` can produce multiple sends in a
             // single dispatch, and `MidiForward { target: "_source" }`
             // resolves to the originating device's bound output —
@@ -332,7 +331,7 @@ impl EngineManager {
             };
             match self.recursion_guard.try_lock() {
                 Ok(mut guard) => {
-                    // Source-aware recursion guard (PR #2388): attribute the send
+                    // Source-aware recursion guard: attribute the send
                     // to its SOURCE device so the source's own repeated notes
                     // aren't false-suppressed as echoes (stuck-note bug). `None`
                     // source stays globally suppressible (unattributed sends).
@@ -344,7 +343,7 @@ impl EngineManager {
                 Err(std::sync::TryLockError::Poisoned(poisoned)) => {
                     error!("Recursion guard mutex poisoned; recovering for MIDI recording");
                     let mut guard = poisoned.into_inner();
-                    // Source-aware recursion guard (PR #2388): attribute the send
+                    // Source-aware recursion guard: attribute the send
                     // to its SOURCE device so the source's own repeated notes
                     // aren't false-suppressed as echoes (stuck-note bug). `None`
                     // source stays globally suppressible (unattributed sends).

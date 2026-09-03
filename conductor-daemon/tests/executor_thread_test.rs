@@ -49,7 +49,7 @@ fn test_provenance(action_type: &str, summary: &str) -> ActionProvenance {
 
 /// Test 1: Sequence execution doesn't block the event loop (ADR-015 D1).
 ///
-/// #1546: the previous version only asserted that a second `try_dispatch`
+/// The previous version only asserted that a second `try_dispatch`
 /// returned `Ok` while the channel wasn't full. That proves nothing about the
 /// ADR-015 guarantee: an implementation that executed actions *inline on the
 /// dispatch path* (blocking the producer for the full sequence duration) would
@@ -194,7 +194,7 @@ async fn test_mode_change_via_completion() {
 /// Test 3: Channel backpressure (bounded capacity) — exercised through the
 /// real `ActionDispatcher`, not a standalone crossbeam channel.
 ///
-/// #1544: the previous version built its own `crossbeam_channel::bounded` and
+/// The previous version built its own `crossbeam_channel::bounded` and
 /// filled it directly, so it only verified crossbeam's behaviour and the value
 /// of `DISPATCH_CHANNEL_CAPACITY` — never that `ActionDispatcher` actually uses
 /// a bounded channel of that capacity. A regression switching the dispatcher to
@@ -277,7 +277,7 @@ fn test_channel_backpressure() {
     // meaningful, deterministic guarantee. A timing assertion can't prove
     // non-blocking anyway — a regression to a blocking send would hang here
     // rather than fail an `elapsed()` check, and `elapsed()` is itself flaky
-    // under CI scheduler jitter (#1544 review).
+    // under CI scheduler jitter.
     let overflow = ActionDispatch {
         invocation_id: dispatcher.next_invocation_id(),
         action: Action::Delay(1),
@@ -511,7 +511,7 @@ async fn test_terminal_event_invariant() {
     // completion, so we expect exactly `dispatched_ids.len()` completions.
     // Collect that many into a frequency map keyed by invocation ID (generous
     // per-recv timeout for slow CI). Collecting a known count avoids paying a
-    // full multi-second drain timeout on every run (#1545 review).
+    // full multi-second drain timeout on every run.
     let mut completion_counts: HashMap<u64, usize> = HashMap::new();
     for _ in 0..dispatched_ids.len() {
         let completion = tokio::time::timeout(
@@ -529,7 +529,7 @@ async fn test_terminal_event_invariant() {
     // Then assert NO further completion arrives. This still catches a trailing
     // duplicate (a second completion for an already-seen ID) — duplicates from
     // a single execution arrive near-simultaneously, so a short bounded wait
-    // suffices instead of a multi-second drain (#1545 review). Distinguish the
+    // suffices instead of a multi-second drain. Distinguish the
     // three outcomes so a failure is unambiguous: a timeout is the success
     // path, an actual extra completion is the regression we guard, and a
     // closed channel (Ok(None)) is a distinct, separately-reported fault.
@@ -549,7 +549,7 @@ async fn test_terminal_event_invariant() {
         }
     }
 
-    // #1545: the terminal-event invariant ("every dispatch gets exactly one
+    // The terminal-event invariant ("every dispatch gets exactly one
     // completion") is PER invocation ID, not aggregate. Asserting only
     // `dispatch_count == completion_count` would let a doubled completion for
     // one ID mask a missing completion for another (or a spurious completion

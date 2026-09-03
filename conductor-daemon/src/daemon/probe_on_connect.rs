@@ -54,7 +54,7 @@ pub const IDENTITY_NEEDS_CONFIRMATION_EVENT_TYPE: &str = "identity_needs_confirm
 /// carries `{ port_name, candidates: [SysExIdentity] }`.
 ///
 /// `MonitorEvent.device_id` is intentionally left unset (Copilot
-/// #970 review): that field is documented as "Source device
+/// review): that field is documented as "Source device
 /// identity (multi-device mode)" — a configured device alias from
 /// `[[bindings]]`. The probe target here is identified by an OS
 /// port name, not an alias yet — that's exactly the case the user
@@ -214,7 +214,7 @@ pub fn process_dispatch_tick(
 ) -> HashSet<String> {
     let eligible = ports_eligible_for_probe_on_connect(config, bindings, last_known);
     if should_probe_on_connect(config) {
-        // PR #976 review (Copilot): `last_known` must reflect the
+        // Copilot review: `last_known` must reflect the
         // SAME filtered set the eligibility computation uses, not all
         // connected+configured bindings. Otherwise a `no_probe = true`
         // port lands in `last_known` and the user can't flip
@@ -700,9 +700,8 @@ mod tests {
 
     /// **Bug fix pin**: probing OFF must NOT pollute `last_known`.
     /// Otherwise a later toggle-on would see ports already-known and
-    /// fail to probe them. PR #930 review caught this — pre-fix the
-    /// dispatcher always wrote to `last_known` regardless of the
-    /// gate.
+    /// fail to probe them. The dispatcher previously always wrote to
+    /// `last_known` regardless of the gate.
     #[test]
     fn dispatch_tick_probing_off_does_not_update_last_known() {
         let config = config_with_flags(false, true);
@@ -725,7 +724,7 @@ mod tests {
     /// hot-plug arrivals.
     #[test]
     fn dispatch_tick_no_probe_binding_not_added_to_last_known() {
-        // PR #976 review (Copilot): bindings filtered out by `no_probe`
+        // Copilot review: bindings filtered out by `no_probe`
         // must NOT be recorded in `last_known`. Otherwise, flipping
         // `no_probe = false` via config reload would see the port
         // already-known and not probe it until physical reconnect —
@@ -931,7 +930,7 @@ mod tests {
 
         assert_eq!(event.event_type, IDENTITY_NEEDS_CONFIRMATION_EVENT_TYPE);
         assert_eq!(event.timestamp_ms, 1_700_000_000_000);
-        // device_id intentionally unset (#970 review) — port_name
+        // device_id intentionally unset (Copilot review) — port_name
         // lives in the payload so EventFilter.device_id consumers
         // don't get confused by an OS port name appearing where
         // they expect a configured device alias.

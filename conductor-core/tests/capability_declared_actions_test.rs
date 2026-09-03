@@ -77,8 +77,8 @@ fn launch_requires_launch_app() {
 
 #[test]
 fn shell_non_interpreter_binary_requires_shell_exec_only() {
-    // `/bin/ls` is a plain binary — no interpreter semantics. D3 3/N
-    // (issue #1037 Phase 2) resolves the effective binary at
+    // `/bin/ls` is a plain binary — no interpreter semantics. D3
+    // (Phase 2) resolves the effective binary at
     // capability-derivation time but classifies this as non-interpreter,
     // so the declared set stays at `ShellExec` only.
     let action = ActionConfig::Shell {
@@ -95,7 +95,7 @@ fn shell_non_interpreter_binary_requires_shell_exec_only() {
 
 #[test]
 fn shell_argv_form_sh_adds_interpreter_exec() {
-    // D3 3/N (issue #1037 Phase 2): the schema-time declaration now
+    // D3 (Phase 2): the schema-time declaration now
     // includes `InterpreterExec(Sh)` because the resolved binary is
     // `/bin/sh`. This is what gates the `/bin/sh -c "rm -rf /"` class —
     // the gate can refuse `InterpreterExec(Sh)` while still allowing
@@ -118,7 +118,7 @@ fn shell_argv_form_sh_adds_interpreter_exec() {
 
 #[test]
 fn shell_env_python_wrapper_adds_interpreter_exec() {
-    // D3 3/N — wrapper resolution: `env python -c …` strips `env` and
+    // D3 — wrapper resolution: `env python -c …` strips `env` and
     // classifies the wrapped program as Python. This is the canonical
     // bypass class the schema-time declaration must defeat.
     use conductor_core::security::InterpreterFamily;
@@ -198,8 +198,8 @@ fn volume_control_requires_shell_exec_because_it_spawns_processes() {
     // macOS spawns `osascript -e`, Linux spawns `pactl`. Both are process
     // spawns from the daemon, so the cross-platform minimum is ShellExec.
     // (`osascript` would additionally classify as InterpreterExec(Other)
-    // post D3 3/N when wrapper resolution / interpreter classification
-    // lands; this PR maps only what the schema declares.)
+    // post D3 when wrapper resolution / interpreter classification
+    // lands; only what the schema declares is mapped here.)
     let action = ActionConfig::VolumeControl {
         operation: "Up".into(),
         value: None,
@@ -500,7 +500,7 @@ fn fs_read_and_fs_write_are_not_yet_used_by_any_action() {
     // recursive) — not just Shell/Plugin — so a regression that adds
     // FsRead/FsWrite to any arm (including a nested action inside a
     // Sequence/Repeat/Conditional/PcContextSwitch/CcContextSwitch) is
-    // caught (#1529).
+    // caught.
     let mut pc_mappings: IndexMap<u8, Box<ActionConfig>> = IndexMap::new();
     pc_mappings.insert(5, Box::new(ActionConfig::Text { text: "pc".into() }));
 

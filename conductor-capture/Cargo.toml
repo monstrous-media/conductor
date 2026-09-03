@@ -27,7 +27,7 @@ uuid = { version = "1.23", features = ["v4", "serde"] }
 dirs = { workspace = true }  # Platform-specific app directories
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-# #2147: atomic temp-write + rename for capture saves (also used in tests).
+# Atomic temp-write + rename for capture saves (also used in tests).
 tempfile = "3.27"
 
 [lints]

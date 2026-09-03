@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Frontmost Application Detection for Daemon (Phase 2 - Issue #353)
+//! Frontmost Application Detection for Daemon (Phase 2)
 //!
 //! Monitors the frontmost macOS application and triggers automatic profile
 //! switches via DaemonCommand when the app changes and a matching profile exists.
@@ -151,7 +151,7 @@ pub struct DaemonAppDetector {
     /// flag). Always present; only exercised when title polling is enabled.
     degradation: window_title::DegradationTracker,
 
-    /// Task handle for the detection loop (Phase 2 - council review B2: retain JoinHandle)
+    /// Task handle for the detection loop; retained so stop() can abort it
     task_handle: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
@@ -325,7 +325,7 @@ impl DaemonAppDetector {
                     break;
                 }
 
-                // catch_unwind guards against panics in unsafe FFI (council review B2)
+                // catch_unwind guards against panics in unsafe FFI
                 let app_result = std::panic::catch_unwind(Self::detect_frontmost_app);
                 let app = match app_result {
                     Ok(app) => app,
@@ -385,7 +385,7 @@ impl DaemonAppDetector {
             info!("Daemon app detector stopped");
         });
 
-        // Retain handle so we can abort on stop (council review B2)
+        // Retain handle so we can abort on stop
         *self.task_handle.lock().await = Some(handle);
     }
 
@@ -447,7 +447,7 @@ async fn emit_context_switch(
             .send(DaemonCommand::ProfileSwitch {
                 profile_name: mapping.profile_name.clone(),
                 config_path: mapping.config_path.display().to_string(),
-                // #2564: ProfileMapping doesn't carry the GUI profile id yet;
+                // ProfileMapping doesn't carry the GUI profile id yet;
                 // auto-switches persist identity without it (id is additive).
                 profile_id: None,
                 result_tx: None,
@@ -556,7 +556,7 @@ mod tests {
         // NSWorkspace frontmost-app detection only returns `Some` inside a GUI
         // login session. A headless self-hosted runner (a LaunchDaemon with no
         // Aqua session) has no frontmost app and returns `None` — skip there
-        // rather than fail (FU-9 / #1888). With a GUI session (dev machine or
+        // rather than fail. With a GUI session (dev machine or
         // GitHub-hosted runner) the result is validated for real.
         let Some(info) = DaemonAppDetector::detect_frontmost_app() else {
             eprintln!(
@@ -640,7 +640,7 @@ mod tests {
         assert!(mappings.is_empty());
     }
 
-    // ── ADR-040 Slice 5 (#1768): emit_context_switch ───────────────────────
+    // ── ADR-040: emit_context_switch ───────────────────────
     //
     // These drive the command-emission logic directly with an injected
     // `AppInfo`, so they need no NSWorkspace/FFI and run on every platform.
@@ -736,7 +736,7 @@ mod tests {
         }
     }
 
-    // ── ADR-040 Slice 6 (#1769): emit_title_resolve ────────────────────────
+    // ── ADR-040: emit_title_resolve ────────────────────────
 
     #[tokio::test]
     async fn title_change_emits_resolve_with_new_title() {

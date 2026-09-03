@@ -59,7 +59,6 @@ pub enum DaemonError {
     Fatal(String),
 
     /// Invalid path (non-UTF8 or otherwise unrepresentable)
-    /// Added v4.14.0 (LLM Council feedback v4.13.3)
     #[error("Invalid path: {context} - path contains non-UTF8 characters")]
     InvalidPath { context: String },
 }
@@ -90,13 +89,13 @@ pub enum IpcErrorCode {
     Timeout = 4002,
 
     // Security errors (5xxx) — ADR-027
-    /// ADR-027 §D16 (#1168): per-peer IPC message rate limit
+    /// ADR-027 §D16: per-peer IPC message rate limit
     /// exceeded. Returned to a peer that flooded past the
     /// 100-messages-per-second budget; the request is dropped
     /// but the connection stays open.
     RateLimitExceeded = 5001,
 
-    /// ADR-034 §D2 / D4.C.1 (#1308): `base_generation` supplied by
+    /// ADR-034 §D2 / D4.C.1: `base_generation` supplied by
     /// the caller is stale — another mutator advanced the live
     /// snapshot in the meantime. The caller should re-fetch via
     /// `GetConfigSnapshot`, re-validate their intent, and retry.
@@ -105,14 +104,14 @@ pub enum IpcErrorCode {
     /// `RollbackConfigForce` which bypasses CAS per KI-A3).
     StaleBaseGeneration = 5002,
 
-    /// ADR-034 §D2.3 / D4.C.1 (#1308): IPC payload exceeds the
+    /// ADR-034 §D2.3 / D4.C.1: IPC payload exceeds the
     /// 256 KiB cap. Enforced **pre-deserialisation** at the IPC
     /// framer (before `serde_json::from_slice`) on `SaveConfig`
     /// and `ImportConfig` so a malformed-or-huge payload can't
     /// burn CPU on parse. The connection stays open.
     PayloadTooLarge = 5003,
 
-    /// ADR-034 §D8.2 / D4.C.1 (#1308): the audit outbox is in
+    /// ADR-034 §D8.2 / D4.C.1: the audit outbox is in
     /// `AuditDegraded` lifecycle state — 8+ consecutive flush
     /// failures broke the chain. ConfigChange mutations are
     /// rejected with this code until the operator runs
@@ -121,7 +120,7 @@ pub enum IpcErrorCode {
     /// succeed.
     AuditUnavailable = 5004,
 
-    /// ADR-034 §D4.2 / D4.B.3 — **RESERVED, not currently returned (#1323).**
+    /// ADR-034 §D4.2 / D4.B.3 — **RESERVED, not currently returned.**
     ///
     /// Was the rejection code for the `AwaitingConfig` idle mode (no live
     /// config loaded). That mode was never wired and is downgraded to
@@ -129,7 +128,7 @@ pub enum IpcErrorCode {
     /// retained so the wire contract is stable if the mode is reinstated.
     DaemonAwaitingConfig = 5005,
 
-    /// ADR-034 §D2.2 (#1902): a caller-supplied `ReloadFromDisk` /
+    /// ADR-034 §D2.2: a caller-supplied `ReloadFromDisk` /
     /// `ImportConfig` path failed the safe-walk path validation —
     /// it escaped the config-directory allowlist root, traversed a
     /// symlink in some component, was not a regular file, or was not
@@ -138,7 +137,7 @@ pub enum IpcErrorCode {
     /// the attempted path and the coarse reason.
     PathValidationFailed = 5006,
 
-    /// ADR-034 §D4 / ADR-043 (#2417, B2 completion): the caller-supplied
+    /// ADR-034 §D4 / ADR-043 (B2 completion): the caller-supplied
     /// `base_revision` (content hash of the snapshot the client displayed) no
     /// longer matches the daemon's current snapshot revision — a real content
     /// change landed between the client's read and its `SaveConfig`. The save is
@@ -178,7 +177,7 @@ impl IpcErrorCode {
                  underlying flush failure"
             }
             Self::DaemonAwaitingConfig => {
-                // RESERVED (#1323): the AwaitingConfig idle mode is unwired,
+                // RESERVED: the AwaitingConfig idle mode is unwired,
                 // so this code is never returned today.
                 "Daemon is in AwaitingConfig idle mode (reserved)"
             }
@@ -200,10 +199,10 @@ impl IpcErrorCode {
 mod tests {
     use super::*;
 
-    /// ADR-034 §D2 / D4.C.1 (#1308): the three new 5xxx error codes
+    /// ADR-034 §D2 / D4.C.1: the three new 5xxx error codes
     /// pin their numeric values so wire-format consumers (GUI plan
     /// re-apply, CLI exit codes, audit log) can match by `code`
-    /// without ambiguity. 5005 was added in D4.B.3 (#1290) and is
+    /// without ambiguity. 5005 was added in D4.B.3 and is
     /// re-asserted here as the regression guard.
     #[test]
     fn d4c1_security_error_codes_have_stable_numeric_values() {
@@ -247,8 +246,7 @@ mod tests {
         assert!(audit.contains("conductorctl audit resume"), "got: {audit}");
     }
 
-    /// v4.14.0: Test InvalidPath error message format
-    /// (LLM Council feedback v4.13.3)
+    /// Test InvalidPath error message format
     #[test]
     fn test_invalid_path_error_message_format() {
         let err = DaemonError::InvalidPath {

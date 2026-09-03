@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Integration tests for ADR-027 D7 (full) — shell timeout enforcement (#1166).
+//! Integration tests for ADR-027 D7 (full) — shell timeout enforcement.
 //!
 //! Asserts that `spawn_with_timeout`:
 //!   - Kills a long-running child within `timeout + grace + slack`.
@@ -78,7 +78,7 @@ fn long_running_command_is_killed_after_timeout() {
     let result = spawn_with_timeout(cmd, Duration::from_millis(500), Duration::from_secs(2))
         .expect("spawn should succeed");
 
-    // #1178 — watcher now returns `WatcherReport { outcome, captured }`.
+    // The watcher now returns `WatcherReport { outcome, captured }`.
     // Existing tests inspect `.outcome` exactly as before.
     let report = result.watcher.join().expect("watcher panicked");
     let elapsed = start.elapsed();
@@ -121,7 +121,7 @@ fn quick_command_completes_naturally() {
 /// MUST reap it. Without process-group setup, only `sh` dies and
 /// `sleep` lingers.
 ///
-/// #1560: asserting only the watcher outcome + timing is insufficient — an
+/// Asserting only the watcher outcome + timing is insufficient — an
 /// implementation that killed just the `sh` child would still report a killed
 /// outcome quickly while leaving `sleep 60` running. The shell records the
 /// backgrounded sleep's PID, and after the watcher joins we verify that PID is

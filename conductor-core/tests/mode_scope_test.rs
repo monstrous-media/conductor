@@ -1,14 +1,14 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-040 Slice 1 — `ModeScope` unification + `Named > All` precedence.
+//! ADR-040 — `ModeScope` unification + `Named > All` precedence.
 //!
 //! `[[global_mappings]]` is the only all-modes sugar. Internally every
 //! `CompiledRule` now carries a `ModeScope`: global mappings lower to
 //! `ModeScope::All`, mode-block mappings to `ModeScope::Named([mode])`.
 //! This is the uniform IR that later slices and ADR-033 target.
 //!
-//! Per the ADR-040 spec §4.1 / Slice 1 the change is **behaviour-preserving**:
+//! Per the ADR-040 spec §4.1 the change is **behaviour-preserving**:
 //! the post-ADR-037 matcher (`rule_set::match_event`) already keeps global
 //! and mode rules in separate buckets walked *mode-first*
 //! (1. mode-device → 2. mode-any → 3. global-device → 4. global-any,
@@ -20,7 +20,7 @@
 //! model this code does not use).
 //!
 //! Spec: `docs/context-consolidation/ADR-040-implementation-spec.md`
-//! §4.1, §5 Slice 1. Closes #1764.
+//! §4.1, §5.
 
 use conductor_core::config::types::Config;
 use conductor_core::event_processor::{ProcessedEvent, VelocityLevel};
@@ -158,8 +158,8 @@ action = { type = "Text", text = "x" }
 }
 
 /// All rules in one mode share a single `Arc<[ModeId]>` — the per-rule
-/// `scope.clone()` is a refcount bump, not a deep clone of the mode list
-/// (Copilot review on #2269: avoid N heap allocations for large configs).
+/// `scope.clone()` is a refcount bump, not a deep clone of the mode list —
+/// this avoids N heap allocations for large configs.
 #[test]
 fn mode_rules_share_one_arc_scope() {
     let toml = r#"

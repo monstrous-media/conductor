@@ -10,7 +10,6 @@
 //! No conductor_core imports needed - this is a standalone testing utility.
 
 // CLI binary: legitimate println!/eprintln! to stdout/stderr.
-// See docs/epic-loop/rust-coverage.md Path A.
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use std::io::{self, Write};
@@ -21,7 +20,7 @@ use std::time::Duration;
 // Import the simulator helper from THIS crate's tests module
 // (conductor-daemon/tests/midi_simulator.rs).
 //
-// #2137/#2139: `#[path]` is resolved relative to this file's directory
+// `#[path]` is resolved relative to this file's directory
 // (conductor-daemon/src/bin/). Three `../` reached the REPO-ROOT crate's
 // `tests/midi_simulator.rs` — a different, divergent copy outside this crate —
 // instead of the intended daemon helper. Two `../` correctly targets
@@ -34,7 +33,7 @@ use midi_simulator::{EncoderDirection, Gesture, MidiSimulator};
 /// Parse a MIDI **data byte** from CLI input, rejecting anything outside the
 /// 7-bit range 0–127.
 ///
-/// #2130: the simulator parsed note / velocity / CC number / CC value /
+/// The simulator parsed note / velocity / CC number / CC value /
 /// pressure as a plain `u8`, so values 128–255 were accepted and then silently
 /// masked to 7 bits by the underlying simulator (`& 0x7F`) — e.g. `note 200`
 /// became note 72. A diagnostic tool must reject impossible MIDI data, not
@@ -89,7 +88,7 @@ fn main() {
                 println!("✓ Event queue cleared");
             }
             "events" | "e" => {
-                // #1434: `events` is a read-only display (the help advertises
+                // `events` is a read-only display (the help advertises
                 // `clear` as the destructive command). Use the non-clearing
                 // accessor so inspecting the queue doesn't consume it.
                 let events = simulator.lock().unwrap().peek_events();
@@ -172,9 +171,9 @@ fn main() {
                     println!("Usage: long <note> [duration_ms]");
                     continue;
                 }
-                // #1433: reject invalid input instead of silently defaulting —
+                // Reject invalid input instead of silently defaulting —
                 // a diagnostic simulator must emit exactly what was requested.
-                // #2130: also reject out-of-range MIDI data bytes (128–255).
+                // Also reject out-of-range MIDI data bytes (128–255).
                 let note = match parse_midi_data_byte(parts[1]) {
                     Ok(n) => n,
                     Err(e) => {
@@ -211,8 +210,8 @@ fn main() {
                     println!("Usage: double <note> [gap_ms]");
                     continue;
                 }
-                // #1433: reject invalid input instead of silently defaulting.
-                // #2130: also reject out-of-range MIDI data bytes (128–255).
+                // Reject invalid input instead of silently defaulting.
+                // Also reject out-of-range MIDI data bytes (128–255).
                 let note = match parse_midi_data_byte(parts[1]) {
                     Ok(n) => n,
                     Err(e) => {
@@ -251,9 +250,9 @@ fn main() {
                     continue;
                 }
 
-                // #1433: fail the whole chord if ANY note token is invalid,
+                // Fail the whole chord if ANY note token is invalid,
                 // rather than silently dropping it and emitting a different
-                // chord than the user typed. #2130: reject out-of-range
+                // chord than the user typed. Reject out-of-range
                 // (128–255) data bytes too — `collect::<Result<…>>` short-
                 // circuits on the first bad token.
                 let notes: Vec<u8> = match parts[1..]
@@ -290,8 +289,8 @@ fn main() {
                     continue;
                 }
 
-                // #1433: reject an invalid CC instead of defaulting to CC1.
-                // #2130: also reject out-of-range CC numbers (128–255).
+                // Reject an invalid CC instead of defaulting to CC1.
+                // Also reject out-of-range CC numbers (128–255).
                 let cc = match parse_midi_data_byte(parts[1]) {
                     Ok(c) => c,
                     Err(e) => {
@@ -671,7 +670,7 @@ fn run_complex_scenario(simulator: &Arc<Mutex<MidiSimulator>>) {
 mod tests {
     use super::parse_midi_data_byte;
 
-    /// #2137/#2139: the bin must include **this crate's** simulator helper
+    /// The bin must include **this crate's** simulator helper
     /// (`conductor-daemon/tests/midi_simulator.rs`), not the repo-root crate's
     /// divergent copy. `HELPER_CRATE` exists only in the daemon copy, so if the
     /// `#[path]` regresses to three `../` (the root crate) this fails to
@@ -681,7 +680,7 @@ mod tests {
         assert_eq!(super::midi_simulator::HELPER_CRATE, "conductor-daemon");
     }
 
-    /// #2130: the boundary value 127 is the maximum legal MIDI data byte.
+    /// The boundary value 127 is the maximum legal MIDI data byte.
     #[test]
     fn accepts_valid_data_bytes_including_boundaries() {
         assert_eq!(parse_midi_data_byte("0"), Ok(0));
@@ -689,7 +688,7 @@ mod tests {
         assert_eq!(parse_midi_data_byte("127"), Ok(127));
     }
 
-    /// #2130: 128–255 are valid `u8` values but NOT valid MIDI data bytes — the
+    /// 128–255 are valid `u8` values but NOT valid MIDI data bytes — the
     /// old `.parse::<u8>()` accepted them and the simulator masked them to 7
     /// bits (`note 200` → note 72). They must now be rejected, not reinterpreted.
     #[test]

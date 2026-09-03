@@ -105,7 +105,7 @@ impl InputManager {
         Ok(status_messages.join(" | "))
     }
 
-    /// Open all MIDI ports simultaneously for multi-device operation (v4.20.0 - ADR-009 Phase 2)
+    /// Open all MIDI ports simultaneously for multi-device operation (ADR-009 Phase 2)
     ///
     /// 1. Enumerates available MIDI ports
     /// 2. Filters by `ignore_ports` (D4)
@@ -123,7 +123,7 @@ impl InputManager {
     ///   without enumerating MIDI ports (the user's mode choice excludes
     ///   them). Gamepad-connect failures propagate as `Err` so the
     ///   daemon's bring-up surfaces a user-visible error rather than
-    ///   coming up "successfully" with zero input devices (#974).
+    ///   coming up "successfully" with zero input devices.
     /// - `MidiOnly`: gamepad connect is skipped entirely.
     ///
     /// Mode-based propagation lives in
@@ -136,7 +136,7 @@ impl InputManager {
     ) -> Result<Vec<BindingResult>, String> {
         let advanced = &config.advanced_settings;
 
-        // ADR-039-B #1762 (step 4c): resolve the HID input endpoint alias (if
+        // ADR-039-B (step 4c): resolve the HID input endpoint alias (if
         // any) up-front so BOTH the GamepadOnly early-return below and the
         // normal MIDI+gamepad bring-up tag the gamepad's events with it.
         // `connect_gamepad_multi_device` falls back to "gamepad" when None.
@@ -145,7 +145,7 @@ impl InputManager {
         // input endpoint so connect prefers that controller over first-available.
         self.hid_preferred_guids = resolve_hid_preferred_guids(&config.endpoints);
 
-        // #974: GamepadOnly mode skips MIDI bring-up entirely. Opening
+        // GamepadOnly mode skips MIDI bring-up entirely. Opening
         // MIDI ports would contradict the user's mode choice. The
         // gamepad-connect attempt itself is required (not best-effort)
         // — `try_connect_gamepad` propagates Err for GamepadOnly so a
@@ -171,7 +171,7 @@ impl InputManager {
         if ports.is_empty() {
             // No MIDI ports at all — enter idle multi-device state so
             // hot-plug rescans can detect devices connected later, and
-            // best-effort gamepad connect (#969). For GamepadOnly mode
+            // best-effort gamepad connect. For GamepadOnly mode
             // we already early-returned above.
             self.enter_multi_device_idle_state(&event_tx, &command_tx, "no MIDI ports enumerated")?;
             if self.mode == InputMode::MidiOnly {
@@ -189,12 +189,12 @@ impl InputManager {
             port_infos.push(PortInfo::new(name, index));
         }
 
-        // Resolve the unified endpoint set up-front (ADR-035 Slice 9.5).
+        // Resolve the unified endpoint set up-front (ADR-035).
         // `normalize_to_endpoints` folds `[[bindings]]` + `[[connectors]]` +
         // authored `[[endpoints]]` into one set, so an authored input endpoint
         // binds here exactly like a legacy binding. Needed BEFORE filtering so
         // Conductor's own MidiVirtualPort outputs are excluded from input
-        // scanning (#2054/#2216). Guaranteed-Ok post-load; `?` defensive.
+        // scanning. Guaranteed-Ok post-load; `?` defensive.
         let endpoints = conductor_core::config::loader::normalize_to_endpoints(config)
             .map_err(|e| format!("normalize endpoints for resolve: {e}"))?
             .0;
@@ -209,7 +209,7 @@ impl InputManager {
             // All ports filtered out — same idle-state semantics as
             // ports.is_empty() above. Sharing the helper means future
             // changes can't accidentally set the flag at one site and
-            // miss the other (#969 review).
+            // miss the other.
             self.enter_multi_device_idle_state(
                 &event_tx,
                 &command_tx,
@@ -274,7 +274,7 @@ impl InputManager {
                                 claimed_by = %claimed_by,
                                 "Port ambiguous (identity already claimed), skipping"
                             );
-                            // #943: surface this beyond the log so the GUI / MCP /
+                            // Surface this beyond the log so the GUI / MCP /
                             // CLI can show the user a "refine matcher" hint
                             // instead of silently dropping the port.
                             self.emit_ambiguous_port_event(
@@ -327,7 +327,7 @@ impl InputManager {
 
         self.multi_device_active = true;
 
-        // Connect gamepad if mode includes it (#969 / #974).
+        // Connect gamepad if mode includes it.
         // GamepadOnly mode would have early-returned above, so reaching
         // here means mode is `Both` and try_connect_gamepad uses
         // best-effort semantics (failures logged, not propagated).
@@ -346,8 +346,7 @@ impl InputManager {
     /// Used by both empty-ports paths in `listen_to_all_ports` (Sites 1
     /// and 2) and the GamepadOnly early-return, where there's no MIDI
     /// port to listen on but we still want the manager "active" so
-    /// hot-plug rescans detect later device connections (#969 review
-    /// 3167308646).
+    /// hot-plug rescans detect later device connections.
     ///
     /// Setting the flag and attempting gamepad-connect together via
     /// this helper makes the pair a single atomic transition — it's
@@ -355,7 +354,7 @@ impl InputManager {
     /// other.
     ///
     /// Returns `Err` only when `try_connect_gamepad` does — i.e. mode
-    /// is `GamepadOnly` and gamepad-connect failed (#974).
+    /// is `GamepadOnly` and gamepad-connect failed.
     pub(crate) fn enter_multi_device_idle_state(
         &mut self,
         event_tx: &mpsc::Sender<DeviceEvent<ProtocolEvent>>,
@@ -373,8 +372,7 @@ impl InputManager {
     ///   so a missing gamepad doesn't bring down a working MIDI setup.
     /// - `GamepadOnly`: required — connect failure propagates as Err
     ///   so the daemon's bring-up fails with a user-visible error
-    ///   instead of starting "successfully" with zero input devices
-    ///   (#974).
+    ///   instead of starting "successfully" with zero input devices.
     ///
     /// The mode-based decision is delegated to the pure
     /// `classify_gamepad_connect_result` so it can be exercised
@@ -399,7 +397,7 @@ impl InputManager {
         event_tx: &mpsc::Sender<DeviceEvent<ProtocolEvent>>,
         command_tx: &mpsc::Sender<DaemonCommand>,
     ) -> Result<(), String> {
-        // ADR-039-B #1762 (step 4c): tag the gamepad's events with the
+        // ADR-039-B (step 4c): tag the gamepad's events with the
         // configured `[[endpoints]]` Input/Hid alias (the route `from` key), or
         // the historical "gamepad" DeviceId when no HID input endpoint is
         // declared. Resolved before the mutable borrow below.
@@ -410,8 +408,8 @@ impl InputManager {
             .unwrap_or_else(|| DeviceId::raw("gamepad"));
 
         if let Some(ref mut gamepad_src) = self.gamepad_manager {
-            // ADR-039-B #1762 (step 4c): drive the HID `InputSource` substrate
-            // (#1758/#1760) — `connect` stages the intermediate `InputEvent`
+            // ADR-039-B (step 4c): drive the HID `InputSource` substrate
+            // — `connect` stages the intermediate `InputEvent`
             // channel; `start(tx)` spawns the §4.3 shed-load pump (try_send +
             // drop-newest) onto the unified `DeviceEvent<ProtocolEvent>` channel.
             // Behaviour-identical to the prior inline pump; the source now owns
@@ -443,7 +441,7 @@ impl InputManager {
         }
     }
 
-    /// ADR-039-B #2293: gamepad hot-plug rescan. Connects a gamepad that was
+    /// ADR-039-B: gamepad hot-plug rescan. Connects a gamepad that was
     /// switched on / paired AFTER daemon start, mirroring MIDI's 5s hot-plug
     /// rescan (the gamepad was previously only connected at startup, so a
     /// controller powered on later was never picked up).
@@ -487,7 +485,7 @@ impl InputManager {
         }
     }
 
-    /// ADR-039-B #2293: whether the hot-plug loop should run a gamepad rescan
+    /// ADR-039-B: whether the hot-plug loop should run a gamepad rescan
     /// this tick (gamepad-capable mode + no gamepad currently connected). Lets
     /// the caller skip the off-lock presence probe entirely in the common
     /// `MidiOnly` / already-connected cases — see [`should_rescan_gamepad`].
@@ -497,7 +495,7 @@ impl InputManager {
 
     /// Reconnect the MIDI device to a specific port by index (legacy single-device).
     ///
-    /// #885: emits `DeviceEvent<ProtocolEvent>` on the unified channel using a
+    /// Emits `DeviceEvent<ProtocolEvent>` on the unified channel using a
     /// `DeviceId` derived from the port name, so the daemon's
     /// `process_device_event` hot path is the only consumer (the parallel
     /// `process_input_event` path was removed). For configs without
@@ -541,7 +539,7 @@ impl InputManager {
         // the previous `"default"` sentinel.
         let device_id = DeviceId::raw(&port_name);
 
-        // ADR-039 §4.3 (#1760): non-blocking shed-load push (try_send +
+        // ADR-039 §4.3: non-blocking shed-load push (try_send +
         // drop-newest) onto the unified pump, replacing the old blocking
         // `send().await`. Retain the metrics handle for `input_source_metrics()`.
         let metrics = InputSourceMetricsHandle::new();
@@ -554,7 +552,7 @@ impl InputManager {
 }
 
 /// Decide whether a gamepad-connect failure should propagate or be
-/// swallowed, based on the active input mode (#974).
+/// swallowed, based on the active input mode.
 ///
 /// - `MidiOnly`: gamepad connect isn't relevant; result is collapsed to
 ///   `Ok(())` regardless. (`try_connect_gamepad` already early-returns
@@ -577,7 +575,7 @@ impl InputManager {
 /// operator should know). This is a side-effect, not a strict pure
 /// function — but it's not part of the return-value contract that the
 /// unit tests assert.
-/// ADR-039-B #1762 (step 4c): resolve the alias a live gamepad's events should
+/// ADR-039-B (step 4c): resolve the alias a live gamepad's events should
 /// be tagged with — the route `from` key the route engine matches against in
 /// [`route_destinations_ctx`](crate::route_engine::RouteEngine::route_destinations_ctx).
 ///
@@ -624,7 +622,7 @@ pub(crate) fn resolve_hid_preferred_guids(endpoints: &[EndpointConfig]) -> Vec<[
         .collect()
 }
 
-/// ADR-039-B #2293: should the gamepad hot-plug rescan attempt a connect this
+/// ADR-039-B: should the gamepad hot-plug rescan attempt a connect this
 /// tick? Pure decision so it's exhaustively unit-testable without gilrs.
 ///
 /// Attempt only when the mode includes a gamepad (`Both`/`GamepadOnly`) AND no
@@ -660,7 +658,7 @@ mod tests {
     use conductor_core::Config;
 
     // ========================================================================
-    // #969: gamepad-connect error handling consistency in listen_to_all_ports
+    // Gamepad-connect error handling consistency in listen_to_all_ports
     // ========================================================================
     //
     // Three sites in `listen_to_all_ports` call `connect_gamepad_multi_device`.
@@ -675,14 +673,14 @@ mod tests {
     // helper, the compiler rejects it.
 
     // `DaemonCommand` is brought in by `use super::*;` above — no extra
-    // import needed (Copilot review 3167308772).
+    // import needed.
 
     #[tokio::test]
     async fn try_connect_gamepad_does_not_propagate_failure_in_both_mode() {
         // Helper must be best-effort in Both mode: the typical CI (and
-        // many real user setups) has no gamepads available. Pre-#969
+        // many real user setups) has no gamepads available. Previously
         // this would propagate at Sites 1 & 2 of `listen_to_all_ports`
-        // and bring down the whole bring-up. Post-#974 the helper now
+        // and bring down the whole bring-up. The helper now
         // returns Result; for Both mode + connect failure, classify
         // collapses to Ok.
         //
@@ -720,7 +718,7 @@ mod tests {
     }
 
     // ========================================================================
-    // #974: GamepadOnly hard-fail when gamepad-connect fails
+    // GamepadOnly hard-fail when gamepad-connect fails
     // ========================================================================
     //
     // Pre-fix: `try_connect_gamepad` always returned `()` — even in
@@ -730,7 +728,7 @@ mod tests {
     // Fix (Option C+): pure `classify_gamepad_connect_result(mode, result, context)`
     // function centralises the mode-based decision; `try_connect_gamepad`
     // delegates to it. All call sites use `?` — consistency by construction
-    // is preserved (the property #969 established).
+    // is preserved.
 
     #[test]
     fn classify_gamepad_only_failure_propagates_err() {
@@ -797,7 +795,7 @@ mod tests {
     }
 
     // ====================================================================
-    // ADR-039-B #2293: gamepad hot-plug rescan decision (should_rescan_gamepad)
+    // ADR-039-B: gamepad hot-plug rescan decision (should_rescan_gamepad)
     // ====================================================================
 
     #[test]
@@ -828,13 +826,12 @@ mod tests {
     // (Removed: `try_connect_gamepad_propagates_err_in_gamepad_only` —
     // it was hardware-dependent (passes when no controller is connected,
     // fails when one is) and only duplicated coverage already provided
-    // by the pure `classify_*` tests above. Per Copilot review on PR
-    // #978, the pure-function tests are the authoritative regression
-    // guards for the mode-based decision.)
+    // by the pure `classify_*` tests above. The pure-function tests are
+    // the authoritative regression guards for the mode-based decision.)
 
     #[tokio::test]
     async fn listen_to_all_ports_skips_midi_in_gamepad_only_mode() {
-        // #974: in GamepadOnly mode, opening MIDI ports contradicts the
+        // In GamepadOnly mode, opening MIDI ports contradicts the
         // user's mode choice. The early-return at the top of
         // listen_to_all_ports must skip the MIDI bring-up entirely; we
         // verify by asserting `midi_managers` stays empty regardless of
@@ -861,7 +858,7 @@ mod tests {
 
     #[tokio::test]
     async fn enter_multi_device_idle_state_sets_active_flag() {
-        // #969 review (Copilot 3167308646): the Site 1 early-return path
+        // The Site 1 early-return path
         // (no MIDI ports enumerated) was missing
         // `self.multi_device_active = true`, unlike Site 2
         // (capped.is_empty()) and the normal path. Without the flag,
@@ -895,7 +892,7 @@ mod tests {
     }
 
     // ========================================================================
-    // ADR-039-B #1762 (step 4c): HID input endpoint alias resolution
+    // ADR-039-B (step 4c): HID input endpoint alias resolution
     // ========================================================================
     //
     // A live gamepad's events are tagged with a `DeviceId` that the route

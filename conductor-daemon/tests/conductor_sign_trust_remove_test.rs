@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1315: `conductor-sign trust remove <key>` corrupts the
+//! `conductor-sign trust remove <key>` corrupts the
 //! metadata of all retained `TrustedKey` entries.
 //!
 //! Bug shape: `trust_remove` calls `load_trusted_keys()` which only
@@ -82,7 +82,7 @@ fn parse(toml_text: &str) -> TrustedKeysFile {
         .unwrap_or_else(|e| panic!("invalid trusted_keys.toml: {e}\n{toml_text}"))
 }
 
-/// THE regression test for #1315. Pre-write a `trusted_keys.toml`
+/// THE regression test. Pre-write a `trusted_keys.toml`
 /// with TWO entries that have rich, distinct metadata (name AND
 /// email AND a fixed added_at timestamp). Run `trust remove` on
 /// one entry. Assert the retained entry's ALL THREE metadata
@@ -91,7 +91,7 @@ fn parse(toml_text: &str) -> TrustedKeysFile {
 /// Pre-writing the TOML (rather than going through `trust add`)
 /// is the load-bearing change: `trust add` only takes a name
 /// (email is always empty going through CLI), so it can't
-/// exercise the email-preservation case. Council R2 surfaced this.
+/// exercise the email-preservation case.
 #[test]
 fn trust_remove_preserves_retained_key_metadata() {
     let tempdir = tempfile::tempdir().expect("tempdir");
@@ -135,7 +135,7 @@ added_at = "{bob_added_at}"
     std::fs::write(cli_config_path.join("trusted_keys.toml"), &initial_toml).expect("seed");
 
     // Sanity: re-read the seed from disk (not the in-memory
-    // literal — Council R3: validate what's actually on disk in
+    // literal — validate what's actually on disk in
     // case the path/write went wrong silently) and confirm both
     // records present with full metadata.
     let seed_on_disk = std::fs::read_to_string(cli_config_path.join("trusted_keys.toml"))
@@ -180,7 +180,7 @@ added_at = "{bob_added_at}"
         1,
         "exactly one key should remain post-removal; got:\n{after_text}"
     );
-    // Council R3: don't index — look up by public_key. Index 0 would
+    // Don't index — look up by public_key. Index 0 would
     // accidentally pass if ordering changed and we kept Bob (we wouldn't
     // be checking it's actually Alice). find() makes the check
     // identity-based.

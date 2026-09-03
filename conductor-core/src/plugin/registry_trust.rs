@@ -4,8 +4,8 @@
 //! ADR-027 §D10d-source — plugin-registry **document** trust (Phase 1: client
 //! validation + rollback protection).
 //!
-//! D10d-last-mile / D10d-boundary (URL hygiene + typed-field validation,
-//! #1077 / #1083) already constrain *where* the registry is fetched and *what
+//! D10d-last-mile / D10d-boundary (URL hygiene + typed-field validation)
+//! already constrain *where* the registry is fetched and *what
 //! shape* each entry has. This module adds integrity to the registry
 //! **document itself**: a `registry.json` served from a CDN is only trusted if
 //! it carries a valid signature from the pinned Conductor registry key, and is
@@ -30,7 +30,7 @@
 //! ("binary concat has no canonicalisation malleability"). `key_id` is bound
 //! INTO the signed bytes so it cannot be swapped. The client verifies the
 //! signature **before** parsing the inner payload (validate-offline-then-parse
-//! — no fetch-and-execute TOCTOU; Council R1).
+//! — no fetch-and-execute TOCTOU).
 //!
 //! # Rollback / replay protection
 //!
@@ -38,7 +38,7 @@
 //! attacker cannot strip them without breaking the signature):
 //!
 //! * `sequence_number` — strictly increasing; the client tracks the last-seen
-//!   value and rejects anything `<=` it. This is the Council R1 P0 control: a
+//!   value and rejects anything `<=` it. This is the control: a
 //!   `published_at` alone rejects *older* documents but not a replay of a valid
 //!   past document as "current"; the sequence number closes that.
 //! * `published_at` (RFC 3339) — must not move backwards, compared as parsed
@@ -50,8 +50,8 @@
 //! Client verification + rollback protection + key rotation (reusing
 //! [`crate::plugin::key_rotation`]) + the M-of-N (2-of-3) catastrophic-recovery
 //! escrow (via [`crate::plugin::registry_escrow`], which resolves the effective
-//! root anchor). Signing CI / baking the real keys remains a follow-up under
-//! #1897. Production ships an empty pinned key (the live registry is not yet
+//! root anchor). Signing CI / baking the real keys remains a follow-up.
+//! Production ships an empty pinned key (the live registry is not yet
 //! signed): [`decide_fetch`] returns [`FetchDecision::UnverifiedNoPin`] and the
 //! caller warns-and-allows (migration). An *invalid* signature against a pinned
 //! key is always rejected.
@@ -75,7 +75,7 @@ const REGISTRY_PINNED_KEY_HEX: &str = "";
 /// Key id matching [`REGISTRY_PINNED_KEY_HEX`].
 pub const REGISTRY_PINNED_KEY_ID: &str = "conductor-registry-v1";
 
-// Build-time safety gate (Council R2): the baked key must be either empty
+// Build-time safety gate: the baked key must be either empty
 // (Phase-1 placeholder) or a full 32-byte / 64-hex Ed25519 key. A truncated or
 // malformed key pasted in by the signing-infra follow-up fails the build here
 // rather than silently degrading to "no pin" at runtime.
@@ -87,7 +87,7 @@ const _: () = assert!(
 /// Maximum accepted registry document size, in bytes. A registry of thousands
 /// of plugins is well under this; the cap bounds the memory/CPU an attacker can
 /// force the client to spend parsing/verifying an oversized document BEFORE the
-/// signature is checked (Council R2 — DoS via unbounded payload).
+/// signature is checked (DoS via unbounded payload).
 pub const MAX_REGISTRY_DOC_BYTES: usize = 8 * 1024 * 1024;
 
 /// The signed-registry envelope (see module docs).
@@ -119,15 +119,14 @@ pub struct SignedRegistryEnvelope {
 struct RegistryTrustHeader {
     /// `Option` (not a `#[serde(default)] u64`) so an OMITTED field is
     /// detectable and rejected — a defaulted `0` would slip through the cache
-    /// path's `>=` check on fresh state (`0 >= 0`; Council on #2049).
+    /// path's `>=` check on fresh state (`0 >= 0`).
     sequence_number: Option<u64>,
     published_at: Option<String>,
 }
 
 /// Per-client trust state persisted across fetches for rollback/replay
 /// protection. Lives in a file SEPARATE from the plugin trust store
-/// (`trusted_keys.json`) so registry trust can evolve independently (Council
-/// R1 isolation note).
+/// (`trusted_keys.json`) so registry trust can evolve independently.
 ///
 /// **Integrity boundary (Phase 1):** the on-disk state file is plain JSON; its
 /// integrity rests on the OS file permissions of `~/.conductor/` — the same
@@ -135,8 +134,8 @@ struct RegistryTrustHeader {
 /// persistence veto now guards against shell-action writes. A local attacker
 /// who can rewrite this file could roll the high-water marks back; binding the
 /// file with a device-secret-keyed HMAC (keychain) closes that, but a device
-/// secret is an ADR-042 Phase-B concern and is tracked as a #1897 follow-up,
-/// not part of this client-validation slice (Council R4).
+/// secret is an ADR-042 Phase-B concern and is tracked as a follow-up,
+/// not part of this client-validation slice.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegistryTrustState {
     /// Id of the key whose documents have been accepted so far.
@@ -229,7 +228,7 @@ pub enum RegistryTrustError {
     /// A manifest-absent (verify-against-root) document arrived after a rotation
     /// had already been accepted. Once the chain has advanced, the root is no
     /// longer the active signer, so dropping the manifest would let an old-root
-    /// holder downgrade past the rotation (Copilot review on #2049). After a
+    /// holder downgrade past the rotation. After a
     /// rotation, the document MUST carry the chain so the head key is required.
     RotationManifestRequired { last_chain_head_seq: u32 },
 }
@@ -302,9 +301,9 @@ impl std::error::Error for RegistryTrustError {}
 /// Signed and verified with **pure Ed25519** (which performs its own internal
 /// SHA-512 hashing of the message), so there is no separate application-level
 /// pre-hash that signer and verifier could disagree on — closes the
-/// double-hashing footgun (Council R1). The domain tag prevents a signature
+/// double-hashing footgun. The domain tag prevents a signature
 /// minted for some other Conductor artifact from being replayed here, and
-/// binding `key_id` INTO the signed bytes (Council R2) means an attacker cannot
+/// binding `key_id` INTO the signed bytes means an attacker cannot
 /// swap the envelope's `key_id` to point the verifier at a different key while
 /// keeping a valid signature — the NUL separator keeps `key_id` and `payload`
 /// unambiguously delimited.
@@ -361,7 +360,7 @@ fn resolve_rotation_head_key(
     // Defensive: `validate_chain_pinned` rejects an empty manifest
     // (`RotationError::Empty`) before building a `VerifiedChain`, so the success
     // path always has at least the root — this guard is unreachable but kept for
-    // explicitness (Copilot review on #2049).
+    // explicitness.
     let head = chain
         .keys
         .last()
@@ -374,8 +373,8 @@ fn resolve_rotation_head_key(
 
 /// Cheap predicate: do these bytes parse as a signed envelope with a non-empty
 /// signature? Lets a caller branch signed-vs-legacy without committing to the
-/// verify path. An over-large input returns `false` without parsing (DoS bound,
-/// Council R3) — the trust decision itself goes through [`decide_fetch`] /
+/// verify path. An over-large input returns `false` without parsing (DoS bound)
+/// — the trust decision itself goes through [`decide_fetch`] /
 /// [`decide_cache`], which gate on the pinned key rather than on this shape
 /// predicate.
 pub fn is_signed_envelope(raw: &str) -> bool {
@@ -405,8 +404,8 @@ fn parse_verifying_key(hex_str: &str) -> Result<VerifyingKey, RegistryTrustError
 }
 
 /// The shared verification core for BOTH the fetch and cache paths, so the
-/// cache can never be used to downgrade past a guard the fetch enforces
-/// (Council on #2049). Enforces, in order: size cap → envelope parse → `key_id`
+/// cache can never be used to downgrade past a guard the fetch enforces.
+/// Runs, in order: size cap → envelope parse → `key_id`
 /// → rotation chain (validated against the pinned root, chain anti-rollback vs
 /// `state.last_chain_head_seq`, manifest-required-after-rotation) → signature
 /// against the resolved key → document `sequence_number` → required
@@ -446,7 +445,7 @@ fn verify_envelope(
             // Once a rotation has been accepted, the root is no longer the
             // active signer — a manifest-absent document would be verified
             // against the (rotated-away) root, letting an old-root holder
-            // downgrade past the rotation (Copilot review on #2049). Pre-rotation
+            // downgrade past the rotation. Pre-rotation
             // single-key documents (no rotation ever seen) remain accepted
             // against the pinned root.
             if let Some(last) = state.last_chain_head_seq {
@@ -471,8 +470,8 @@ fn verify_envelope(
 
     // `sequence_number` is REQUIRED and 1-indexed: an omitted field (which would
     // serde-default to `0`) or an explicit `0` is rejected, so it cannot slip
-    // through the cache path's `>=` check on fresh state (`0 >= 0`; Council on
-    // #2049). Then enforce no-rollback: the cache path uses `>=` since it holds
+    // through the cache path's `>=` check on fresh state (`0 >= 0`).
+    // Then enforce no-rollback: the cache path uses `>=` since it holds
     // the current document (seq == last); the fetch path uses strict `>`.
     let seq = header
         .sequence_number
@@ -489,9 +488,9 @@ fn verify_envelope(
             got: seq,
         });
     }
-    // published_at is REQUIRED (Council R3/R4): omitting it would permanently
+    // published_at is REQUIRED: omitting it would permanently
     // disable the temporal guard. Compared as parsed INSTANTS — lexical RFC 3339
-    // compare is bypassable (`+00:00` vs `Z`, fractional seconds; Council R2).
+    // compare is bypassable (`+00:00` vs `Z`, fractional seconds).
     let got = header
         .published_at
         .as_deref()
@@ -499,8 +498,8 @@ fn verify_envelope(
     let got_dt = parse_rfc3339(got)?;
     // The INCOMING value must be valid RFC 3339 (above). The PERSISTED value is
     // compared tolerantly: a corrupted/tampered state file with a malformed
-    // last_published_at must NOT brick every fetch (DoS via poisoned state;
-    // Council #2049 R3) — treat an unparseable stored value as "no prior". The
+    // last_published_at must NOT brick every fetch (DoS via poisoned state)
+    // — treat an unparseable stored value as "no prior". The
     // sequence_number high-water mark remains the primary monotonic guard.
     if let Some(last) = &state.last_published_at
         && let Ok(last_dt) = parse_rfc3339(last)
@@ -542,7 +541,7 @@ pub fn verify_signed_registry(
 /// as the fetch path ([`verify_envelope`]) — including the rotation-manifest
 /// requirement and chain/sequence anti-rollback — but with `>=` sequence
 /// semantics (the cache holds the current document, whose sequence equals the
-/// last accepted). This closes the cache-downgrade hole (Council on #2049): a
+/// last accepted). This closes the cache-downgrade hole: a
 /// local attacker swapping the cache file for an older rotated or
 /// manifest-absent root-signed document is now rejected. No state advance — the
 /// returned would-be state is discarded; the cache only yields the trusted
@@ -597,7 +596,7 @@ pub struct CacheOutcome {
 
 /// Fetch-time trust decision.
 ///
-/// **CRITICAL (Council R1):** whether to verify is gated on whether a key is
+/// **CRITICAL:** whether to verify is gated on whether a key is
 /// **pinned**, NOT on whether the *document* looks signed. Branching on the
 /// document shape (e.g. `is_signed_envelope`) let a network attacker **strip**
 /// the envelope and force the unsigned path — a signature-stripping downgrade.

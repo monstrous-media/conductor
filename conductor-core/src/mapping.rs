@@ -9,7 +9,7 @@ use crate::events::VelocityLevel;
 use std::collections::HashMap;
 use tracing::{debug, trace, warn};
 
-/// Classify velocity using configurable thresholds (v4.9.0 fix for GitHub #48)
+/// Classify velocity using configurable thresholds
 /// This function respects user-defined soft_max and medium_max boundaries
 /// instead of the hard-coded 40/80 defaults in EventProcessor.
 pub(crate) fn classify_velocity(velocity: u8, soft_max: u8, medium_max: u8) -> VelocityLevel {
@@ -37,12 +37,12 @@ struct CompiledMapping {
     trigger: CompiledTrigger,
     action: Action,
     description: Option<String>,
-    /// Device filter: only match events from this device alias (v4.19.0 - ADR-009)
+    /// Device filter: only match events from this device alias (ADR-009)
     device: Option<String>,
 }
 
 /// Compiled trigger representation used by both MappingEngine and CompiledRuleSet
-/// (v4.21.0 - ADR-009 Phase 3: extracted for reuse by rule_set module)
+/// (ADR-009 Phase 3: extracted for reuse by rule_set module)
 #[derive(Debug, Clone)]
 pub(crate) enum CompiledTrigger {
     Note {
@@ -59,7 +59,7 @@ pub(crate) enum CompiledTrigger {
         notes: Vec<u8>,
         channel: Option<u8>,
     },
-    // ADR-002 Gap Fixes (v4.3.0)
+    // ADR-002 Gap Fixes
     DoubleTap {
         note: u8,
         channel: Option<u8>,
@@ -73,7 +73,7 @@ pub(crate) enum CompiledTrigger {
         pressure_min: u8,
         channel: Option<u8>,
     },
-    /// Polyphonic aftertouch — per-note pressure (#575).
+    /// Polyphonic aftertouch — per-note pressure.
     PolyAftertouch {
         note: u8,
         pressure_min: u8,
@@ -100,7 +100,7 @@ pub(crate) enum CompiledTrigger {
         pc: Option<u8>,
         channel: Option<u8>,
     },
-    // Gamepad triggers (v3.0)
+    // Gamepad triggers
     GamepadButton {
         button: u8,
         velocity_min: u8,
@@ -116,7 +116,7 @@ pub(crate) enum CompiledTrigger {
         trigger: u8,
         threshold: u8,
     },
-    // OSC triggers (ADR-039-A Slice 2, #2325). The pattern is compiled at
+    // OSC triggers (ADR-039-A). The pattern is compiled at
     // config load (`OscPattern::compile`) so per-event matching is pure
     // glob evaluation — invalid patterns are rejected by the validator and,
     // defensively, compile to a never-matching trigger here.
@@ -134,7 +134,7 @@ pub(crate) enum CompiledTrigger {
 }
 
 /// Compile a config Trigger into a CompiledTrigger
-/// (v4.21.0 - ADR-009 Phase 3: extracted from MappingEngine for reuse by rule_compiler)
+/// (ADR-009 Phase 3: extracted from MappingEngine for reuse by rule_compiler)
 pub(crate) fn compile_trigger(trigger: &Trigger) -> CompiledTrigger {
     match trigger {
         Trigger::Note {
@@ -161,7 +161,7 @@ pub(crate) fn compile_trigger(trigger: &Trigger) -> CompiledTrigger {
             notes: notes.clone(),
             channel: *channel,
         },
-        // Gamepad triggers (v3.0)
+        // Gamepad triggers
         Trigger::GamepadButton {
             button,
             velocity_min,
@@ -185,7 +185,7 @@ pub(crate) fn compile_trigger(trigger: &Trigger) -> CompiledTrigger {
             trigger: *trigger,
             threshold: threshold.unwrap_or(0),
         },
-        // ADR-002 Gap Fixes (v4.3.0)
+        // ADR-002 Gap Fixes
         Trigger::DoubleTap { note, channel, .. } => CompiledTrigger::DoubleTap {
             note: *note,
             channel: *channel,
@@ -254,7 +254,7 @@ pub(crate) fn compile_trigger(trigger: &Trigger) -> CompiledTrigger {
             pc: *pc,
             channel: *channel,
         },
-        // OSC triggers (ADR-039-A Slice 2, #2325)
+        // OSC triggers (ADR-039-A)
         Trigger::OscMessage { address, .. } => CompiledTrigger::OscMessage {
             address: address.clone(),
         },
@@ -286,7 +286,7 @@ pub(crate) fn compile_trigger(trigger: &Trigger) -> CompiledTrigger {
 /// before the rule-compiler caches the compiled rule set. Non-sugar
 /// variants delegate to `From<ActionConfig> for Action` unchanged.
 ///
-/// (v4.21.0 - ADR-009 Phase 3: extracted from MappingEngine for
+/// (ADR-009 Phase 3: extracted from MappingEngine for
 /// reuse by rule_compiler.)
 pub(crate) fn compile_action(action: &crate::config::ActionConfig) -> Action {
     crate::config::compile::lower_action(action.clone())
@@ -303,7 +303,7 @@ fn channel_matches(trigger_channel: Option<u8>, event_channel: Option<u8>) -> bo
 }
 
 /// Check if a CompiledTrigger matches a ProcessedEvent
-/// (v4.21.0 - ADR-009 Phase 3: extracted from MappingEngine for reuse by rule_set)
+/// (ADR-009 Phase 3: extracted from MappingEngine for reuse by rule_set)
 pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &ProcessedEvent) -> bool {
     match (trigger, event) {
         // Note trigger matches PadPressed for MIDI notes (note < 128)
@@ -338,7 +338,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             },
         ) => {
             // Exact match: detected notes must exactly equal required notes (no subset matching)
-            // Both lists are sorted for order-independent comparison (v4.9.0 - ADR-002 #50)
+            // Both lists are sorted for order-independent comparison (ADR-002)
             let mut required = notes.clone();
             let mut detected = detected_notes.clone();
             required.sort_unstable();
@@ -346,7 +346,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
 
             required == detected && channel_matches(*tch, *ev_ch)
         }
-        // Gamepad button press (v3.0)
+        // Gamepad button press
         (
             CompiledTrigger::GamepadButton {
                 button,
@@ -357,7 +357,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             // Gamepad buttons use IDs 128-255 to avoid MIDI conflicts
             *button == *note && *velocity >= *velocity_min && *note >= 128
         }
-        // Gamepad button chord (v3.0)
+        // Gamepad button chord
         (
             CompiledTrigger::GamepadButtonChord { buttons },
             ProcessedEvent::ChordDetected {
@@ -375,7 +375,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             // Only match if all buttons are in gamepad range (128-255)
             required == detected && required.iter().all(|b| *b >= 128)
         }
-        // Gamepad analog stick (v3.0)
+        // Gamepad analog stick
         (
             CompiledTrigger::GamepadAnalogStick { axis, direction },
             ProcessedEvent::EncoderTurned {
@@ -408,7 +408,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
                 _ => true, // Any direction
             }
         }
-        // Gamepad analog trigger (v3.0)
+        // Gamepad analog trigger
         (
             CompiledTrigger::GamepadTrigger { trigger, threshold },
             ProcessedEvent::EncoderTurned { cc, value, .. },
@@ -416,8 +416,8 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             // Gamepad analog triggers use IDs 132-133
             *trigger == *cc && *value >= *threshold && (*cc == 132 || *cc == 133)
         }
-        // ADR-002 Gap Fixes (v4.3.0)
-        // DoubleTap trigger matches DoubleTap event (v4.26.0: match by note only, ignore new fields)
+        // ADR-002 Gap Fixes
+        // DoubleTap trigger matches DoubleTap event (match by note only, ignore new fields)
         (
             CompiledTrigger::DoubleTap { note, channel: tch },
             ProcessedEvent::DoubleTap {
@@ -456,7 +456,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             },
         ) => *pressure >= *pressure_min && channel_matches(*tch, *ev_ch),
         // PolyAftertouch trigger matches PolyAftertouchChanged when
-        // note matches AND pressure >= threshold (#575).
+        // note matches AND pressure >= threshold.
         (
             CompiledTrigger::PolyAftertouch {
                 note,
@@ -486,7 +486,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             min_ok && max_ok && channel_matches(*tch, *ev_ch)
         }
         // VelocityRange trigger matches PadPressed (MIDI range only)
-        // v4.9.0 fix: Use config soft_max/medium_max instead of ignoring them (GitHub #48)
+        // Fix: use config soft_max/medium_max instead of ignoring them (GitHub #48)
         (
             CompiledTrigger::VelocityRange {
                 note,
@@ -518,7 +518,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             );
             true
         }
-        // CC trigger matches CCReceived for pedals/buttons (v4.10.9)
+        // CC trigger matches CCReceived for pedals/buttons
         (
             CompiledTrigger::CC {
                 cc,
@@ -598,7 +598,7 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             let pc_ok = pc.is_none_or(|p| p == *program);
             pc_ok && channel_matches(*tch, *ev_ch)
         }
-        // OSC triggers (ADR-039-A Slice 2, #2325): matched only against
+        // OSC triggers (ADR-039-A): matched only against
         // ProcessedEvent::OscReceived. The address comes off the wire
         // (attacker-controlled) — exact compare / pre-compiled glob /
         // fallible numeric coercion only, never a panic.
@@ -632,9 +632,9 @@ pub(crate) fn trigger_matches_processed(trigger: &CompiledTrigger, event: &Proce
             // String args and missing indices never match.
             _ => false,
         },
-        // Fallback for unhandled combinations (ADR-002 Council safeguard)
+        // Fallback for unhandled combinations (ADR-002 safeguard)
         // Note: Most non-matches are expected (e.g., GamepadButton + EncoderTurned)
-        // Use trace! to avoid log noise - only visible with DEBUG=1 (v4.10.8)
+        // Use trace! to avoid log noise - only visible with DEBUG=1
         (trigger, event) => {
             trace!(
                 trigger_type = std::any::type_name_of_val(trigger),
@@ -655,18 +655,18 @@ impl MappingEngine {
     }
 
     /// Returns the number of modes currently loaded.
-    /// Used for testing that stale modes are cleared on config reload (v4.9.0).
+    /// Used for testing that stale modes are cleared on config reload.
     pub fn mode_count(&self) -> usize {
         self.mode_mappings.len()
     }
 
     pub fn load_from_config(&mut self, config: &Config) {
-        // v4.9.0 fix: Clear existing mappings to prevent stale modes when config
-        // has fewer modes than before (GitHub #49, ADR-002 Council verification)
+        // Clear existing mappings to prevent stale modes when config
+        // has fewer modes than before (ADR-002)
         self.mode_mappings.clear();
 
         // Load mode-specific mappings
-        // v4.9.0: Warn if more than 256 modes (u8 limit) - Council feedback
+        // Warn if more than 256 modes (u8 limit)
         if config.modes.len() > 256 {
             warn!(
                 mode_count = config.modes.len(),
@@ -689,7 +689,7 @@ impl MappingEngine {
     }
 
     fn compile_mapping(mapping: &Mapping) -> CompiledMapping {
-        // Extract device filter from trigger (v4.19.0 - ADR-009)
+        // Extract device filter from trigger (ADR-009)
         let device = mapping.trigger.device().cloned();
 
         CompiledMapping {
@@ -725,7 +725,7 @@ impl MappingEngine {
         self.find_matching_action_for_processed(event, &self.global_mappings)
     }
 
-    /// Get action for a processed event with device filtering (v4.19.0 - ADR-009)
+    /// Get action for a processed event with device filtering (ADR-009)
     ///
     /// When `device_id` is Some, only mappings with matching device filter (or no filter) are considered.
     /// When `device_id` is None, only mappings with no device filter are considered.
@@ -784,7 +784,7 @@ impl MappingEngine {
         None
     }
 
-    /// Find matching action with device filter (v4.19.0 - ADR-009)
+    /// Find matching action with device filter (ADR-009)
     fn find_matching_action_for_processed_with_device(
         &self,
         event: &ProcessedEvent,
@@ -841,7 +841,7 @@ impl MappingEngine {
                     ..
                 },
             ) => *cc == *ev_cc && *value >= *value_min && channel_matches(*tch, Some(*ev_ch)),
-            // Channel aftertouch: pressure clears the threshold (#1457). Mirrors
+            // Channel aftertouch: pressure clears the threshold. Mirrors
             // the processed-event predicate so direct `get_action(&MidiEvent)`
             // lookups honour the same contract as the EventProcessor path.
             (
@@ -855,7 +855,7 @@ impl MappingEngine {
                     ..
                 },
             ) => *pressure >= *pressure_min && channel_matches(*tch, Some(*ev_ch)),
-            // Polyphonic aftertouch: same note AND pressure over threshold (#1457).
+            // Polyphonic aftertouch: same note AND pressure over threshold.
             (
                 CompiledTrigger::PolyAftertouch {
                     note,
@@ -874,7 +874,7 @@ impl MappingEngine {
                     && channel_matches(*tch, Some(*ev_ch))
             }
             // Pitch bend: 14-bit value within the configured [min, max] window
-            // (either bound optional) (#1457).
+            // (either bound optional).
             (
                 CompiledTrigger::PitchBend {
                     value_min,
@@ -892,7 +892,7 @@ impl MappingEngine {
                     && channel_matches(*tch, Some(*ev_ch))
             }
             // Program change: program number matches, or the trigger leaves it
-            // unconstrained (#1457).
+            // unconstrained.
             (
                 CompiledTrigger::ProgramChange { pc, channel: tch },
                 MidiEvent::ProgramChange {
@@ -914,8 +914,8 @@ impl MappingEngine {
     }
 }
 
-/// Check if a mapping's device filter matches the event's device_id (v4.19.0 - ADR-009)
-/// (v4.21.0: extracted as free function for reuse by rule_set)
+/// Check if a mapping's device filter matches the event's device_id (ADR-009)
+/// (extracted as free function for reuse by rule_set)
 pub(crate) fn device_matches(mapping_device: &Option<String>, event_device: Option<&str>) -> bool {
     match (mapping_device, event_device) {
         // Mapping has no device filter → matches any device
@@ -979,7 +979,7 @@ mod tests {
         assert!(!trigger_matches_processed(&bad_trigger, &bad_event));
     }
 
-    /// #1505 / GitHub #48: `classify_velocity` is the unit that actually
+    /// `classify_velocity` is the unit that actually
     /// respects user-configured `soft_max` / `medium_max`. These tests
     /// exercise the classifier directly (rather than asserting only that a
     /// VelocityRange trigger matched), so a regression that ignores the custom
@@ -1000,7 +1000,7 @@ mod tests {
 
     #[test]
     fn classify_velocity_respects_custom_soft_max() {
-        // Custom soft_max=30, medium_max=70 (the #1505 config).
+        // Custom soft_max=30, medium_max=70.
         assert_eq!(classify_velocity(25, 30, 70), VelocityLevel::Soft);
         assert_eq!(classify_velocity(30, 30, 70), VelocityLevel::Soft); // == soft_max
         assert_eq!(classify_velocity(31, 30, 70), VelocityLevel::Medium); // just over

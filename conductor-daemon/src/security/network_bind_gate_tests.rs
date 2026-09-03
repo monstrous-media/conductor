@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Unit tests for the ADR-042 Phase B-early network bind gate (#1899). In a
+//! Unit tests for the ADR-042 Phase B-early network bind gate. In a
 //! `#[path]` sibling so the gate module stays within the Council verify budget.
 //! All tests use an injected mock keychain — never the real OS keychain (which
 //! can block on a macOS access prompt).
@@ -209,7 +209,7 @@ fn tampered_registry_fails_closed() {
 fn unreadable_registry_fails_closed_not_tampered() {
     // A structurally-corrupt (truncated) registry is a *parse* failure, not a
     // forged MAC — it must fail closed as `RegistryUnreadable`, not be mislabelled
-    // as tamper (Council reasoning-tier review).
+    // as tamper.
     let fx = fixture();
     let acl = vec!["192.168.1.0/24".to_string()];
     write_approved(&fx, "osc_in", "192.168.1.10", 9000, &acl);

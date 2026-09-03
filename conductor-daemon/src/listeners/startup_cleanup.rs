@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase A — orphaned-listener detection (Slice A.6.1).
+//! ADR-042 Phase A — orphaned-listener detection.
 //!
 //! **Deviation from spec §5 A.6.1 (deliberate, documented):** the spec proposed
 //! scanning the OS process table (`lsof -iUDP -c conductor` / `ss -lunp`) for

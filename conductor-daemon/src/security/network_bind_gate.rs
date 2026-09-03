@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase B-early network bind gate (#1899).
+//! ADR-042 Phase B-early network bind gate.
 //!
 //! Decides whether a **non-loopback** OSC/Art-Net listener may bind, based on
 //! the HMAC-signed approval registry (`~/.conductor/network_approvals.json`,
@@ -10,7 +10,7 @@
 //! **fail-closed**: a withheld listener stays unbound and the daemon never
 //! falls back to a cached or assumed approval.
 //!
-//! Design follows the LLM Council reasoning-tier review of the bind-gate plan:
+//! Key design points:
 //! - **Provider-trait keychain seam.** The provider *inside* the gate is a
 //!   non-optional `Arc<dyn KeychainProvider>` — there is no `Option` on the seam
 //!   that a `None` could fail-open through. Production lazily runs

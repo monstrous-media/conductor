@@ -74,7 +74,7 @@ pub type PluginManagerResult<T> = Result<T, PluginManagerError>;
 
 /// Plugin execution wrapper (native or WASM).
 ///
-/// `WasmPlugin` is boxed (PR #1029 round-2): the variant became
+/// `WasmPlugin` is boxed: the variant became
 /// large enough to trigger `clippy::large_enum_variant` after
 /// the D10c `plugin_id` field was added. Boxing keeps the enum
 /// representation compact (every `PluginInstance` is one
@@ -107,7 +107,7 @@ impl PluginInstance {
                     .and_then(|v| v.as_str())
                     .ok_or("Missing 'action' field in params")?;
 
-                // #1446: forward the configured positional parameters to the
+                // Forward the configured positional parameters to the
                 // guest. The bundled WASM plugins read `parameters: Vec<String>`
                 // (e.g. OBS switch_scene → `["scene"]`); without this they
                 // always saw an empty list and parameterized actions failed.
@@ -379,9 +379,9 @@ impl PluginManager {
             .map(|ext| ext == "wasm")
             .unwrap_or(false);
 
-        // PR #1029 round-7 review (2026-05-02): compute the
+        // Compute the
         // granted capability set BEFORE constructing
-        // WasmConfig. Pre-fix the manager passed
+        // WasmConfig. Previously the manager passed
         // `metadata.capabilities` (every capability the manifest
         // declared) directly into `WasmConfig::new`, so
         // `WasmPlugin::init()` ran with the full manifest set
@@ -407,14 +407,14 @@ impl PluginManager {
             #[cfg(feature = "plugin-wasm")]
             {
                 // Load WASM plugin.
-                // ADR-027 D10c (PR #1029 round-2): pass the
+                // ADR-027 D10c: pass the
                 // registry key as the plugin id. The registry
                 // key has already been validated by
                 // `plugin_registry::validate_plugin_id` at
                 // install time, so `WasmConfig::new`'s
-                // construction-time validation (round-7)
+                // construction-time validation
                 // accepts it. Capabilities are the GRANTED
-                // subset (round-7), not the manifest set.
+                // subset, not the manifest set.
                 #[allow(unused_mut)] // mut needed only with plugin-signing feature
                 let mut config = WasmConfig::new(plugin_name)
                     .map_err(|e| {
@@ -555,17 +555,16 @@ impl PluginManager {
 
     /// Grant a capability to a plugin.
     ///
-    /// **The capability MUST be in the plugin's manifest** (PR
-    /// #1029 round-9 review, 2026-05-02): `grant_capability`
+    /// **The capability MUST be in the plugin's manifest**: `grant_capability`
     /// is a user-grant operation against capabilities the
     /// plugin already declared it needs, NOT a way to widen a
-    /// plugin's surface beyond its manifest. Round-8 wired
-    /// `set_capabilities` so post-load grants actually reach
+    /// plugin's surface beyond its manifest. `set_capabilities` wires
+    /// post-load grants so they actually reach
     /// the WASI sandbox; without this manifest check, a caller
     /// could grant `Filesystem`/`Subprocess` to a plugin that
     /// never requested them and `init()`/`execute()` would run
     /// with that extra access — a real privilege-escalation
-    /// path. Pre-round-8 this didn't bite because the WASM
+    /// path. Previously this didn't bite because the WASM
     /// runtime ignored post-load grants entirely.
     ///
     /// Also updates the underlying `WasmPlugin`'s runtime
@@ -609,7 +608,7 @@ impl PluginManager {
 
     /// Revoke a capability from a plugin
     ///
-    /// PR #1029 round-8 review (2026-05-02): also updates the
+    /// Also updates the
     /// `WasmPlugin`'s runtime config so revocation actually
     /// takes effect on subsequent `init()`/`execute()` calls.
     /// See `grant_capability` for context.
@@ -735,7 +734,7 @@ impl PluginManager {
         &self.plugins_dir
     }
 
-    /// Default plugins directory — single source of truth for #921.
+    /// Default plugins directory — single source of truth.
     ///
     /// This is `~/.conductor/plugins` (or `./.conductor/plugins` if `HOME`
     /// is unset), the directory the daemon scans for plugins. Both
@@ -743,7 +742,7 @@ impl PluginManager {
     /// their plugins directory via this helper, so install / list /
     /// uninstall paths can never diverge.
     ///
-    /// Pre-#921, `conductor-gui/src-tauri/src/plugin_commands.rs`
+    /// Previously, the downstream GUI
     /// computed plugin paths from `dirs::config_dir()/conductor/plugins`
     /// (XDG / Application Support / APPDATA, depending on platform),
     /// while `PluginManager::default()` and `AppState` used

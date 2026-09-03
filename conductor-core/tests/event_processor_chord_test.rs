@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Tests for EventProcessor chord detection with configurable timeout (v4.26.64)
+//! Tests for EventProcessor chord detection with configurable timeout
 
 use conductor_core::event_processor::{EventProcessor, ProcessedEvent};
 use conductor_core::events::MidiEvent;
@@ -236,7 +236,7 @@ fn test_set_chord_timeout_dynamic() {
     processor.set_chord_timeout(Duration::from_millis(50));
     assert_eq!(processor.chord_timeout(), Duration::from_millis(50));
 
-    // #1537: the getter check above only proves the stored value changed.
+    // The getter check above only proves the stored value changed.
     // Verify the reset actually took BEHAVIORAL effect — i.e. pruning now
     // uses the 50ms window again, not the previous 150ms. Process a fresh
     // 3-note sequence spaced 0/30/70ms (start well after the earlier notes so

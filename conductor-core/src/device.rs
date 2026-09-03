@@ -276,7 +276,7 @@ impl PadPageMapping {
     /// Get note range (min, max) for this pad page.
     ///
     /// Uses the actual minimum and maximum note values, not the first and last
-    /// `pad_to_note` entries (#1453) — pads can be assigned out of note order,
+    /// `pad_to_note` entries — pads can be assigned out of note order,
     /// so positional first/last could report a reversed/incorrect range.
     /// Returns `None` for an empty page.
     pub fn note_range(&self) -> Option<(u8, u8)> {
@@ -313,7 +313,7 @@ mod tests {
         assert_eq!(mapping.note_range(), Some((12, 27)));
     }
 
-    /// #1453: `note_range` must report the true min/max note, not the first and
+    /// `note_range` must report the true min/max note, not the first and
     /// last `pad_to_note` entries. A profile with pads assigned out of note
     /// order (pad 0 = 60, pad 15 = 36) previously reported `(60, 36)` — a
     /// reversed, nonsensical range — because it read positionally.

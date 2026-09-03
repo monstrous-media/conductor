@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Shell command execution and argv parsing (#1684 split from
+//! Shell command execution and argv parsing (split from
 //! `action_executor.rs`). Includes the `execute_shell` method plus the
 //! pure-function command-line helpers (`derive_shell_argv`,
 //! `parse_command_line`) and the ADR-027 D7 environment sanitiser
@@ -25,8 +25,8 @@ impl ActionExecutor {
     /// rather than interpreted by a shell.
     ///
     /// This is **not** the same as "the running child can never be a
-    /// shell interpreter" — with ADR-027 D3 §3.1 argv form (issue
-    /// #1037), users can explicitly set `command = "/bin/sh"`, `args =
+    /// shell interpreter" — with ADR-027 D3 §3.1 argv form,
+    /// users can explicitly set `command = "/bin/sh"`, `args =
     /// ["-c", "..."]` and get full interpreter semantics by deliberate
     /// configuration. Phase 2's `allow_interpreters` policy applies
     /// the appropriate guard (warn / deny) for that case; this layer
@@ -72,13 +72,13 @@ impl ActionExecutor {
         let cmd = cmd.trim();
 
         // Handle empty command — no process starts, so this is a failed
-        // dispatch (#1479), not a silent success.
+        // dispatch, not a silent success.
         if cmd.is_empty() {
             tracing::warn!("Attempted to execute empty shell command");
             return Err(DispatchError::Shell("empty shell command".to_string()));
         }
 
-        // ADR-027 D3 §3.1 (issue #1037) — derive argv. Two paths:
+        // ADR-027 D3 §3.1 — derive argv. Two paths:
         //
         //   - **Argv form** (`explicit_args = Some(_)`): borrow `cmd`
         //     and the slice directly. Zero allocation — going through
@@ -97,7 +97,7 @@ impl ActionExecutor {
             (cmd, args)
         } else {
             let (legacy_parts, unbalanced) = parse_command_line_with_status(cmd);
-            // #1717: unbalanced quote means the user's intent is
+            // An unbalanced quote means the user's intent is
             // ambiguous — surface as a parse error rather than
             // silently swallowing the rest of the line.
             if unbalanced {
@@ -113,7 +113,7 @@ impl ActionExecutor {
                     "failed to parse shell command: {cmd}"
                 )));
             };
-            // #1711: parser now preserves empty quoted args, so a
+            // The parser now preserves empty quoted args, so a
             // quote-only input produces a single empty token instead
             // of zero tokens. Treat empty argv[0] as "nothing
             // runnable" — same surface as the pre-fix behaviour.
@@ -179,7 +179,7 @@ impl ActionExecutor {
         // Execute command WITHOUT shell interpreter
         // This is the critical security improvement: no sh -c, no cmd /C
         //
-        // ADR-027 D7 (#1166): wrap the spawn in a SIGTERM→grace→SIGKILL
+        // ADR-027 D7: wrap the spawn in a SIGTERM→grace→SIGKILL
         // watchdog (process-group-scoped on Unix). The watcher
         // `JoinHandle` is intentionally dropped — the executor stays
         // fire-and-forget; the watcher detaches and reaps on its own.
@@ -224,7 +224,7 @@ impl ActionExecutor {
                 Ok(())
             }
             Err(e) => {
-                // #1479: a spawn failure (missing binary, permission
+                // A spawn failure (missing binary, permission
                 // denied, resource exhaustion) means no process started.
                 // Propagate it so the caller returns a failed dispatch
                 // instead of Completed.
@@ -253,7 +253,7 @@ impl ActionExecutor {
 /// inheritance) and most shell actions don't need them. Add
 /// only with explicit review.
 ///
-/// **Windows** (PR #1026 review, 2026-05-02): Windows child
+/// **Windows**: Windows child
 /// processes need a richer baseline because of how the OS itself
 /// works — `SystemRoot`/`WINDIR` resolve API DLLs, `PATHEXT`
 /// drives executable-extension lookup, `ComSpec` points to
@@ -304,7 +304,7 @@ const SHELL_ENV_PASSTHROUGH_ALLOWLIST: &[&str] = &[
 /// `/usr/local/bin` in user space on Intel macOS;
 /// `/opt/homebrew/bin` is user-owned on Apple Silicon).
 ///
-/// **Windows** (PR #1026 review, 2026-05-02): the PATH-hijack
+/// **Windows**: the PATH-hijack
 /// mitigation does NOT cleanly translate to Windows, where
 /// typical shell actions need program-resolution paths that
 /// aren't OS-fixed (`C:\Program Files\Git\cmd`,
@@ -361,7 +361,7 @@ where
         // `Path`, `PATH`, or rarely `path`). Pre-fix, hardcoded
         // exact-case strings would silently drop e.g.
         // `SYSTEMROOT` from a parent process that uppercased
-        // the key (PR #1026 review, 2026-05-02).
+        // the key.
         #[cfg(windows)]
         let in_allowlist = {
             let key_str = k.to_string_lossy();
@@ -372,7 +372,7 @@ where
         };
 
         if in_allowlist {
-            // #1717: on Windows, env names are case-insensitive at
+            // On Windows, env names are case-insensitive at
             // the OS level. `vars_os()` can yield both `PATH=x` and
             // `Path=y` (parent process set them with different
             // case); pre-fix we inserted under each ORIGINAL key,
@@ -398,7 +398,7 @@ where
 }
 
 /// Decision-logic spec for argv derivation under the two ADR-027 D3
-/// §3.1 schema shapes (issue #1037). **Pure, owned, testable** — returns
+/// §3.1 schema shapes. **Pure, owned, testable** — returns
 /// owned `String`s so callers can exercise the branching without
 /// providing storage. `execute_shell` itself takes the equivalent
 /// branch inline with borrowed inputs to avoid the per-execution
@@ -463,7 +463,7 @@ pub fn derive_shell_argv(
     // cloning (the previous `head.clone()` / `tail.to_vec()` pair
     // allocated twice per Shell execution for no benefit).
     //
-    // #1717: use the strict variant so unbalanced quotes (parser
+    // Use the strict variant so unbalanced quotes (parser
     // exits mid-quoted-segment) surface as "nothing runnable" —
     // same treatment as empty/quote-only inputs, rather than
     // silently swallowing the rest of the line as one argument.
@@ -473,11 +473,11 @@ pub fn derive_shell_argv(
     }
     let mut iter = parts.into_iter();
     let head = iter.next()?;
-    // #1711: the parser now preserves explicit empty quoted args (so
+    // The parser now preserves explicit empty quoted args (so
     // mid-stream `foo "" bar` correctly yields three tokens). When the
     // *first* token is empty (i.e. the user typed quote-only or led
     // with `""`), there's no program to spawn — return None so the
-    // caller treats it as "nothing runnable", matching the pre-#1711
+    // caller treats it as "nothing runnable", matching the prior
     // contract that callers depend on. The mid-stream case still
     // benefits: `derive_shell_argv("a \"\" b", None)` returns
     // `Some(("a", ["", "b"]))`.
@@ -511,12 +511,12 @@ pub fn derive_shell_argv(
 pub fn parse_command_line(cmd: &str) -> Vec<String> {
     // Lenient public API — discards the unbalanced-quote signal.
     // Callers that need strictness should use
-    // [`parse_command_line_with_status`] and check the flag (#1717).
+    // [`parse_command_line_with_status`] and check the flag.
     parse_command_line_with_status(cmd).0
 }
 
 /// Parse a command line and report whether the input ended
-/// mid-quoted-segment (#1717).
+/// mid-quoted-segment.
 ///
 /// Tokenisation is identical to [`parse_command_line`] — same lenient
 /// behaviour (extract whatever tokens we can) — but the second return
@@ -534,7 +534,7 @@ pub(crate) fn parse_command_line_with_status(cmd: &str) -> (Vec<String>, bool) {
     let mut chars = cmd.chars().peekable();
     let mut in_single_quote = false;
     let mut in_double_quote = false;
-    // #1711: track whether the current segment has *ever* entered a
+    // Track whether the current segment has *ever* entered a
     // quoted region (open `"` or `'`). POSIX shells preserve empty
     // quoted args (`cmd "" foo` is 3 argv entries); pre-fix the
     // whitespace separator only pushed when `current` was non-empty,
@@ -570,7 +570,7 @@ pub(crate) fn parse_command_line_with_status(cmd: &str) -> (Vec<String>, bool) {
             ' ' | '\t' | '\n' | '\r' if !in_single_quote && !in_double_quote => {
                 // Whitespace outside quotes: end of argument. Push when
                 // the segment had content OR was an explicit quoted
-                // region (#1711 — preserves `""`/`''`).
+                // region (preserves `""`/`''`).
                 if !current.is_empty() || had_quote {
                     parts.push(current.clone());
                     current.clear();
@@ -589,7 +589,7 @@ pub(crate) fn parse_command_line_with_status(cmd: &str) -> (Vec<String>, bool) {
         parts.push(current);
     }
 
-    // #1717: parser exited with an unclosed quote — user input is
+    // The parser exited with an unclosed quote — user input is
     // malformed (unbalanced `"` or `'`). Lenient callers ignore this;
     // strict callers (derive_shell_argv, execute_shell) reject.
     let unbalanced = in_single_quote || in_double_quote;

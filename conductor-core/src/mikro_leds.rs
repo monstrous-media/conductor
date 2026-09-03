@@ -161,7 +161,7 @@ impl MikroMK3LEDs {
     }
 
     pub fn set_pad_color(&mut self, pad_index: u8, color: RGB) -> Result<(), Box<dyn Error>> {
-        // #1461: this previously ignored `color` and always wrote Off, so any
+        // This previously ignored `color` and always wrote Off, so any
         // PadFeedback colour path for legacy Mikro devices — including
         // LightingScheme::Custom — turned the pad off. Map the RGB onto the
         // device's fixed indexed palette + a brightness so the requested
@@ -172,7 +172,7 @@ impl MikroMK3LEDs {
     }
 
     /// Best-effort map of an RGB colour to the Mikro MK3's fixed indexed
-    /// palette (#1461). The hardware has ~17 discrete colours, not full RGB, so
+    /// palette. The hardware has ~17 discrete colours, not full RGB, so
     /// this buckets by dominant channel(s); near-grey bright colours map to
     /// White, and black maps to Off.
     fn rgb_to_pad_color(color: RGB) -> PadColor {
@@ -203,7 +203,7 @@ impl MikroMK3LEDs {
         }
     }
 
-    /// Map an RGB colour's intensity to a discrete brightness (#1461).
+    /// Map an RGB colour's intensity to a discrete brightness.
     fn rgb_to_brightness(color: RGB) -> Brightness {
         match color.r.max(color.g).max(color.b) {
             0 => Brightness::Off,
@@ -475,7 +475,7 @@ mod tests {
         PAD_LED_OFFSET + MikroMK3LEDs::map_pad_to_led_position(pad) as usize
     }
 
-    /// #1461 regression. A non-black `set_pad_color` must write a non-zero
+    /// Regression test: a non-black `set_pad_color` must write a non-zero
     /// encoded LED value — previously it ignored the colour and always wrote
     /// Off, leaving legacy Mikro pads dark.
     #[test]
@@ -500,7 +500,7 @@ mod tests {
         assert_eq!(leds.buffer[pad_slot(0)], 0, "black must clear the pad");
     }
 
-    /// #1461: a Custom lighting scheme run through the PadFeedback impl lights
+    /// A Custom lighting scheme run through the PadFeedback impl lights
     /// the legacy Mikro pad (the Custom branch calls set_pad_color).
     #[test]
     fn custom_scheme_lights_legacy_mikro_pad() {

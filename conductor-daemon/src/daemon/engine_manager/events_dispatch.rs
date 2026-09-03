@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! `EngineManager::dispatch_route_outputs`, extracted from
-//! `engine_manager::events` (refactor #2073).
+//! `engine_manager::events`.
 
 use super::*;
 
@@ -23,7 +23,7 @@ impl EngineManager {
         // distinguishable from a no-match one.
         disposition: RouteDisposition,
     ) {
-        // ADR-036 §8 / Slice 9: record this dispatch decision in the
+        // ADR-036 §8: record this dispatch decision in the
         // bounded trace ring (read by `conductor_get_dispatch_trace`).
         // Only non-empty dispatches are recorded — the vast majority of
         // events never route anywhere, so recording empties would flood
@@ -55,20 +55,17 @@ impl EngineManager {
             let bytes_in = raw.len();
             let bytes_out = bytes.len();
 
-            // Branch on output protocol — slices 1-4 of P5.
+            // **MIDI**: dispatch via the action executor's
+            // `Action::MidiForward`. The executor owns port resolution +
+            // recursion-guard registration. `try_dispatch` returns
+            // synchronously on queue-accept; actual MIDI write happens in
+            // the executor thread.
             //
-            // **MIDI** (the original slice-1-of-#1301 path): dispatch
-            // via the action executor's `Action::MidiForward`. The
-            // executor owns port resolution + recursion-guard
-            // registration. `try_dispatch` returns synchronously
-            // on queue-accept; actual MIDI write happens in the
-            // executor thread.
-            //
-            // **OSC** (slice 3 of P5): bytes are already an encoded
-            // OSC packet (slice 1's `midi_to_osc::apply`). Send
-            // directly through `ConnectorRegistry::send_osc` —
-            // no action executor, no recursion guard (OSC is
-            // outbound-only today; OscToMidi input is slice 8).
+            // **OSC**: bytes are already an encoded OSC packet (produced by
+            // `midi_to_osc::apply`). Send directly through
+            // `ConnectorRegistry::send_osc` — no action executor, no
+            // recursion guard (OSC is outbound-only today; OscToMidi input
+            // is handled separately).
             //
             // Both branches converge on the same metric/monitor
             // emission below (`route_forwarded` event with the
@@ -129,7 +126,7 @@ impl EngineManager {
                     (true, bound)
                 }
                 crate::route_engine::RouteOutputKind::Osc => {
-                    // P5 slice 3: synchronous OSC send via the
+                    // Synchronous OSC send via the
                     // registry's lazy-init UDP socket. `send_osc`
                     // returns Err on bind failure, unknown alias,
                     // or send_to syscall failure — record_error
@@ -162,7 +159,7 @@ impl EngineManager {
                     }
                 }
                 crate::route_engine::RouteOutputKind::ArtNet => {
-                    // P5 slice 8: Art-Net dispatch. `bytes` is the
+                    // Art-Net dispatch. `bytes` is the
                     // 3-byte serialized `DmxUpdate` produced by
                     // `route_destinations`: [chan_high, chan_low,
                     // value], channel as BE u16. The registry's
@@ -226,10 +223,9 @@ impl EngineManager {
                      if we reach this point, the dispatch was accepted"
             );
 
-            // `route_forwarded` monitor event — slice 3b's
-            // EventStreamPanel badge consumes the payload. New
-            // `protocol` field (this slice) lets the badge
-            // render protocol-specific styling.
+            // `route_forwarded` monitor event — the GUI's event-stream
+            // badge consumes the payload. The `protocol` field lets the
+            // badge render protocol-specific styling.
             if self.event_monitor_active.load(Ordering::Relaxed) {
                 let timestamp = SystemTime::now()
                     .duration_since(UNIX_EPOCH)

@@ -316,7 +316,7 @@ command = "echo aftertouch"
 
 // ============================================================
 // TEST GROUP 3b: PolyAftertouch -> ProcessedEvent::PolyAftertouchChanged
-// Issue: #575 — empty match arm in event_processor → trigger never fires
+// Empty match arm in event_processor → trigger never fires
 // ============================================================
 
 #[test]
@@ -481,8 +481,8 @@ command = "echo poly"
     );
 }
 
-// ── PolyPressure → PolyAftertouchChanged conversion (#575 review round 2) ──
-// Copilot review: the EventProcessor entry-point arms for both MidiEvent and
+// ── PolyPressure → PolyAftertouchChanged conversion ──
+// The EventProcessor entry-point arms for both MidiEvent and
 // InputEvent now emit PolyAftertouchChanged but had no direct test coverage.
 
 #[test]
@@ -842,13 +842,13 @@ command = "echo velocity"
 }
 
 // ============================================================
-// TEST GROUP 5b: VelocityRange Custom Thresholds (v4.9.0 fix)
-// Issue: #48 - VelocityRange config ignored
+// TEST GROUP 5b: VelocityRange Custom Thresholds
+// Fix: VelocityRange config ignored
 // ============================================================
 
 #[test]
 fn test_velocity_range_custom_soft_max_boundary() {
-    // NOTE (#1505): VelocityRange matching is velocity-LEVEL-agnostic — it
+    // NOTE: VelocityRange matching is velocity-LEVEL-agnostic — it
     // matches the note for ANY velocity (in mapping.rs the config-classified
     // level is informational/traced, not a match gate). So this test only
     // proves that a VelocityRange mapping with custom thresholds still MATCHES.
@@ -908,7 +908,7 @@ command = "echo custom_soft"
 
 #[test]
 fn test_velocity_range_custom_medium_max_boundary() {
-    // As above (#1505): this only proves the VelocityRange mapping matches;
+    // As above: this only proves the VelocityRange mapping matches;
     // the medium_max threshold behaviour is asserted in the
     // `classify_velocity` unit tests in `mapping.rs`.
     let config_toml = r#"
@@ -1370,7 +1370,7 @@ command = "echo encoder"
 
 // ============================================================
 // TEST GROUP: load_from_config stale mode fix
-// v4.9.0 fix: GitHub #49 - ADR-002 Council verification
+// ADR-002 verification
 // ============================================================
 
 #[test]
@@ -1511,7 +1511,7 @@ name = "Mode1"
 }
 
 // ============================================================
-// TEST GROUP: Direct MappingEngine::get_action(&MidiEvent) raw path (#1457)
+// TEST GROUP: Direct MappingEngine::get_action(&MidiEvent) raw path
 //
 // The raw matcher (`trigger_matches_raw`) previously only handled Note/CC,
 // so direct `get_action(&MidiEvent)` lookups for ProgramChange, PitchBend,

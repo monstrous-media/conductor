@@ -14,7 +14,7 @@
 // compile). They are kept deterministic by awaiting channels with a timeout
 // (no sleeps) so they don't become timing flakes.
 //
-// Acceptance (issue #1898, spec §5 A.6):
+// Acceptance (spec §5 A.6):
 //   cargo test --package conductor-daemon --test listener_runtime_test
 
 use std::net::IpAddr;
@@ -83,7 +83,7 @@ async fn binds_loopback_and_forwards_accepted_packet() {
     assert_eq!(pkt.data, b"/hello\0\0");
     assert_eq!(pkt.listener, "osc_in");
 
-    // Await the receive task's exit so it can't outlive the test (Copilot #1953).
+    // Await the receive task's exit so it can't outlive the test (Copilot review).
     let _ = sh_tx.send(());
     let _ = timeout(Duration::from_secs(2), listener.join()).await;
 }
@@ -125,7 +125,7 @@ async fn over_rate_limit_packet_emits_audit() {
     assert_eq!(source, lo());
     assert_eq!(kind, AuditEventKind::RateLimited);
 
-    // Await the receive task's exit so it can't outlive the test (Copilot #1953).
+    // Await the receive task's exit so it can't outlive the test (Copilot review).
     let _ = sh_tx.send(());
     let _ = timeout(Duration::from_secs(2), listener.join()).await;
 }

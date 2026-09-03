@@ -38,8 +38,7 @@ fn get_system_utils_plugin_path() -> PathBuf {
 }
 
 /// Build a per-test-run unique plugin id and pre-clean any
-/// stale directory left by an earlier run (PR #1029 round-4
-/// review, 2026-05-02). The tests load plugins under the real
+/// stale directory left by an earlier run. The tests load plugins under the real
 /// `dirs::data_dir()` location, so without a unique-per-run id
 /// (and cleanup), an earlier run's leftover subdir could
 /// satisfy the assertions even when the code under test
@@ -89,7 +88,7 @@ async fn test_filesystem_capability_granted() {
 
 #[tokio::test]
 async fn test_per_plugin_data_subdir_is_created() {
-    // PR #1029 round-3 review (2026-05-02): the previous version
+    // The previous version
     // of this test only asserted the SHARED `plugin-data/`
     // parent existed, which is exactly the behaviour D10c
     // replaces. It would still have passed if the loader
@@ -105,7 +104,7 @@ async fn test_per_plugin_data_subdir_is_created() {
     // Per-run unique id + pre-cleaned target dir, so a stale
     // dir from an earlier run can't pass this test in the case
     // where the code under test regressed and failed to create
-    // the new sandbox (PR #1029 round-4 review, 2026-05-02).
+    // the new sandbox.
     let plugin_id = unique_test_plugin_id("d10c-fs-create");
     let per_plugin_dir = fresh_per_plugin_dir(&plugin_id);
     assert!(
@@ -117,7 +116,7 @@ async fn test_per_plugin_data_subdir_is_created() {
     let mut config = WasmConfig::new(&plugin_id).expect("safe id");
     config.capabilities.push(Capability::Filesystem);
 
-    // PR #1029 round-8 review (2026-05-02): `WasmPlugin::load`
+    // `WasmPlugin::load`
     // doesn't create the sandbox subdir — that happens in
     // `create_store()` which is reached only from `init()` /
     // `execute()`. Pre-fix this assertion ran right after
@@ -172,7 +171,7 @@ async fn test_filesystem_capability_not_granted() {
 
 #[tokio::test]
 async fn test_distinct_plugin_ids_get_distinct_subdirs() {
-    // PR #1029 round-3 review (2026-05-02): the previous version
+    // The previous version
     // used the SAME plugin_id for both loads and asserted the
     // SHARED parent existed. It couldn't catch the cross-plugin-
     // read regression D10c is meant to close. This test now uses
@@ -186,15 +185,14 @@ async fn test_distinct_plugin_ids_get_distinct_subdirs() {
     }
 
     // Per-run unique ids + pre-cleaned target dirs, so stale
-    // dirs from earlier runs can't satisfy the assertions
-    // (PR #1029 round-4 review, 2026-05-02).
+    // dirs from earlier runs can't satisfy the assertions.
     let id_a = unique_test_plugin_id("d10c-distinct-a");
     let id_b = unique_test_plugin_id("d10c-distinct-b");
     let dir_a = fresh_per_plugin_dir(&id_a);
     let dir_b = fresh_per_plugin_dir(&id_b);
     assert!(!dir_a.exists() && !dir_b.exists(), "test setup: cleaned");
 
-    // PR #1029 round-8: drive create_store via init() (load
+    // Drive create_store via init() (load
     // alone doesn't create the sandbox subdir).
     let mut config1 = WasmConfig::new(&id_a).expect("safe id");
     config1.capabilities.push(Capability::Filesystem);
@@ -232,7 +230,7 @@ async fn test_distinct_plugin_ids_get_distinct_subdirs() {
 
 #[tokio::test]
 async fn test_per_plugin_subdir_permissions() {
-    // PR #1029 round-3 review (2026-05-02): the previous version
+    // The previous version
     // checked permissions on the SHARED `plugin-data/` parent —
     // not the per-plugin sandbox D10c actually creates. A
     // regression where the per-plugin subdir had wrong
@@ -246,8 +244,7 @@ async fn test_per_plugin_subdir_permissions() {
     }
 
     // Per-run unique id + pre-cleaned target dir, so leftover
-    // state from earlier runs can't pass the metadata check
-    // (PR #1029 round-4 review, 2026-05-02).
+    // state from earlier runs can't pass the metadata check.
     let plugin_id = unique_test_plugin_id("d10c-perms");
     let per_plugin_dir = fresh_per_plugin_dir(&plugin_id);
     assert!(!per_plugin_dir.exists(), "test setup: cleaned");
@@ -255,7 +252,7 @@ async fn test_per_plugin_subdir_permissions() {
     let mut config = WasmConfig::new(&plugin_id).expect("safe id");
     config.capabilities.push(Capability::Filesystem);
 
-    // PR #1029 round-8: load+init drives create_store, which
+    // load+init drives create_store, which
     // is where the sandbox subdir actually gets mkdir'd.
     let mut plugin = WasmPlugin::load(&wasm_path, config)
         .await
@@ -276,7 +273,7 @@ async fn test_per_plugin_subdir_permissions() {
     {
         use std::os::unix::fs::PermissionsExt;
         let mode = metadata.permissions().mode();
-        // PR #1029 round-5 review (2026-05-02): assert ALL THREE
+        // Assert ALL THREE
         // owner bits are set, not "any one of them". Pre-fix
         // `mode & 0o700 != 0` passed for `0o400` (read-only),
         // which would silently break the plugin's ability to

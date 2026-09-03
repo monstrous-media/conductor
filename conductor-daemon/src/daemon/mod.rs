@@ -3,28 +3,28 @@
 
 //! Daemon infrastructure for background service operation
 
-pub mod active_profile_persist; // #2564: daemon-owned durable active-profile identity
-pub mod app_detector; // Phase 2 - Issue #353: Automatic profile switching by app
+pub mod active_profile_persist; // daemon-owned durable active-profile identity
+pub mod app_detector; // Automatic profile switching by app
 pub mod audit; // P4-04: Comprehensive audit logging
 pub mod config_watcher;
 pub mod connection_limiter; // ADR-027 D16: global concurrent-connection cap for IPC
-pub mod device_rate_limiter; // v4.26.0 (D9): Per-device event rate limiting
-pub mod device_utils; // v4.17.0: Shared MIDI device enumeration (#104)
-pub mod dispatch_trace; // ADR-036 §8 / Slice 9: bounded route-dispatch trace ring buffer
+pub mod device_rate_limiter; // D9: Per-device event rate limiting
+pub mod device_utils; // Shared MIDI device enumeration
+pub mod dispatch_trace; // ADR-036 §8: bounded route-dispatch trace ring buffer
 pub mod engine_manager;
 pub mod error;
 pub mod event_triggers; // R915-R917: Event-based triggers and notifications
 pub mod executor_thread; // ADR-015: Dedicated action execution thread
-pub mod gui_handshake; // ADR-027 D19: GUI launch handshake nonce registry (#1215)
+pub mod gui_handshake; // ADR-027 D19: GUI launch handshake nonce registry
 pub mod hardware_io; // P4-01: HardwareIO tier with multi-step confirmation
 pub mod ipc;
-pub mod ipc_framing; // #1313: bounded line-read helper for IPC DoS prevention
-pub mod ipc_rate_limit; // ADR-027 D16 (full): per-peer IPC message rate limit (#1168)
+pub mod ipc_framing; // bounded line-read helper for IPC DoS prevention
+pub mod ipc_rate_limit; // ADR-027 D16 (full): per-peer IPC message rate limit
 pub mod keystroke_policy; // ADR-027 D8: keystroke policy mode
-pub mod live_config; // ADR-034 §D1 — daemon-managed live config seam (#1252)
-pub mod mcp_registry; // ADR-027 D18: MCP client registration (#1214)
+pub mod live_config; // ADR-034 §D1 — daemon-managed live config seam
+pub mod mcp_registry; // ADR-027 D18: MCP client registration
 // Knowledge Layer migrated to conductor-knowledge crate (ADR-023)
-// ADR-045 D1 (#2492): tier-boundary feature gates. `llm` is the IPC-only
+// ADR-045 D1: tier-boundary feature gates. `llm` is the IPC-only
 // write machinery (`llm-executor`); `mcp` is the socket server; the tool
 // catalog + shared mode helpers compile whenever either side needs them
 // (the LLM executor embeds `McpToolExecutor`). `mcp_types` stays ungated:
@@ -37,27 +37,27 @@ pub mod mcp;
 pub mod mcp_tools;
 pub mod mcp_types;
 pub mod menu_bar;
-pub mod midi_watcher; // v4.26.1: Persistent CoreMIDI watcher for daemon hot-plug
+pub mod midi_watcher; // Persistent CoreMIDI watcher for daemon hot-plug
 #[cfg(any(feature = "mcp", feature = "llm-executor"))]
-pub mod mode_mcp; // ADR-040 D4 §4.2 (Slice 4c): shared exec for mode-lock MCP tools
+pub mod mode_mcp; // ADR-040 D4 §4.2: shared exec for mode-lock MCP tools
 pub mod mode_resolver; // ADR-040 D4: pure mode precedence stack (lock>window>app>default)
 pub mod output_resolver; // ADR-021 Phase 1B: Output port enumeration and auto-pairing
-pub mod path_validation; // ADR-034 §D2.2 — safe-walk path validation for ReloadFromDisk/ImportConfig (#1902)
-pub mod platform; // ADR-040 §4.3 (Slice 6): OS integration — focused-window-title detection
+pub mod path_validation; // ADR-034 §D2.2 — safe-walk path validation for ReloadFromDisk/ImportConfig
+pub mod platform; // ADR-040 §4.3: OS integration — focused-window-title detection
 pub mod probe_on_connect; // ADR-026 Phase 3.C.2: SysEx identity probe-on-connect orchestration
-pub mod profile_cache; // Issue #355: Profile cache for fast switching
+pub mod profile_cache; // Profile cache for fast switching
 pub mod ratelimit; // P4-05: Rate limiting per tier
 pub mod recursion_guard; // ADR-015 D8: MIDI echo suppression
 pub mod service;
 #[cfg(unix)]
 pub mod singleton_lock; // ADR-034 §D10 / §D4.B.2: flock(2) singleton enforcement
-pub mod startup; // #957: honour profiles.json active_profile_id at daemon launch
+pub mod startup; // honour profiles.json active_profile_id at daemon launch
 pub mod state;
-pub mod suppression_throttle; // #2397: coalesce midi_*_suppressed MonitorEvents (epic #2395)
+pub mod suppression_throttle; // coalesce midi_*_suppressed MonitorEvents
 pub mod types;
 
 pub use audit::{AuditEntry, AuditEventType, AuditQuery, AuditRiskTier, AuditSummary, UserContext};
-// ADR-045 D1 (#2492): the SQLite-backed logger only exists under `audit-db`;
+// ADR-045 D1: the SQLite-backed logger only exists under `audit-db`;
 // the audit *types* above stay ungated (conductorctl + tier ceiling use them).
 #[cfg(feature = "audit-db")]
 pub use audit::{AuditLogger, AuditLoggerConfig};

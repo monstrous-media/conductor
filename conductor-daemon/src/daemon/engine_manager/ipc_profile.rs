@@ -15,7 +15,7 @@ impl EngineManager {
         // would deadlock (same fix as conductor_switch_profile in ExecuteMcpTool).
         let profile_name = request.args.get("profile_name").and_then(|v| v.as_str());
         let config_path = request.args.get("config_path").and_then(|v| v.as_str());
-        // #2564 D5 (additive): optional GUI profile id, persisted/reported so
+        // Optional GUI profile id, persisted/reported so
         // the GUI can key its dropdown without path-mapping.
         let profile_id = request
             .args
@@ -149,7 +149,7 @@ impl EngineManager {
         }
     }
 
-    /// ADR-040 D4 §4.2 (Slice 4b) — set the active mode and optionally lock it
+    /// ADR-040 D4 §4.2 — set the active mode and optionally lock it
     /// against auto-switching (`conductorctl mode set [--no-lock]`). `lock`
     /// defaults to `true`. Runs inside the command-rx select arm, so it calls
     /// `set_mode_manual` directly (no `command_tx`, like `handle_switch_mode`).
@@ -186,7 +186,7 @@ impl EngineManager {
                 create_success_response(&id, Some(json!({ "mode": mode, "locked": lock })))
             }
             // `SetModeError` is classified at the source under the mode lock, so
-            // there is no TOCTOU re-check here (Council review on #2283): an
+            // there is no TOCTOU re-check here: an
             // unknown mode is a bad request; anything else is an internal fault.
             Err(e) => {
                 let (code, message) = match e {
@@ -210,7 +210,7 @@ impl EngineManager {
         }
     }
 
-    /// ADR-040 D4 §4.2 (Slice 4b) — release the manual mode lock
+    /// ADR-040 D4 §4.2 — release the manual mode lock
     /// (`conductorctl mode unlock`). Reports whether a lock was held.
     pub(crate) async fn handle_unlock_mode(
         &mut self,
@@ -221,10 +221,10 @@ impl EngineManager {
         create_success_response(&id, Some(json!({ "unlocked": was_locked })))
     }
 
-    /// ADR-040 D4 §4.2 (Slice 4b) — report the active mode + lock state
+    /// ADR-040 D4 §4.2 — report the active mode + lock state
     /// (`conductorctl mode status`): mode name/index, whether locked, and the
     /// lock's origin/mode. The rich resolution-layer + window-permission flags
-    /// land with the MCP `conductor_mode_status` tool (4c).
+    /// land with the MCP `conductor_mode_status` tool.
     pub(crate) async fn handle_mode_status(
         &mut self,
         _request: &crate::daemon::types::IpcRequest,

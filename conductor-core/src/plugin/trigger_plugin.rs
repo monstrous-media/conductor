@@ -20,7 +20,7 @@ use std::time::Instant;
 ///
 /// # Status
 ///
-/// This trait is defined for v2.3 but will be fully implemented in a future
+/// This trait is defined but will be fully implemented in a future
 /// version. Currently, only ActionPlugin is supported.
 pub trait TriggerPlugin: Send + Sync {
     /// Plugin identifier (unique, lowercase, alphanumeric + underscore)

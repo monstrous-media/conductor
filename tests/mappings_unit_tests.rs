@@ -2253,7 +2253,7 @@ fn test_description_is_optional() {
     assert!(engine.get_action(&event, 0).is_some());
 }
 
-/// #1463 regression. When a mode exists but no mode-specific mapping matches
+/// Regression. When a mode exists but no mode-specific mapping matches
 /// the event, get_action must fall through to global_mappings — previously it
 /// returned the mode-specific lookup (None included) and global mappings only
 /// ever fired for unknown modes.

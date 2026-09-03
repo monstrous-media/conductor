@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `tools/call` dispatch for the MCP server (#2601 split from `mcp.rs`).
+//! `tools/call` dispatch for the MCP server (split from `mcp.rs`).
 
 use crate::daemon::engine_manager::SharedDaemonStateRefs;
 use crate::daemon::mcp_tools::McpToolExecutor;
@@ -17,7 +17,7 @@ use super::check_peer_tier_ceiling;
 
 /// Wrap a `ToolCallResult` as a successful JSON-RPC response.
 ///
-/// Defensive serialization (Council r2 on PR #2600): `ToolCallResult` is
+/// Defensive serialization: `ToolCallResult` is
 /// `Serialize` over owned types so `to_value` is practically infallible,
 /// but a panic here would crash the daemon from the socket path — degrade
 /// to an internal error response instead (mirrors the
@@ -76,9 +76,9 @@ pub(crate) async fn handle_tools_call(
         params.name, params.arguments
     );
 
-    // v4.23.0: Special-case tools that need direct shared_state access (ADR-009 Phase 5)
+    // Special-case tools that need direct shared_state access (ADR-009 Phase 5)
     // Enforce risk tier: these tools are Stateful, not ReadOnly — verify before executing
-    // ADR-045 D2 (#2492): in compositions without `mcp-write`, the MCP
+    // ADR-045 D2: in compositions without `mcp-write`, the MCP
     // socket carries ONLY the compiled (ReadOnly inspection) catalog.
     // Anything else — including write tools that exist in richer builds —
     // gets the standard "not available in this build" error naming the
@@ -92,9 +92,9 @@ pub(crate) async fn handle_tools_call(
 
     let risk_tier = get_tool_risk_tier(&params.name);
 
-    // #1311: per-client tier ceiling enforcement. Unregistered MCP
+    // Per-client tier ceiling enforcement. Unregistered MCP
     // peers are clamped to ReadOnly per ADR-027 §D18; registered
-    // peers are capped at their registered tier. Pre-fix the dispatch
+    // peers are capped at their registered tier. Previously the dispatch
     // synthesised `CallerContext::internal_trusted()` and let any
     // same-UID process invoke ConfigChange / HardwareIO tools.
     if let Err(reason) = check_peer_tier_ceiling(peer_ceiling, risk_tier) {
@@ -174,11 +174,11 @@ pub(crate) async fn handle_tools_call(
             return tool_result_response(request.id.clone(), &result);
         }
 
-        // Council review fix: wire conductor_switch_mode to actually send DaemonCommand::ModeChange.
+        // Wire conductor_switch_mode to actually send DaemonCommand::ModeChange.
         // DEPRECATED (ADR-040): switches the mode without touching any manual
         // lock — prefer conductor_set_mode (which can also lock). Kept as-is
         // (not delegated) so its existing behaviour + no-refs simulation path are
-        // unchanged; the description is what was inaccurate (Copilot #2290).
+        // unchanged; the description is what was inaccurate.
         #[cfg(feature = "mcp-write")]
         "conductor_switch_mode" if risk_tier == ToolRiskTier::Stateful => {
             let mode_name = params
@@ -234,7 +234,7 @@ pub(crate) async fn handle_tools_call(
             return tool_result_response(request.id.clone(), &result);
         }
 
-        // ADR-040 D4 §4.2 (Slice 4c) — mode-lock tools. Like switch_mode they
+        // ADR-040 D4 §4.2 — mode-lock tools. Like switch_mode they
         // need the live engine, reached via the daemon command channel; the
         // shared helpers in `mode_mcp` do the send/await.
         #[cfg(feature = "mcp-write")]
@@ -399,7 +399,7 @@ pub(crate) async fn handle_tools_call(
             return tool_result_response(request.id.clone(), &result);
         }
 
-        // ADR-031 P4 § 6.2 / #1144 slice 4 — live per-connector
+        // ADR-031 P4 § 6.2 — live per-connector
         // metrics. Reads from the runtime `connector_registry` on
         // `shared_state`, not from config; required because
         // `McpToolExecutor` is stateless and can't reach the live
@@ -454,13 +454,12 @@ pub(crate) async fn handle_tools_call(
         _ => {} // Fall through to ConfigChange dispatch / generic executor
     }
 
-    // ADR-031 P3 / #1274 slice 20: ConfigChange dispatch over the
+    // ADR-031 P3: ConfigChange dispatch over the
     // daemon's Unix MCP socket. The generic `McpToolExecutor` below
     // only handles ReadOnly tools, plus the few Stateful/HardwareIO
     // tools special-cased above. ConfigChange tools (every
     // `conductor_create_*` / `conductor_update_*` / `conductor_delete_*`
-    // / `conductor_batch_changes`) are advertised in tools/list (since
-    // slice 12 for `conductor_batch_changes`, longer for the singletons)
+    // / `conductor_batch_changes`) are advertised in tools/list
     // but would otherwise fall through to "Unknown tool" at the generic
     // executor's match arm — breaking external MCP clients (Cursor,
     // Claude Code over MCP, etc.) that can see the schema but cannot
@@ -470,9 +469,9 @@ pub(crate) async fn handle_tools_call(
     // `ToolExecutor` (which already routes them through `execute_config_change`
     // → `PlanCreated`), then auto-applies the plan. See
     // `handle_config_change_over_mcp` for the contract.
-    // ADR-045 D1/D3 (#2492): ConfigChange-over-MCP is the core `mcp-write`
+    // ADR-045 D1/D3: ConfigChange-over-MCP is the core `mcp-write`
     // surface — official artifacts never compile it, so the MCP socket
-    // cannot mutate config even in the Studio bundle (Council R1 #2).
+    // cannot mutate config even in the Studio bundle.
     #[cfg(feature = "mcp-write")]
     if risk_tier == ToolRiskTier::ConfigChange {
         return handle_config_change_over_mcp(request, &params, config).await;
@@ -518,7 +517,7 @@ pub(crate) async fn handle_tools_call(
     tool_result_response(request.id.clone(), &result)
 }
 
-/// ADR-031 P3 / #1274 slice 20 — handle ConfigChange-tier tools over
+/// ADR-031 P3 — handle ConfigChange-tier tools over
 /// the daemon's Unix MCP socket.
 ///
 /// ## Contract
@@ -545,7 +544,7 @@ pub(crate) async fn handle_tools_call(
 /// socket has 0600 permissions (current user only). The OS-level trust
 /// bar is cleared by the time we reach this dispatch; gate-level
 /// `Untrusted` (the `synthetic_unpinned` path used by the IPC accept
-/// loop) would `Deny` ConfigChange tools and re-break the gap #1274
+/// loop) would `Deny` ConfigChange tools and re-break the gap this
 /// closes. This matches the precedent set by the in-process
 /// `conductor_*_plugin` daemon-internal arms in
 /// `executor.rs::execute_internal_arms`.
@@ -625,4 +624,4 @@ async fn handle_config_change_over_mcp(
     tool_result_response(request.id.clone(), &tool_result)
 }
 
-// Device enumeration moved to device_utils::enumerate_midi_devices_fresh() (v4.17.0, #104)
+// Device enumeration moved to device_utils::enumerate_midi_devices_fresh()

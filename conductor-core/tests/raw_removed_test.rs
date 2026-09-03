@@ -1,9 +1,9 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-036 Phase 2 (#1696) — `Trigger::Raw` is removed entirely.
+//! ADR-036 Phase 2 — `Trigger::Raw` is removed entirely.
 //!
-//! Phase 1 (Slice 3) auto-lowered `Raw` + `MidiForward` to a `pre_mapping`
+//! Phase 1 auto-lowered `Raw` + `MidiForward` to a `pre_mapping`
 //! route with a deprecation warning. Phase 2 removes `Raw` as an input
 //! concept: the parser **rejects** it, and `Config::load` surfaces a
 //! migration hint pointing at `conductorctl migrate-config --routing`.
@@ -14,8 +14,8 @@
 use conductor_core::Config;
 
 // NOTE: the I/O is declared with `[[endpoints]]` (ADR-035), not the legacy
-// `[[bindings]]`/`[[connectors]]` blocks — those are now rejected at load
-// (#2124), and using them here would mask the `Raw`-rejection this test
+// `[[bindings]]`/`[[connectors]]` blocks — those are now rejected at load,
+// and using them here would mask the `Raw`-rejection this test
 // exercises by erroring earlier.
 const RAW_CONFIG: &str = r#"
 [[endpoints]]

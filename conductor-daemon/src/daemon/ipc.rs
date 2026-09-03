@@ -65,10 +65,10 @@ use tracing::{debug, error, info, warn};
 /// `max_bytes` passed to
 /// [`read_bounded_line`](crate::daemon::ipc_framing::read_bounded_line) for
 /// every incoming request, so integration tests can import it and drive the
-/// real reader at the boundary instead of duplicating the literal (#1517).
+/// real reader at the boundary instead of duplicating the literal.
 pub const MAX_REQUEST_SIZE: usize = 1_048_576; // 1MB
 
-/// ADR-027 §D16 (full, #1168) — drop an IPC connection that has
+/// ADR-027 §D16 (full) — drop an IPC connection that has
 /// been silent for this long. Prevents a same-user attacker from
 /// camping connections to pin the concurrent-connection budget.
 /// 300s mirrors the spec's `connection_idle_timeout_sec = 300`.
@@ -79,15 +79,15 @@ pub struct IpcServer {
     socket_path: String,
     command_tx: mpsc::Sender<DaemonCommand>,
     shutdown_rx: broadcast::Receiver<()>,
-    /// Broadcast sender for push-based event monitoring (#394)
+    /// Broadcast sender for push-based event monitoring
     event_broadcast_tx: broadcast::Sender<MonitorEvent>,
     /// Audit logger handle for `SubscribeAudit` streaming (ADR-027
-    /// D13a, #1167). `None` when audit init failed at startup — a
+    /// D13a). `None` when audit init failed at startup — a
     /// `SubscribeAudit` request then gets a clean error instead of
-    /// a dropped connection. ADR-045 D5 (#2493): the AuditSink seam —
+    /// a dropped connection. ADR-045 D5: the AuditSink seam —
     /// present in every composition (SQLite or JSONL).
     audit_sink: Option<Arc<dyn AuditSink>>,
-    /// Per-peer IPC message rate limiter (ADR-027 D16, #1168).
+    /// Per-peer IPC message rate limiter (ADR-027 D16).
     /// Shared across all client-handler tasks via `Arc`. Each
     /// handler checks the limiter on every incoming request,
     /// keyed by the pinned peer's PID.
@@ -98,16 +98,15 @@ pub struct IpcServer {
     connection_limiter: ConnectionLimiter,
     /// Rate-limits the at-cap refusal warning so the same-user
     /// attacker who can spam connection attempts can't flip the
-    /// D16 mitigation into a log-flood DoS (Copilot review on
-    /// PR #1028, 2026-05-02). At most one warn per 5s window;
-    /// suppressed refusals are batched into the next emission.
-    /// `Arc` so it can be cheaply cloned and shared with future
-    /// diagnostics endpoints (e.g. a `conductorctl ipc stats`
+    /// D16 mitigation into a log-flood DoS. At most one warn per
+    /// 5s window; suppressed refusals are batched into the next
+    /// emission. `Arc` so it can be cheaply cloned and shared with
+    /// future diagnostics endpoints (e.g. a `conductorctl ipc stats`
     /// reporter) without each holder owning a separate logger
     /// state. `Arc` doesn't reduce lock contention on `record()`
     /// itself — calls still serialise on the inner `Mutex` —
     /// but the lock is only taken when at-cap, which is the
-    /// rare flood case (PR #1028 review, 2026-05-02).
+    /// rare flood case.
     refusal_logger: Arc<RefusalLogger>,
 }
 
@@ -177,8 +176,7 @@ impl IpcServer {
                                 Some(p) => p,
                                 None => {
                                     // Rate-limit the warn so a flood of refused
-                                    // connections doesn't itself become a DoS
-                                    // (Copilot review on PR #1028, 2026-05-02).
+                                    // connections doesn't itself become a DoS.
                                     if let Some(suppressed) = self.refusal_logger.record() {
                                         warn!(
                                             "IPC connection refused: at concurrent-connection \
@@ -203,14 +201,14 @@ impl IpcServer {
                                 // slot) when this future completes.
                                 let _permit: OwnedConnectionPermit = permit;
 
-                                // ADR-027 D1 wiring (PR-A): pin the
+                                // ADR-027 D1 wiring: pin the
                                 // peer before reading any request.
                                 // We do this *inside* the spawned
                                 // task — not in the accept loop —
                                 // because both `pin_linux`
                                 // (`/proc/<pid>/exe` readlink) and
                                 // `pin_macos` (Security.framework
-                                // signature inspection in 3/N) make
+                                // signature inspection) make
                                 // synchronous syscalls that would
                                 // briefly block the tokio worker
                                 // running the accept loop, causing
@@ -218,8 +216,7 @@ impl IpcServer {
                                 // next incoming connection. Each
                                 // per-connection task runs on the
                                 // multi-threaded runtime so it can
-                                // pin in parallel with new accepts
-                                // (Copilot review on PR #1080).
+                                // pin in parallel with new accepts.
                                 //
                                 // Pin failures don't reject the
                                 // connection here —
@@ -233,7 +230,7 @@ impl IpcServer {
                                 // the daemon operator can spot a
                                 // misconfigured kernel (Linux < 5.3
                                 // → pidfd_open fails) or a same-uid
-                                // TCC anomaly. PR-D's flag flip is
+                                // TCC anomaly. A later flag flip is
                                 // what turns "tolerated" into
                                 // "denied".
                                 let caller_ctx = match PinnedPeer::from_stream(&stream) {
@@ -309,7 +306,7 @@ impl IpcServer {
 /// Handle a single client connection
 ///
 /// `caller_ctx` is the ADR-027 D1-pinned + classified peer
-/// identity, carried from the accept loop. PR-A introduces it
+/// identity, carried from the accept loop. It is wired here
 /// for plumbing only; later wiring sub-pieces hand it to
 /// `security::gate::enforce` before dispatching tool / action
 /// requests. `None` means peer pinning failed at accept (logged
@@ -326,13 +323,13 @@ async fn handle_client(
     rate_limiter: Arc<IpcMessageRateLimiter>,
     caller_ctx: Option<CallerContext>,
 ) -> Result<()> {
-    // PR-A scope: log the pin + classification result for
-    // operator-side visibility, then keep the context bound to its
-    // function-scope lifetime so PR-B can consume it for
+    // Log the pin + classification result for operator-side
+    // visibility, then keep the context bound to its
+    // function-scope lifetime so it can later be consumed for
     // `gate::enforce` calls without an early-drop hazard. The
-    // `if let` arms below are the only use today; removing the
-    // earlier `let _ = caller_ctx;` (Copilot review on PR #1080)
-    // since the binding is read by the debug-log block.
+    // `if let` arms below are the only use today; the earlier
+    // `let _ = caller_ctx;` was removed since the binding is read
+    // by the debug-log block.
     if let Some(ref ctx) = caller_ctx
         && let Some(ref peer) = ctx.peer
     {
@@ -348,14 +345,14 @@ async fn handle_client(
     let (reader, writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
     let mut writer = writer;
-    // #1313: `line` is now `Vec<u8>` so the bounded-read helper can
+    // `line` is now `Vec<u8>` so the bounded-read helper can
     // append bytes directly without an intermediate UTF-8 check on
     // each loop iteration. UTF-8 validation runs once per frame at
     // parse time below.
     let mut line: Vec<u8> = Vec::new();
 
     // Extract the peer identity once for rate-limit keying
-    // (ADR-027 §D12, #1213): `(pid, exe)`. `None` means peer
+    // (ADR-027 §D12): `(pid, exe)`. `None` means peer
     // pinning failed at accept (logged there) — fall through with
     // a sentinel so the limiter still tracks "anonymous" peers as
     // one bucket rather than disabling the rate limit entirely
@@ -368,7 +365,7 @@ async fn handle_client(
         .map(|p| (p.pid, p.initial_exe.clone()))
         .unwrap_or_else(|| (0, std::path::PathBuf::from("/anonymous")));
 
-    // ADR-027 §D16 (#1168) — wrap the request-receive read in an
+    // ADR-027 §D16 — wrap the request-receive read in an
     // idle-timeout window. A connection that has been silent for
     // `IPC_IDLE_TIMEOUT` (300s) is dropped cleanly, releasing its
     // slot in the concurrent-connection cap. Streaming subscriptions
@@ -376,8 +373,8 @@ async fn handle_client(
     // BEFORE this loop iterates again, so a live subscription is
     // unaffected by the idle timeout.
     //
-    // #1313: per-frame size cap is enforced INSIDE the read via
-    // `read_bounded_line` (Clawpatch fix). The previous code called
+    // Per-frame size cap is enforced INSIDE the read via
+    // `read_bounded_line`. The previous code called
     // `BufReader::read_line` (unbounded) and only checked
     // `line.len() > MAX_REQUEST_SIZE` AFTER the read returned —
     // letting a malicious client OOM the daemon with a newline-free
@@ -406,7 +403,7 @@ async fn handle_client(
                 break;
             }
             crate::daemon::ipc_framing::ReadResult::Overflow => {
-                // #1313: peer sent more than MAX_REQUEST_SIZE bytes
+                // peer sent more than MAX_REQUEST_SIZE bytes
                 // without a newline. The bounded reader stopped at
                 // exactly `MAX_REQUEST_SIZE + 1` bytes — memory is
                 // safe. Send an error response then CLOSE the
@@ -457,7 +454,7 @@ async fn handle_client(
                 continue;
             }
         };
-        // ADR-034 §D2.3 (#1902): pre-deserialisation payload cap. Peek the
+        // ADR-034 §D2.3: pre-deserialisation payload cap. Peek the
         // command WITHOUT building the args/config tree (serde skips `args`
         // as `IgnoredAny`), then reject an over-cap config-carrying request
         // HERE — before `parse_request` allocates the full args Value or the
@@ -523,7 +520,7 @@ async fn handle_client(
 
         debug!("Received IPC request: {:?}", request.command);
 
-        // ADR-027 §D16 (full, #1168) — per-peer message rate limit.
+        // ADR-027 §D16 (full) — per-peer message rate limit.
         // The check runs AFTER parse so a malformed-JSON flood
         // doesn't burn the limiter's budget on bytes that never
         // reach a handler; the parse-error response is itself
@@ -577,11 +574,11 @@ async fn handle_client(
             }
         }
 
-        // SubscribeEvents: switch to push/streaming mode (#394)
+        // SubscribeEvents: switch to push/streaming mode.
         // This takes over the connection — no more request-response after this.
         if matches!(request.command, IpcCommand::SubscribeEvents) {
             // Subscribe BEFORE sending StartEventMonitor to avoid race condition
-            // (council review: events between Start and subscribe() would be lost)
+            // (events between Start and subscribe() would be lost)
             let rx = event_broadcast_tx.subscribe();
 
             let response = create_success_response(&request.id, Some(json!({"subscribed": true})));
@@ -612,7 +609,7 @@ async fn handle_client(
         }
 
         // SubscribeAudit: switch to push/streaming mode for the
-        // live audit tail (ADR-027 D13a, #1167). Like
+        // live audit tail (ADR-027 D13a). Like
         // SubscribeEvents, this takes over the connection.
         if matches!(request.command, IpcCommand::SubscribeAudit) {
             let denied_only = request
@@ -696,10 +693,10 @@ async fn handle_client(
     Ok(())
 }
 
-/// Maximum events per batch write (council review: prevent OOM from unbounded drain)
+/// Maximum events per batch write (prevent OOM from unbounded drain)
 const MAX_BATCH_SIZE: usize = 100;
 
-/// Handle push-based event streaming over a persistent connection (#394)
+/// Handle push-based event streaming over a persistent connection
 ///
 /// Writes batched events as newline-delimited JSON arrays. Uses natural batching:
 /// waits for at least one event, then drains up to MAX_BATCH_SIZE immediately
@@ -757,7 +754,7 @@ async fn handle_event_subscription(
     }
 }
 
-/// Handle push-based audit-event streaming (ADR-027 D13a, #1167).
+/// Handle push-based audit-event streaming (ADR-027 D13a).
 ///
 /// Backs `conductorctl audit tail -f` / `audit denied`. Writes each
 /// `AuditEntry` as a single newline-delimited JSON object.
@@ -837,7 +834,7 @@ pub const MAX_CONFIG_PAYLOAD_BYTES: usize = 256 * 1024;
 /// (`id`/`command`/`base_generation` framing around the config body).
 const MAX_CONFIG_REQUEST_BYTES: usize = MAX_CONFIG_PAYLOAD_BYTES + 1024;
 
-// Compile-time guard (cloud-review): the documented request cap is exactly
+// Compile-time guard: the documented request cap is exactly
 // 257 KiB (256 KiB payload + 1 KiB envelope). Fail the build if either
 // constant drifts from that relationship rather than silently shipping a
 // different security cap than the docs/CHANGELOG state.
@@ -926,14 +923,14 @@ pub fn create_success_response(id: &str, data: Option<serde_json::Value>) -> Ipc
 
 /// IPC client for sending commands to daemon
 pub struct IpcClient {
-    /// Persistent buffered reader over the connection (#458). A previous design
+    /// Persistent buffered reader over the connection. A previous design
     /// created a temporary `BufReader<&mut stream>` per `send_request` and a
     /// fresh `BufReader<stream>` in `into_reader`; if the per-request reader
     /// buffered bytes PAST the response newline (the daemon writing the response
     /// and a following streamed line in one syscall), those bytes were silently
     /// dropped when the temporary was dropped and `into_reader` started blind to
     /// them. Holding one reader for the connection's whole life preserves any
-    /// read-ahead across `send_request` → `into_reader` (the #394 subscribe path).
+    /// read-ahead across `send_request` → `into_reader`.
     reader: BufReader<UnixStream>,
 }
 
@@ -977,7 +974,7 @@ impl IpcClient {
         stream.flush().await?;
 
         // Read response from the PERSISTENT reader so any bytes it buffers past
-        // the response newline survive for `into_reader` (#458).
+        // the response newline survive for `into_reader`.
         let mut line = String::new();
         self.reader.read_line(&mut line).await?;
 
@@ -1046,12 +1043,12 @@ impl IpcClient {
         self.send_request(request).await
     }
 
-    /// Consume the client into a streaming reader for push-based subscriptions (#394)
+    /// Consume the client into a streaming reader for push-based subscriptions
     ///
     /// After sending a `SubscribeEvents` command and receiving the initial response,
     /// call this to get a `BufReader` for reading streamed event lines.
     pub fn into_reader(self) -> BufReader<UnixStream> {
-        // Return the SAME reader used for request/response (#458) — not a fresh
+        // Return the SAME reader used for request/response — not a fresh
         // one — so any bytes buffered past the last response newline (e.g. the
         // first streamed event the daemon coalesced with the subscribe ack) are
         // not lost.
@@ -1079,7 +1076,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // ── ADR-034 §D2.3 payload cap (#1902) ────────────────────────────
+    // ── ADR-034 §D2.3 payload cap ────────────────────────────
 
     #[test]
     fn config_payload_cap_only_for_config_carrying_commands() {
@@ -1199,7 +1196,7 @@ mod tests {
         }
 
         #[cfg(windows)]
-        // v4.14.0: Use expect() with message (LLM Council feedback v4.13.3)
+        // Use expect() with message
         assert_eq!(
             path.to_str()
                 .expect("Windows named pipe path should be valid UTF-8"),
@@ -1225,7 +1222,7 @@ mod tests {
         assert!(valid_request.len() < MAX_REQUEST_SIZE);
     }
 
-    // ── Push-based event monitoring tests (#394) ──
+    // ── Push-based event monitoring tests ──
 
     #[test]
     fn test_subscribe_events_command_parses() {
@@ -1331,9 +1328,9 @@ mod tests {
         }
     }
 
-    /// #458: the daemon may write a response AND a following streamed line in one
+    /// The daemon may write a response AND a following streamed line in one
     /// syscall; the bytes past the response newline must survive
-    /// `send_request` → `into_reader` (the #394 subscribe path). With the old
+    /// `send_request` → `into_reader`. With the old
     /// per-request `BufReader`, the coalesced event line was buffered into the
     /// temporary and dropped; the persistent reader preserves it.
     #[tokio::test]

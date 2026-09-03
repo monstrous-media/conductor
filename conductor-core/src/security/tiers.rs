@@ -39,7 +39,7 @@ use serde::{Deserialize, Serialize};
 ///   Reversible without persistence (e.g. mode switching, MIDI Learn
 ///   start/stop, mapping-editor staging). Auto-execute.
 /// - [`ArtifactRender`](Self::ArtifactRender) — projects an artifact into
-///   the workspace UI (#612, #621). Stateful in spirit but distinct
+///   the workspace UI. Stateful in spirit but distinct
 ///   audit / undo semantics; carved out so the GUI can treat it
 ///   uniformly.
 /// - [`ConfigChange`](Self::ConfigChange) — persistent config mutation.

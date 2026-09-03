@@ -208,7 +208,7 @@ fn test_binding_state_ambiguous() {
     assert!(matches!(state, BindingState::Ambiguous { .. }));
 }
 
-// #753: UsbIdentifier matcher should work when USB metadata is provided
+// UsbIdentifier matcher should work when USB metadata is provided
 #[test]
 fn test_usb_identifier_matches_with_metadata() {
     let matcher = DeviceMatcher::usb_identifier(0x17CC, 0x1620); // NI Mikro MK3
@@ -240,7 +240,7 @@ fn test_non_usb_matcher_ignores_usb_metadata() {
     assert!(!matcher.matches_with_usb("Launchpad", Some(0x17CC), Some(0x1620)));
 }
 
-// #752: SysExIdentity variant in DeviceMatcher
+// SysExIdentity variant in DeviceMatcher
 use conductor_core::device_intelligence::sysex_identity::SysExIdentity;
 
 #[test]

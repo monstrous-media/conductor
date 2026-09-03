@@ -10,8 +10,8 @@
 // blocks entirely — the sole authored I/O block is `[[endpoints]]`, so these
 // fixtures author endpoints directly. These tests prove:
 //   * byte-for-byte parity of the resulting `LiveConnector` config vs. the
-//     canonical Input-Matcher shape, on equivalent configs (regression proof —
-//     acceptance criterion of #1743),
+//     canonical Input-Matcher shape, on equivalent configs (a regression-proof
+//     acceptance criterion),
 //   * authored `[[endpoints]]` of every kind land in the registry under their
 //     alias,
 //   * protocol inference for authored endpoints whose `protocol` is omitted.

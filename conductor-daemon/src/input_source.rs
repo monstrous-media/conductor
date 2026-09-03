@@ -5,20 +5,20 @@
 //!
 //! Every protocol that can *receive* events implements [`InputSource`]. The
 //! trait lives here in `conductor-daemon` — **not** `conductor-core` (ADR-039
-//! R4): its eventual pump-facing channel handoff (`start(tx)`, added in #1760)
+//! R4): its eventual pump-facing channel handoff (`start(tx)`)
 //! is typed on a `tokio::sync::mpsc::Sender`, and `core` deliberately keeps
 //! `tokio` optional to remain a runtime-free pure engine. The pure *data* types
 //! it deals in ([`conductor_core::events::ProtocolEvent`] and friends) stay in
 //! `core`.
 //!
-//! ## Scope (#1758 substrate + #1760 pump)
+//! ## Scope (substrate + pump)
 //!
-//! #1758 shipped the four **pure, behaviour-preserving** methods that are
+//! The trait ships four **pure, behaviour-preserving** methods that are
 //! testable without a live device or a running pump: [`InputSource::protocol`],
 //! [`InputSource::source_alias`], [`InputSource::shutdown`], and
 //! [`InputSource::metrics`].
 //!
-//! #1760 adds the push-compatible sink handoff [`InputSource::start`] alongside
+//! `start(tx)` adds the push-compatible sink handoff [`InputSource::start`] alongside
 //! the single-lane shed-load substrate ([`enqueue`] + [`spawn_input_pump`])
 //! that both `start(tx)` and the live MIDI/HID converters now share. The
 //! existing managers are push-shaped (a midir OS callback / a gilrs polling
@@ -31,7 +31,7 @@
 //! The two-lane (`input_tx`/`net_tx`) weighted-fair / deficit-round-robin
 //! dispatch in spec §4.3 is **deferred to ADR-039-A** (R4): only
 //! `ProtocolEvent::Input` (MIDI/HID) producers exist today, so a second lane
-//! would be untestable dead substrate. #1760 keeps the single unified
+//! would be untestable dead substrate. `start(tx)` keeps the single unified
 //! `DeviceEvent<ProtocolEvent>` channel and adds the backpressure + shutdown
 //! quiesce that 039-A's network lane will build on.
 
@@ -77,13 +77,13 @@ struct MetricsInner {
 
 /// Cheaply-cloneable, lock-free handle to a source's metrics counters.
 ///
-/// The source exposes a clone of this so the #1760 push path (`start(tx)`) can
+/// The source exposes a clone of this so the push path (`start(tx)`) can
 /// call [`record_event`](Self::record_event) /
 /// [`record_dropped`](Self::record_dropped) /
 /// [`record_error`](Self::record_error) from inside its callback/poll loop
-/// without taking a lock on the hot path. In #1758 the counters exist and are
+/// without taking a lock on the hot path. The counters exist and are
 /// readable via [`snapshot`](Self::snapshot); they begin incrementing once the
-/// source owns the send path in #1760.
+/// source owns the send path.
 #[derive(Debug, Clone)]
 pub struct InputSourceMetricsHandle(Arc<MetricsInner>);
 
@@ -170,7 +170,7 @@ impl Default for InputSourceMetricsHandle {
 /// implements this.
 ///
 /// See the [module docs](self) for why the pump-facing `start(tx)` method is
-/// deferred to #1760 and why this trait lives in the daemon, not core.
+/// added later and why this trait lives in the daemon, not core.
 pub trait InputSource: Send {
     /// The protocol this source speaks.
     fn protocol(&self) -> ConnectorProtocol;
@@ -188,7 +188,7 @@ pub trait InputSource: Send {
     /// Begin pushing this source's events into the unified pump channel using
     /// the §4.3 shed-load policy (`try_send`; drop-newest on a full channel;
     /// never block). The source owns `tx` for its lifetime — the push model
-    /// that matches midir callbacks / gilrs polling (#1760).
+    /// that matches midir callbacks / gilrs polling.
     ///
     /// Returns `Err` if the source is not in a startable state — e.g. its
     /// hardware intermediate channel has not been established yet (call the
@@ -240,7 +240,7 @@ pub(crate) fn enqueue(
 /// Spawn the push task that drains a source's intermediate event stream and
 /// lands each event on the unified pump channel via the §4.3 [`enqueue`]
 /// policy. This is the concrete realization of [`InputSource::start`] for the
-/// push-shaped midir/gilrs sources (#1760): the wrapped manager keeps its
+/// push-shaped midir/gilrs sources: the wrapped manager keeps its
 /// existing OS callback / poll loop feeding `source_rx`; this task is the
 /// non-blocking push side that the old blocking `send().await` converters
 /// became.
@@ -258,7 +258,7 @@ pub(crate) fn enqueue(
 /// manager touches neither). It cannot leak: it self-terminates the moment
 /// `source_rx` closes, which the manager's teardown (`disconnect`/`shutdown`,
 /// dropping the OS callback / poll thread that holds the sender) triggers. This
-/// is the same detached-task shape the pre-#1760 blocking converters used,
+/// is the same detached-task shape the earlier blocking converters used,
 /// minus the blocking `send().await`.
 pub(crate) fn spawn_input_pump<E>(
     device_id: DeviceId,
@@ -300,7 +300,7 @@ mod tests {
     }
 
     // ----------------------------------------------------------------
-    // ADR-039 §4.3 (#1760) — shed-load enqueue policy
+    // ADR-039 §4.3 — shed-load enqueue policy
     // ----------------------------------------------------------------
 
     #[tokio::test]
@@ -454,7 +454,7 @@ mod tests {
 
     #[test]
     fn concurrent_records_lose_no_updates_and_keep_last_activity_monotonic() {
-        // Council R2: the handle is Clone and may be touched from multiple
+        // The handle is Clone and may be touched from multiple
         // threads. `fetch_add` must not lose counter updates, and `fetch_max`
         // must keep `last_activity` monotonic (no older timestamp clobbering a
         // newer one) — both deterministic, so this test is not timing-flaky.

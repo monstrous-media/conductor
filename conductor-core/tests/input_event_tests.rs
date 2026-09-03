@@ -62,7 +62,7 @@ fn test_pad_released_conversion() {
 
 #[test]
 fn test_control_change_conversion() {
-    // v4.10.9: CC events now convert to ControlChange (not EncoderTurned)
+    // CC events now convert to ControlChange (not EncoderTurned)
     // The EventProcessor detects encoder rotation from value changes
     let time = Instant::now();
     let midi = MidiEvent::ControlChange {
@@ -485,7 +485,7 @@ fn test_batch_conversion() {
         _ => panic!("Expected PadPressed"),
     }
 
-    // Verify CC event (v4.10.9: CC → ControlChange, not EncoderTurned)
+    // Verify CC event (CC → ControlChange, not EncoderTurned)
     match &input_events[2] {
         InputEvent::ControlChange { control, value, .. } => {
             assert_eq!(*control, 1);

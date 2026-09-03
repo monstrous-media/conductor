@@ -12,11 +12,11 @@
 //! These tests exercise both halves of the contract:
 //!
 //! 1. **Shadow-mode envelope** (default). Every `(RiskTier, TrustLevel)` pair
-//!    resolves to `Allow`. Pre-existing tests from D5 (2/N) survive
-//!    unchanged — the (3/N) decision-table only takes effect when shadow
+//!    resolves to `Allow`. Pre-existing tests survive
+//!    unchanged — the decision-table only takes effect when shadow
 //!    mode is explicitly disabled.
 //!
-//! 2. **Decision table** (D5 3/N). With `shadow_mode = false`, the gate
+//! 2. **Decision table**. With `shadow_mode = false`, the gate
 //!    returns the per-tier outcomes specified in §2.2 + §2.5 of the spec:
 //!    `ReadOnly`/`Stateful`/`ArtifactRender` → `Allow`,
 //!    `ConfigChange` → `RequirePlan(GatePlanRequest)`,
@@ -135,7 +135,7 @@ fn enforce_allows_stateful_for_every_caller() {
     let policy = enforce_mode();
     // Per spec §2.2 the *full* gate returns AllowWithAudit for LLM-initiated
     // Stateful calls. D13a wires the audit consumer; until then `Allow` is
-    // correct. The Stateful → AllowWithAudit transition lands in (4/N) when
+    // correct. The Stateful → AllowWithAudit transition lands when
     // the audit-stream sink is plugged in.
     for trust in [
         TrustLevel::GuiTrusted,

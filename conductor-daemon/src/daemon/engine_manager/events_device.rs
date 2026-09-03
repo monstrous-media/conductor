@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 //! `EngineManager::process_device_event`, extracted from
-//! `engine_manager::events_dispatch` (refactor #2073).
+//! `engine_manager::events_dispatch`.
 
 use super::*;
 
 impl EngineManager {
-    /// Process a device-tagged input event through the multi-device pipeline (v4.20.0)
+    /// Process a device-tagged input event through the multi-device pipeline
     pub(crate) async fn process_device_event(
         &mut self,
         device_event: DeviceEvent<InputEvent>,
@@ -25,7 +25,7 @@ impl EngineManager {
             }
         }
 
-        // Per-device rate limiting (v4.26.0 - ADR-009 D9)
+        // Per-device rate limiting (ADR-009 D9)
         if !self.device_rate_limiter.check(&device_id) {
             warn!(device_id = %device_id, "Rate limit exceeded — dropping event");
             return Ok(());
@@ -33,7 +33,7 @@ impl EngineManager {
 
         debug!(device_id = %device_id, "Processing multi-device input event: {:?}", input_event);
 
-        // Latency tracking (R899/Issue #709) — used for both processing_us on raw monitor
+        // Latency tracking (R899) — used for both processing_us on raw monitor
         // events (capture_midi) and dispatch_time on ActionDispatch (capture_actions).
         let processing_start = if self.event_monitor_active.load(Ordering::Relaxed)
             && (self.capture_midi || self.capture_actions)
@@ -61,10 +61,10 @@ impl EngineManager {
             }
         }
 
-        // Extract raw MIDI bytes before processing consumes the event (v4.25.0 - ADR-009 Gap 2)
+        // Extract raw MIDI bytes before processing consumes the event (ADR-009 Gap 2)
         let raw_midi = extract_raw_midi(&input_event);
 
-        // ADR-015 D8 + Issue #555: Check recursion guard — both
+        // ADR-015 D8: Check recursion guard — both
         // per-message echo suppression (exact bytes within TTL) and
         // per-port blanket cascade suppression (when allow_cascade=false).
         // Both checks share one lock acquisition. Blanket suppression
@@ -80,9 +80,9 @@ impl EngineManager {
         // The `allow_cascade` gate is read fresh per event so a config
         // reload that flips it to `true` takes effect immediately —
         // any windows still in `blanket_until` are simply ignored and
-        // expire harmlessly within ≤ `BLANKET_TTL_MAX_MS`. This
-        // addresses Copilot's review on PR #1211 where a stale window
-        // could otherwise outlive the opt-out flip by up to 60 s.
+        // expire harmlessly within ≤ `BLANKET_TTL_MAX_MS`. Without this
+        // a stale window could otherwise outlive the opt-out flip by up
+        // to 60 s.
         if let Some(ref raw) = raw_midi {
             let allow_cascade = self
                 .live_config
@@ -114,7 +114,7 @@ impl EngineManager {
             }
             if let Some(event_type) = suppressed_kind {
                 trace!(device_id = %device_id, kind = event_type, "Suppressed MIDI input");
-                // #2397: the event is ALWAYS suppressed (we return below); only
+                // The event is ALWAYS suppressed (we return below); only
                 // the MonitorEvent telemetry is coalesced. Under a feedback loop
                 // / chord storm this collapses a 1:1 flood into one summary per
                 // kind per window, keeping the GUI events panel responsive.
@@ -189,9 +189,9 @@ impl EngineManager {
             self.record_event_fingerprint(base_name, &input_event, fingerprint_ts);
         }
 
-        // Event monitor capture with device_id (Issue #326, R926)
+        // Event monitor capture with device_id (R926)
         // Create the raw MonitorEvent after echo check but defer push until after
-        // processing so we can stamp processing_us on it (Issue #709).
+        // processing so we can stamp processing_us on it.
         // Note: deferred push changes daemon buffer insertion order — the raw event
         // is inserted after mapping_matched/processed events from the same input.
         // Timestamps may differ by ~0-1ms (each calls SystemTime::now()). The UI
@@ -205,11 +205,11 @@ impl EngineManager {
             };
 
         // Get or create the per-device EventProcessor with ALL configurable
-        // timing knobs currently in effect (#2386/#2486 chord + #2490 hold +
+        // timing knobs currently in effect (chord + hold +
         // double-tap). The chord window is Learn-aware; hold/double-tap come
         // from config. Previously only chord was wired (the non-Learn branch
         // used `EventProcessor::new()`, hardcoding hold=2s / double-tap=300ms),
-        // so the "Long Press Threshold" slider was decorative (#2490). Computed
+        // so the "Long Press Threshold" slider was decorative. Computed
         // before the `entry()` borrow so the closure captures a plain copy, not
         // `self`.
         let timings = {
@@ -238,8 +238,8 @@ impl EngineManager {
                 .await;
         }
 
-        // Map ProcessedEvents → Action — LOCK-FREE with device filter (v4.21.0 - ADR-009 Phase 3)
-        // Uses match_event_with_provenance for ActionEnvelope with debug provenance (v4.26.0 - ADR-009 Gap K)
+        // Map ProcessedEvents → Action — LOCK-FREE with device filter (ADR-009 Phase 3)
+        // Uses match_event_with_provenance for ActionEnvelope with debug provenance (ADR-009 Gap K)
         // D4.A.3.3.A: rules sourced from `live_config.load().rules` — the
         // legacy `self.rule_set` field retired alongside the
         // bridge helper.
@@ -270,7 +270,7 @@ impl EngineManager {
             }
         }
 
-        // #836: Suppress dispatch when MIDI Learn is active — symmetric
+        // Suppress dispatch when MIDI Learn is active — symmetric
         // with the legacy path. The user is capturing input for a new
         // mapping; firing the existing mapping mid-learn surprises them
         // with side effects. Resetting `envelope` to None preserves the
@@ -299,7 +299,7 @@ impl EngineManager {
                 _ => None,
             });
 
-            // ADR-039-B #1762 step 4b: carry the structured event so a
+            // ADR-039-B: carry the structured event so a
             // `HidForward` action can translate the original gamepad event
             // (raw_midi is lossy for HID). Reuse the `ProcessedEvent::Raw`
             // clone the processor always emits first (same source the route
@@ -412,7 +412,7 @@ impl EngineManager {
             }
         }
 
-        // Stage 9 (ADR-031 § 4.5 / #1301 slice 1): fan out via configured
+        // Stage 9 (ADR-031 § 4.5): fan out via configured
         // routes when the event reaches the route stage AND we have raw MIDI
         // bytes.
         //
@@ -432,7 +432,7 @@ impl EngineManager {
         // executor's MIDI output dispatcher (port resolution via
         // `resolve_output_port`, recursion-guard registration via
         // `RecursionGuard::register_outbound`, echo/cascade suppression on
-        // any return event back into the engine — ADR-015 D8 / #555).
+        // any return event back into the engine — ADR-015 D8).
         //
         // Route fan-out is MIDI→MIDI only (compile() excludes cross-protocol
         // routes upfront) — an ADR-031 routing constraint, unrelated to the
@@ -444,9 +444,9 @@ impl EngineManager {
             let route_engine = self.route_engine.load();
             // ADR-036 D1: post-mapping routes are mode-scoped; pass the
             // active mode so mode-ineligible routes are skipped.
-            // ADR-039 #1759: pass the `raw` we already extracted at line 65 — no
+            // ADR-039: pass the `raw` we already extracted above — no
             // re-extraction on the hot path.
-            // ADR-039-B #1762: also thread the structured event so HID routes'
+            // ADR-039-B: also thread the structured event so HID routes'
             // structured transforms (HidToArtNet) can recover gamepad-native
             // semantics the lossy byte form drops (§6.2.1). Mapping's
             // `process_input` consumed `input_event`, but it always emits a clone
@@ -508,7 +508,7 @@ impl EngineManager {
             }
         }
 
-        // Push deferred raw monitor event with processing latency stamped (Issue #709)
+        // Push deferred raw monitor event with processing latency stamped
         if let Some(mut event) = pending_monitor_event {
             if let Some(start) = processing_start {
                 event.processing_us = Some(start.elapsed().as_micros() as u64);
@@ -521,8 +521,8 @@ impl EngineManager {
 
     /// ADR-039-A: process an inbound OSC message.
     ///
-    /// Slice 1 (#1361) delivered OSC to the ROUTE engine only (D17 by
-    /// construction). Slice 2 (#2325) opens the mapping path: typed OSC
+    /// OSC was first delivered to the ROUTE engine only (D17 by
+    /// construction); the mapping path opened later: typed OSC
     /// triggers are evaluated FIRST, and any dispatched action carries the
     /// network-origin taint (ADR-042 D17 — see the inline block below); the
     /// route-engine dispatch then runs unchanged. `raw_midi` stays empty on
@@ -536,7 +536,7 @@ impl EngineManager {
             Some(mode.name.clone())
         };
 
-        // ── Mapping engine — typed OSC triggers (Slice 2, #2325) ─────────
+        // ── Mapping engine — typed OSC triggers ─────────
         // Every action dispatched from this path carries the NETWORK-ORIGIN
         // TAINT (ADR-042 D17): `network_origin = Some(listener alias)`, so
         // the executor's action-class gate refuses sensitive actions
@@ -566,7 +566,7 @@ impl EngineManager {
                 Some(device_id.as_str()),
             );
 
-            // #836 symmetry: suppress dispatch while MIDI Learn captures.
+            // Symmetry with the MIDI path: suppress dispatch while MIDI Learn captures.
             let envelope = if envelope.is_some() && self.midi_learn_active.load(Ordering::SeqCst) {
                 trace!(device_id = %device_id, "Suppressing OSC action dispatch during MIDI Learn");
                 None
@@ -587,7 +587,7 @@ impl EngineManager {
                     raw_midi: None,
                     device_id: Some(device_id.as_str().to_string()),
                     input_event: None,
-                    // #2326: carry the inbound OSC so an OscForward action on
+                    // Carry the inbound OSC so an OscForward action on
                     // this mapping can re-send it to an OSC output endpoint.
                     osc_message: Some(osc.clone()),
                 };
@@ -628,7 +628,7 @@ impl EngineManager {
             }
         }
 
-        // ── Route engine (Slice 1, #1361) — unchanged ────────────────────
+        // ── Route engine — unchanged ────────────────────
         let destinations = {
             let route_engine = self.route_engine.load();
             route_engine.route_destinations(device_id.as_str(), event, mode.name.as_str())

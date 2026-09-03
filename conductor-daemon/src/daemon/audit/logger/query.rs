@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Audit log read path: filtered `query` + aggregate `get_summary`.
-//! Split out of `logger/mod.rs` (#1705) so the read path stays a
+//! Split out of `logger/mod.rs` so the read path stays a
 //! small, independently-reviewable unit. Pure move — behaviour is
 //! unchanged; the audit test-suite is the regression guard.
 
@@ -12,8 +12,8 @@ impl AuditLogger {
     /// Build the shared parameterised `WHERE` clause + bound params for the
     /// filterable columns of an `AuditQuery` — tool_name, risk_tier,
     /// event_type, errors_only, start_time, end_time. Used by BOTH `query`
-    /// and `get_summary` so summaries honour the same filters as row queries
-    /// (#1473). Result-shaping options (limit/offset/order) are not part of
+    /// and `get_summary` so summaries honour the same filters as row queries.
+    /// Result-shaping options (limit/offset/order) are not part of
     /// this clause. String filters are bound as parameters, never
     /// interpolated, so they can't break out of the query.
     fn build_filter_clause(query: &AuditQuery) -> (String, Vec<Box<dyn rusqlite::ToSql>>) {
@@ -119,7 +119,7 @@ impl AuditLogger {
             .lock()
             .map_err(|_| rusqlite::Error::ExecuteReturnedResults)?;
 
-        // #1473: apply the SAME filters as `query` (not just the time
+        // Apply the SAME filters as `query` (not just the time
         // window) so a filtered summary reports filtered numbers. Params
         // are bound, so the string filters (tool_name, risk_tier,
         // event_type) are injection-safe.
@@ -127,7 +127,7 @@ impl AuditLogger {
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
         let params = param_refs.as_slice();
 
-        // Total and error counts. #1709: `SUM(...)` is NULL over an empty
+        // Total and error counts. `SUM(...)` is NULL over an empty
         // result set (empty log, or a filter that matches nothing), which
         // can't be read as `i64` — `COALESCE(..., 0)` keeps it a 0 count
         // instead of erroring the whole summary.
@@ -284,7 +284,7 @@ mod tests {
         assert_eq!(*summary.by_risk_tier.get("config_change").unwrap_or(&0), 1);
     }
 
-    /// #1473 — `get_summary` must honour the same filters as `query`
+    /// `get_summary` must honour the same filters as `query`
     /// (tool_name, risk_tier, event_type, errors_only), not just the time
     /// window. Pre-fix it only applied start/end_time, so a filtered
     /// summary returned whole-log numbers.
@@ -375,7 +375,7 @@ mod tests {
         );
     }
 
-    /// #1709 — `get_summary` must not error on an empty result set. With no
+    /// `get_summary` must not error on an empty result set. With no
     /// rows, `SUM(...)` is NULL; without `COALESCE` it fails to parse as
     /// i64. Covers both an empty log and a filter that matches nothing.
     #[test]

@@ -71,10 +71,10 @@ const LOCK_READY_ENV: &str = "CONDUCTOR_SINGLETON_LOCK_READY";
 #[test]
 fn lock_released_when_subprocess_exits_normally() {
     // Real-world "second daemon can start after the first exits" check across
-    // two distinct OS processes. Council #1297 round 1 flagged an earlier
-    // version as vacuous (it spawned `true` without touching the lock).
+    // two distinct OS processes. An earlier
+    // version was flagged as vacuous (it spawned `true` without touching the lock).
     //
-    // #1552: the next version used a `python3` one-liner as the lock holder and
+    // The next version used a `python3` one-liner as the lock holder and
     // SILENTLY `return`ed — passing with zero assertions — when python3 was
     // absent. So a CI configuration without python3 reported this cross-process
     // coverage as passing while running none of it. This version re-execs the

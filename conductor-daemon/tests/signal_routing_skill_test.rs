@@ -3,7 +3,7 @@
 
 //! Smoke test for the `conductor-signal-routing` agent skill (ADR-031 P3 § 5.1).
 //!
-//! The TDD plan in issue #1143 specifies `grep "## Signal Routing"
+//! The TDD plan specifies `grep "## Signal Routing"
 //! skills/conductor-signal-routing/SKILL.md` as the bare-minimum acceptance
 //! check. This test runs that grep at the workspace level plus parses the
 //! frontmatter through the existing skill loader so a future SKILL.md edit
@@ -43,7 +43,7 @@ fn skill_md_exists_and_is_non_empty() {
 #[test]
 fn skill_md_has_decision_framework_and_safety_policy() {
     // Per spec § 5.1 the skill body must surface a decision framework and a
-    // safety policy. The TDD plan for issue #1143 specifies the
+    // safety policy. The TDD plan specifies the
     // `grep "## Signal Routing"` check; we extend that to the two body
     // sections that the agent actually depends on at inference time.
     let content = std::fs::read_to_string(skill_path()).expect("read SKILL.md");
@@ -63,7 +63,7 @@ fn skill_md_has_decision_framework_and_safety_policy() {
 
 #[test]
 fn skill_md_frontmatter_has_correct_name_and_routing_description() {
-    // #1410: the validator's `validate_tool_patterns` step now accepts
+    // The validator's `validate_tool_patterns` step now accepts
     // both the legacy `namespace:pattern, …` form and Claude Code's
     // space-separated `Bash(conductor:*) Read Write` form, so the
     // shipped SKILL.md can be run through the full `validate_skill`

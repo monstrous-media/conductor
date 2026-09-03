@@ -34,12 +34,12 @@ const LED_REPORT_ID: u8 = 0x80;
 /// buffer = 81 bytes, and it offsets LED data past the ID rather than counting
 /// the ID inside the address space. The only invariant that matters here is
 /// that this diagnostic's report MUST NOT be truncated below the addresses it
-/// probes (the #2127 bug).
+/// probes.
 const LED_REPORT_LEN: usize = 80;
 
 /// Build the LED HID report that lights the LED at `addr` bright red.
 ///
-/// #2127: the previous inline code wrote the RGB triplet into an 80-byte buffer
+/// The previous inline code wrote the RGB triplet into an 80-byte buffer
 /// and then `buffer.resize(65, 0)` *before* the HID write — truncating the
 /// report back to 65 bytes. Every high address (`addr + 2 >= 65`, i.e. the
 /// `0x42`/`0x45`/`0x48`/`0x4B` pad tests) had its just-written LED bytes
@@ -67,7 +67,7 @@ fn build_led_report(addr: u8) -> Vec<u8> {
 /// Build the all-off LED HID report (clears every LED).
 ///
 /// Kept at the same [`LED_REPORT_LEN`] as [`build_led_report`] so the device
-/// always sees a consistent report length (#2127).
+/// always sees a consistent report length.
 fn build_clear_report() -> Vec<u8> {
     let mut buffer = vec![LED_REPORT_ID];
     buffer.resize(LED_REPORT_LEN, 0);
@@ -77,7 +77,7 @@ fn build_clear_report() -> Vec<u8> {
 /// Format the discovered `MIDI note → LED address` mappings for the summary,
 /// one line per note, sorted by note number for deterministic output.
 ///
-/// #2129: the discovered LED address used to be thrown away — `results` stored
+/// The discovered LED address used to be thrown away — `results` stored
 /// a bare `bool` and the summary printed `LED address (found)` with no value,
 /// so the whole point of the diagnostic (learning *which* address drives each
 /// pad) was lost. `results` now carries the matched address and this renders it
@@ -109,13 +109,13 @@ enum WaitOutcome {
 /// Poll `poll` until it yields a `(note, velocity)` capture or `timeout`
 /// elapses, sleeping `step` between polls, then return the outcome.
 ///
-/// #1432: the per-test prompt advertised a `q` quit, but the previous wait was
+/// The per-test prompt advertised a `q` quit, but the previous wait was
 /// an UNBOUNDED MIDI polling loop that never read stdin — so quitting was
 /// impossible if no pad was pressed or the device went silent. Returning
 /// [`WaitOutcome::Timeout`] lets the caller fall back to a real stdin prompt
 /// (where `q`/`n` quits). The note source and clock step are parameters so the
 /// outcome logic is unit-testable without MIDI hardware (mirrors led_tester's
-/// `wait_for_pad`, #1414).
+/// `wait_for_pad`).
 fn wait_for_pad<F>(mut poll: F, timeout: Duration, step: Duration) -> WaitOutcome
 where
     F: FnMut() -> Option<(u8, u8)>,
@@ -203,7 +203,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("3. Type 'y' if LED lit up, 'n' if not");
     println!("4. Type 'q' to quit\n");
 
-    // note → discovered LED address (#2129: was `bool`, which discarded the
+    // note → discovered LED address (was `bool`, which discarded the
     // address the diagnostic exists to find).
     let mut results: HashMap<u8, u8> = HashMap::new();
     let mut test_count = 0;
@@ -221,7 +221,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         // Wait for a pad press, or time out cleanly so the advertised quit is
-        // actually reachable (#1432). The previous loop polled MIDI forever and
+        // actually reachable. The previous loop polled MIDI forever and
         // never read stdin, so the operator could never quit if no pad was
         // pressed or the device went silent.
         let (note, velocity) = match wait_for_pad(
@@ -279,7 +279,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         for (addr, desc) in &test_addresses {
             // Light the LED at this address bright red. The report is built at
-            // its full length so high addresses are not truncated (#2127).
+            // its full length so high addresses are not truncated.
             let buffer = build_led_report(*addr);
 
             hid_device.write(&buffer)?;
@@ -344,7 +344,7 @@ mod tests {
     use super::*;
     use std::cell::Cell;
 
-    /// #1432: a capture is returned as `Pad`.
+    /// A capture is returned as `Pad`.
     #[test]
     fn wait_for_pad_returns_capture() {
         let calls = Cell::new(0u32);
@@ -361,7 +361,7 @@ mod tests {
         assert_eq!(outcome, WaitOutcome::Pad(60, 100));
     }
 
-    /// #1432: with no capture, the wait returns `Timeout` PROMPTLY instead of
+    /// With no capture, the wait returns `Timeout` PROMPTLY instead of
     /// polling MIDI forever — which is what makes the quit prompt reachable.
     #[test]
     fn wait_for_pad_times_out_promptly_without_spinning() {
@@ -390,7 +390,7 @@ mod tests {
         );
     }
 
-    /// #2127: the highest address this tool probes is `0x4B` (75). Its RGB
+    /// The highest address this tool probes is `0x4B` (75). Its RGB
     /// triplet occupies bytes 75/76/77, so the report MUST be at least 78 bytes
     /// long. The previous code truncated the report to 65 bytes *after* writing,
     /// which dropped every byte from 65 onward — those LEDs never lit. The
@@ -421,7 +421,7 @@ mod tests {
         assert_eq!(report[0], LED_REPORT_ID);
     }
 
-    /// #2129: the discovered mapping must report the ACTUAL LED address, not a
+    /// The discovered mapping must report the ACTUAL LED address, not a
     /// generic "(found)" placeholder. Before the fix, `results` was
     /// `HashMap<u8, bool>` and the address was discarded; the summary could only
     /// say an address was found, never which one. The map now carries the
@@ -439,7 +439,7 @@ mod tests {
         assert_eq!(lines[0], "MIDI Note 36 → LED address 0x1E");
         assert_eq!(lines[1], "MIDI Note 60 → LED address 0x42");
         // The concrete address is present and the discarded-address placeholder
-        // is gone (the #2129 regression).
+        // is gone.
         assert!(lines.iter().all(|l| l.contains("0x")));
         assert!(!lines.iter().any(|l| l.contains("(found)")));
     }
@@ -475,7 +475,7 @@ mod tests {
 
     /// The clear report is the same length as a lit report and is all-off
     /// (apart from the report-ID byte), so the device sees a consistent report
-    /// length (#2127).
+    /// length.
     #[test]
     fn build_clear_report_is_full_length_and_off() {
         let report = build_clear_report();

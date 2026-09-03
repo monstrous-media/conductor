@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 //! Endpoint Registry — runtime state of the signal routing graph (ADR-031 § 3.4,
-//! ADR-035 Slice 6).
+//! ADR-035).
 //!
 //! Consumes the already-unified endpoint set produced by
 //! [`conductor_core::config::loader::normalize_to_endpoints`] — which lowers the
 //! legacy `[[bindings]]` (`DeviceIdentityConfig`) and `[[connectors]]`
 //! (`ConnectorConfig`) blocks and folds in authored `[[endpoints]]` — into a
 //! single alias-keyed map of `LiveConnector`s. Lowering is NO LONGER performed
-//! here: ADR-035 Slice 6 collapsed it into core so there is one source of truth.
+//! here: ADR-035 collapsed it into core so there is one source of truth.
 //! Each entry tracks its current bound port (if any) and per-connector activity
 //! metrics.
 //!
@@ -28,7 +28,7 @@ pub struct EndpointRegistry {
     connectors: HashMap<String, LiveConnector>,
 }
 
-/// Transitional alias (ADR-035 Slice 6). The runtime registry is now built from
+/// Transitional alias (ADR-035). The runtime registry is now built from
 /// the unified endpoint set; the old name is kept so call sites across the
 /// daemon, MCP, and GUI compile unchanged until they migrate.
 pub type ConnectorRegistry = EndpointRegistry;
@@ -39,14 +39,14 @@ pub struct LiveConnector {
     pub bound_port: Option<BoundPort>,
     pub connected: bool,
     pub metrics: ConnectorMetrics,
-    /// Ephemeral UDP socket for OSC sends (ADR-031 § 7.2 / #1145 P5 slice 2).
+    /// Ephemeral UDP socket for OSC sends (ADR-031 § 7.2).
     /// Lazy: `None` until the first `send_osc` call on an OSC-protocol
     /// connector creates it bound to `0.0.0.0:0`. Persists across sends
     /// to avoid per-send `bind()` syscall overhead on high-rate streams
     /// (lighting consoles drive multi-kHz CC streams). `Some` only for
     /// connectors whose endpoint resolved to an `OscEndpoint`.
     pub osc_socket: Option<UdpSocket>,
-    /// Art-Net DMX frame state + socket (ADR-031 § 7.3 / #1145 P5 slice 6).
+    /// Art-Net DMX frame state + socket (ADR-031 § 7.3).
     /// Lazy: `None` until the first `send_artnet` call on an Art-Net
     /// connector creates it. Persists across sends so multiple
     /// `DmxUpdate`s accumulate into the same 512-channel frame, and
@@ -172,7 +172,7 @@ fn now_unix_second() -> u64 {
 /// (so an authored `OscEndpoint`/`ArtNetEndpoint` doesn't silently fall back
 /// to the `ConnectorProtocol::Midi` default; `Matcher`/`MidiVirtualPort` infer
 /// `Midi`, byte-for-byte parity with the legacy binding-lowering branch). The
-/// output resolver shares this same inference path (ADR-035 Slice 9.5).
+/// output resolver shares this same inference path (ADR-035).
 fn endpoint_to_connector_config(ep: &EndpointConfig) -> ConnectorConfig {
     ConnectorConfig {
         alias: ep.alias.clone(),
@@ -186,7 +186,7 @@ fn endpoint_to_connector_config(ep: &EndpointConfig) -> ConnectorConfig {
 }
 
 impl EndpointRegistry {
-    /// Build a new registry from the unified endpoint set (ADR-035 Slice 6).
+    /// Build a new registry from the unified endpoint set (ADR-035).
     ///
     /// `endpoints` is the output of
     /// [`conductor_core::config::loader::normalize_to_endpoints`]: authored
@@ -283,7 +283,7 @@ impl EndpointRegistry {
         if let Some(connector) = self.connectors.get_mut(alias) {
             connector.metrics.total_messages += 1;
             connector.metrics.last_activity = Some(Instant::now());
-            // P4 slice 3 (gap C): also feed the sliding-window
+            // Also feed the sliding-window
             // throughput tracker so `current_throughput()` reflects
             // real activity instead of always returning 0.
             connector.metrics.window.record(now_unix_second());
@@ -305,8 +305,8 @@ impl EndpointRegistry {
             .unwrap_or(0.0)
     }
 
-    /// Record one routing-side error for metrics (ADR-031 P4 § 6.1 / #1144
-    /// slice 2). Increments `ConnectorMetrics::error_count`. Silent
+    /// Record one routing-side error for metrics (ADR-031 P4 § 6.1).
+    /// Increments `ConnectorMetrics::error_count`. Silent
     /// no-op if alias is unknown.
     ///
     /// Distinct from `record_activity`: a route attempt that failed
@@ -326,7 +326,7 @@ impl EndpointRegistry {
     }
 
     /// Send an OSC packet to the connector's configured endpoint
-    /// (ADR-031 § 7.2 / #1145 P5 slice 2).
+    /// (ADR-031 § 7.2).
     ///
     /// Lazy-opens an ephemeral UDP socket on first call per connector
     /// (bound to `0.0.0.0:0` — OS picks a free source port). The
@@ -341,7 +341,7 @@ impl EndpointRegistry {
     /// - the socket bind fails (port exhaustion, permission)
     /// - the `send_to` syscall fails (DNS, network unreachable)
     ///
-    /// The caller (stage-9 dispatch in slice 3) decides whether to
+    /// The caller (the stage-9 dispatch) decides whether to
     /// call `record_activity` (Ok) or `record_error` (Err). This
     /// method intentionally does NOT call them itself — separating
     /// the send from the metric write means a future caller can batch
@@ -381,8 +381,7 @@ impl EndpointRegistry {
 
     /// Apply a `DmxUpdate` to the connector's persistent DMX frame and
     /// send the full frame as an Art-Net OpDmx UDP packet to the
-    /// connector's configured endpoint (ADR-031 § 7.3 / #1145 P5
-    /// slice 6).
+    /// connector's configured endpoint (ADR-031 § 7.3).
     ///
     /// Lazy-initializes the per-connector `ArtNetState` (DMX frame +
     /// UDP source socket) on first call. Subsequent calls accumulate
@@ -468,7 +467,7 @@ impl EndpointRegistry {
     }
 }
 
-/// Encode an Art-Net OpDmx packet (ADR-031 § 7.3 / #1145 P5 slice 6).
+/// Encode an Art-Net OpDmx packet (ADR-031 § 7.3).
 ///
 /// Wire format per <https://art-net.org.uk/structure/streaming-packets/artdmx-packet-definition/>:
 ///
@@ -512,7 +511,7 @@ fn encode_artnet_opdmx(universe: u16, frame: &[u8; 512]) -> Vec<u8> {
     packet
 }
 
-// ADR-035 Slice 6: the binding-side `Protocol → ConnectorProtocol` mapping that
+// ADR-035: the binding-side `Protocol → ConnectorProtocol` mapping that
 // used to live here (`connector_protocol_from_binding_protocol`) is gone. Binding
 // lowering — and that mapping — now live solely in
 // `conductor_core::config::loader` (`connector_protocol_from_protocol`, used by
@@ -526,7 +525,7 @@ mod tests {
     };
     use conductor_core::identity::DeviceMatcher;
 
-    /// ADR-035 Slice 6: `loader::lower_connector` was removed along with the
+    /// ADR-035: `loader::lower_connector` was removed along with the
     /// legacy lowering path; the registry now consumes `EndpointConfig`
     /// directly. This local helper preserves the test-fixture ergonomics
     /// (build a `ConnectorConfig`, lower it) and mirrors the old conversion:
@@ -545,7 +544,7 @@ mod tests {
     }
 
     fn make_test_registry() -> ConnectorRegistry {
-        // ADR-035 Slice 6: the registry consumes the unified endpoint set, so
+        // ADR-035: the registry consumes the unified endpoint set, so
         // lower the test connector into an `EndpointConfig` first (the same
         // path `normalize_to_endpoints` uses for `[[connectors]]`).
         ConnectorRegistry::from_config(&[lower_connector(ConnectorConfig {
@@ -638,7 +637,7 @@ mod tests {
         assert_eq!(metrics.error_count, 0);
     }
 
-    // ── P4 slice 3 (gap C): ThroughputWindow tests ───────────────────
+    // ── ThroughputWindow tests ───────────────────
     //
     // The window is a private struct on ConnectorMetrics; these tests
     // exercise it directly so the bucket arithmetic is locked down
@@ -778,7 +777,7 @@ mod tests {
         );
     }
 
-    // ── P5 slice 2 (gap B): OSC sender tests ───────────────────────
+    // ── OSC sender tests ───────────────────────
     //
     // Real UDP via loopback — the receiver socket is bound first to
     // an ephemeral local port, the test config points the connector
@@ -789,7 +788,7 @@ mod tests {
     // platforms today.
 
     /// Build a registry with one OSC connector pointing at `host:port`.
-    /// Helper for the slice-2 send tests.
+    /// Helper for the OSC send tests.
     fn make_osc_registry(alias: &str, host: &str, port: u16) -> ConnectorRegistry {
         ConnectorRegistry::from_config(&[lower_connector(ConnectorConfig {
             alias: alias.to_string(),
@@ -819,8 +818,8 @@ mod tests {
         let mut registry = make_osc_registry("eos_console", "127.0.0.1", dest_port);
 
         // Hand-crafted OSC packet ("/foo" with no args) — 12 bytes.
-        // We're not exercising the rosc encoder here; that's slice 1's
-        // job. This test just pins that whatever bytes we hand to
+        // We're not exercising the rosc encoder here; that's the
+        // encoder's job. This test just pins that whatever bytes we hand to
         // send_osc land at the receiver intact.
         let packet: &[u8] = b"/foo\0\0\0\0,\0\0\0";
 
@@ -903,7 +902,7 @@ mod tests {
         );
     }
 
-    // ── P5 slice 6 (gap F): Art-Net sender tests ──────────────────
+    // ── Art-Net sender tests ──────────────────
     //
     // Real UDP via loopback — receiver bound first, the connector
     // points at it, send_artnet is verified via the receiver getting

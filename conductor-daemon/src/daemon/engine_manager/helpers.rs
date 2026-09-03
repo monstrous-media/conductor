@@ -10,7 +10,7 @@
 
 use super::*;
 
-/// The chord-detection window (ms) currently in effect (#2486): the Learn
+/// The chord-detection window (ms) currently in effect: the Learn
 /// window (`chord_learn_timeout_ms`) while MIDI Learn is active, else the normal
 /// window (`chord_timeout_ms`). Single source of truth so the daemon's
 /// `EventProcessor` chord window (`events_device`) and the GUI-facing pattern
@@ -29,8 +29,8 @@ pub(crate) fn active_chord_window_ms(
     }
 }
 
-/// Build the [`EventTimings`] currently in effect from `advanced_settings`
-/// (#2490). Chord uses the Learn-aware window via [`active_chord_window_ms`];
+/// Build the [`EventTimings`] currently in effect from `advanced_settings`.
+/// Chord uses the Learn-aware window via [`active_chord_window_ms`];
 /// double-tap and hold come straight from config. Single source so the daemon
 /// applies the same values at processor creation (`events_device`) and on reload
 /// (`reload::apply_prepared`) — closing the gap where `hold_threshold_ms` /
@@ -87,7 +87,7 @@ impl MonitorRateLimiter {
             return true; // Unlimited
         }
         let now_sec = timestamp_ms / 1000;
-        // Recover from poisoning to keep the daemon alive (council review).
+        // Recover from poisoning to keep the daemon alive.
         let mut state = self
             .state
             .lock()
@@ -208,7 +208,7 @@ pub(crate) fn resolve_probe_output_port(
     Ok(output)
 }
 
-// ── ADR-034 §D2 / D4.C IPC mutation-surface helpers (#1901) ──────────────
+// ── ADR-034 §D2 / D4.C IPC mutation-surface helpers ──────────────
 //
 // Shared by the SaveConfig / ReloadFromDisk / ImportConfig / ConfigDriftStatus
 // handlers. Kept as free functions (no `&self`) so the provenance / error /
@@ -288,7 +288,7 @@ pub(crate) fn mutate_error_to_ipc(e: &crate::daemon::live_config::MutateError) -
 ///
 /// This is the §D2 *lexical* layer only. The full §D2.2 safe-walk hardening
 /// (per-component `openat`/`openat2` with `O_NOFOLLOW` + `RESOLVE_BENEATH`,
-/// allowlist-root capture, inode-ownership `fstat`) is child #1902's scope —
+/// allowlist-root capture, inode-ownership `fstat`) is out of scope here —
 /// these checks must NOT be mistaken for symlink-traversal protection.
 pub(crate) fn lexical_config_path_ok(path: &std::path::Path) -> std::result::Result<(), String> {
     use std::path::Component;
@@ -312,7 +312,7 @@ pub(crate) fn lexical_config_path_ok(path: &std::path::Path) -> std::result::Res
 /// explicit three-way enum (carrying the winning mapping's id) rather than a
 /// collapsed boolean so the cause — "nothing matched" vs "a mapping consented to
 /// let-through" vs "a mapping consumed the event" — survives into the dispatch
-/// trace (R2 P1; trace fidelity wired in Slice 4).
+/// trace (R2 P1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RouteDisposition {
     /// The rule engine returned no match.
@@ -425,7 +425,7 @@ pub(crate) fn resolve_device_io(
             output_auto_paired: false,
         };
     }
-    // ADR-035 Slice 9.5: direction comes from the unified endpoint set, not
+    // ADR-035: direction comes from the unified endpoint set, not
     // `config.devices`. Map the endpoint's `ConnectorDirection` onto the
     // status-facing `DeviceDirection`.
     let dir = endpoints
@@ -458,7 +458,6 @@ pub(crate) fn resolve_device_io(
 }
 
 /// Convert a PathBuf to a UTF-8 string, returning an error with context if conversion fails.
-/// Added v4.14.0 (LLM Council feedback v4.13.3)
 pub(crate) fn pathbuf_to_str_or_err<'a>(
     path: &'a std::path::PathBuf,
     context: &str,
@@ -519,19 +518,18 @@ pub(crate) fn cfg_path_str(path: &std::path::Path) -> Result<&str> {
 }
 
 /// Resolve the startup mode index using the proper fallback chain.
-/// Added for Phase 3 of Issue #321 - Mode Fallback Chain on Startup
 ///
 /// Fallback chain: last_selected_mode → default_mode → mode index 0 → global mappings only
 ///
 /// Thin wrapper over the canonical [`Config::resolve_startup_mode`] in
-/// conductor-core (#1567) — the same code the mode-management integration tests
+/// conductor-core — the same code the mode-management integration tests
 /// exercise, so they can't drift from production. Kept as a free fn so the
 /// existing call sites and unit tests in this module are unchanged.
 pub(crate) fn resolve_startup_mode(config: &Config) -> usize {
     config.resolve_startup_mode()
 }
 
-/// Structured top-level diff between two configs-as-JSON (#2414, ADR-034 §D4.D).
+/// Structured top-level diff between two configs-as-JSON (ADR-034 §D4.D).
 ///
 /// Returns the sorted set of top-level keys whose values differ between `live`
 /// (the daemon's in-memory authority) and `target` (the on-disk drift source or
@@ -539,7 +537,7 @@ pub(crate) fn resolve_startup_mode(config: &Config) -> usize {
 /// (compares whatever serde keys exist on `Config`), so adding a field needs no
 /// change here. The full `live`/`target` trees are returned alongside this by
 /// `GetConfigDiff` so the GUI can render the detailed diff; this summary is what
-/// #2284's drift banner names ("endpoints and routes changed").
+/// the drift banner names ("endpoints and routes changed").
 pub(crate) fn config_changed_sections(
     live: &serde_json::Value,
     target: &serde_json::Value,
@@ -562,7 +560,7 @@ mod tests {
 
     #[test]
     fn active_chord_window_picks_learn_vs_normal() {
-        // #2486: the one window both the EventProcessor and the pattern-event
+        // The one window both the EventProcessor and the pattern-event
         // display read — Learn window when Learn is active, normal window
         // otherwise. (50/150 are the respective config defaults.)
         assert_eq!(active_chord_window_ms(false, 50, 150), 50);
@@ -574,7 +572,7 @@ mod tests {
 
     #[test]
     fn event_timings_from_config_maps_every_knob() {
-        // #2490: the full EventProcessor timing surface from config — chord is
+        // The full EventProcessor timing surface from config — chord is
         // Learn-aware, double-tap + hold come straight from advanced_settings
         // (previously ignored by the daemon).
         use conductor_core::config::types::AdvancedSettings;

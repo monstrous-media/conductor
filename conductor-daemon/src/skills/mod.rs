@@ -17,7 +17,7 @@
 //!     └── ACTIONS.md
 //! ```
 //!
-//! # Tool Access Patterns (P5-05)
+//! # Tool Access Patterns
 //!
 //! Skills can restrict tool access via the `allowed-tools` frontmatter field:
 //!

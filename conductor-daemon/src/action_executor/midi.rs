@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! MIDI output byte computation and the `SendMidi` action (#1684 split from
+//! MIDI output byte computation and the `SendMidi` action (split from
 //! `action_executor.rs`). Free fns `compute_midi_output_bytes` /
 //! `compute_midi_forward_bytes` are pure byte builders shared with the
 //! executor thread's recursion guard; `execute_send_midi` is the executor
@@ -129,7 +129,7 @@ impl ActionExecutor {
                 DispatchError::MidiOutput(format!("Failed to send to '{}': {}", port, e))
             })?;
 
-        // Issue #555: record the resolved output port so cascade
+        // Record the resolved output port so cascade
         // suppression can open a window for it. Push only after a
         // successful send — failed sends shouldn't open windows on
         // ports we couldn't reach.
@@ -154,7 +154,7 @@ mod tests {
     /// `MIDIServer` (a per-GUI-login-session service) on macOS, or an ALSA
     /// sequencer on Linux. A headless self-hosted runner has neither, so
     /// these tests return early instead of panicking — which lets the macOS
-    /// test job run on the self-hosted pool (FU-9 / #1888). On a developer
+    /// test job run on the self-hosted pool. On a developer
     /// machine (or hosted runner) with a MIDI session, the test runs for real.
     #[allow(clippy::print_stderr)] // intentional: a test-skip notice on headless runners
     fn require_virtual_midi(test: &str) -> bool {
@@ -549,7 +549,7 @@ mod tests {
         }
     }
 
-    // ========== MidiForward Tests (v4.25.0 - ADR-009 Gap 2) ==========
+    // ========== MidiForward Tests (ADR-009 Gap 2) ==========
 
     #[test]
     #[cfg_attr(target_os = "linux", ignore)] // Enigo requires display server
@@ -737,7 +737,7 @@ mod tests {
         }
     }
 
-    // ========== HidForward Tests (ADR-039-B #1762 step 4b) ==========
+    // ========== HidForward Tests (ADR-039-B step 4b) ==========
 
     fn hid_to_midi_transform() -> conductor_core::config::types::SignalTransform {
         let mut map = std::collections::HashMap::new();
@@ -831,7 +831,7 @@ mod tests {
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // Issue #555 (Copilot review on PR #1211): sent_ports capture
+    // sent_ports capture
     //
     // The cascade-suppression layer needs to know which output ports a
     // dispatch actually wrote to. Capture happens INSIDE the executor

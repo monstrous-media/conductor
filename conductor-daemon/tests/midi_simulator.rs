@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-/// #2137/#2139: marker identifying this as **conductor-daemon's** copy of the
+/// Marker identifying this as **conductor-daemon's** copy of the
 /// simulator helper. The `midi_simulator` bin includes this file via `#[path]`;
 /// the repo-root crate has a separate, divergent copy at `<repo>/tests/`. The
 /// bin asserts this constant so a regression in the include path (reaching the
@@ -142,7 +142,7 @@ impl MidiSimulator {
         captured
     }
 
-    /// Snapshot all captured events WITHOUT clearing the queue (#1434).
+    /// Snapshot all captured events WITHOUT clearing the queue.
     ///
     /// Kept in sync with the root `tests/midi_simulator.rs` copy that the
     /// `midi_simulator` bin imports. Unlike [`get_events`](Self::get_events)
@@ -360,7 +360,7 @@ impl MidiSimulator {
                 max_velocity,
                 steps,
             } => {
-                // Validate before arithmetic (#1508): steps == 0 would divide
+                // Validate before arithmetic: steps == 0 would divide
                 // by zero and max_velocity < min_velocity would underflow u8 —
                 // a malformed scenario should fail loudly, not crash mid-compute.
                 assert!(steps > 0, "VelocityRamp requires steps > 0");
@@ -370,7 +370,7 @@ impl MidiSimulator {
                 );
 
                 // Interpolate over `steps - 1` intervals so the first event is
-                // min_velocity and the last is max_velocity INCLUSIVE (#1520) —
+                // min_velocity and the last is max_velocity INCLUSIVE —
                 // the old `span / steps` over `0..steps` stopped short of max.
                 // u16 avoids u8 overflow; the result is bounded by max_velocity
                 // so it casts back to u8. steps == 1 is the degenerate single
@@ -616,14 +616,14 @@ mod tests {
 
         // Note-ons sit at even indices (on, off, on, off, …). The ramp must span
         // the full [min, max] range INCLUSIVE — first = min, last = max — not
-        // stop short at 100 like the old `range / steps` formula (#1520).
+        // stop short at 100 like the old `range / steps` formula.
         let velocities: Vec<u8> = events.iter().step_by(2).map(|e| e[2]).collect();
         assert_eq!(velocities, vec![20, 45, 70, 95, 120]);
     }
 
     #[test]
     fn test_velocity_ramp_single_step_uses_min() {
-        // A 1-step ramp is the degenerate single sample at min_velocity (#1520).
+        // A 1-step ramp is the degenerate single sample at min_velocity.
         let sim = MidiSimulator::new(0);
         sim.perform_gesture(Gesture::VelocityRamp {
             note: 60,
@@ -639,7 +639,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "steps > 0")]
     fn test_velocity_ramp_zero_steps_panics() {
-        // steps == 0 must fail loudly, not divide by zero (#1508/#1520).
+        // steps == 0 must fail loudly, not divide by zero.
         let sim = MidiSimulator::new(0);
         sim.perform_gesture(Gesture::VelocityRamp {
             note: 60,
@@ -652,8 +652,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "max_velocity")]
     fn test_velocity_ramp_descending_panics() {
-        // max < min is rejected by assertion, not a u8-underflow panic
-        // (#1508/#1520).
+        // max < min is rejected by assertion, not a u8-underflow panic.
         let sim = MidiSimulator::new(0);
         sim.perform_gesture(Gesture::VelocityRamp {
             note: 60,

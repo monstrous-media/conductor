@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 //! Migrate legacy `Trigger::Raw` + `Action::MidiForward` mappings into
-//! top-level `[[routes]]` entries (ADR-036 D2 / Slice 8).
+//! top-level `[[routes]]` entries (ADR-036 D2).
 //!
 //! Operates on a [`toml_edit::DocumentMut`] so that comments and
 //! formatting in the rest of the file survive the rewrite. Emits
 //! post-mapping routes (ADR-036 Phase 3 removed the `phase` field).
 //!
-//! Lowering semantics (must match Slice 3):
+//! Lowering semantics (must match the ADR-036 config-load lowering):
 //! - For each `[[modes.mappings]]` whose `trigger.type == "Raw"`:
 //!   - `action.type == "MidiForward"` → emit a `[[routes]]` entry with
 //!     `from` = the Raw `device` (or `"*"`), `to` = the MidiForward
@@ -37,7 +37,7 @@ const MIGRATION_DESCRIPTION: &str = "Migrated from Raw trigger (ADR-036)";
 /// Forward migration: `Trigger::Raw` + `MidiForward` → `[[routes]]`.
 ///
 /// Returns `Err(msg)` if any `Raw` trigger is paired with a non-`MidiForward`
-/// action (mirrors the blocking Slice 3 error). On success the document is
+/// action (mirrors the blocking ADR-036 config-load error). On success the document is
 /// mutated in place and a [`MigrationReport`] is returned.
 pub fn migrate_raw_to_routes(doc: &mut DocumentMut) -> Result<MigrationReport, String> {
     let mut report = MigrationReport::default();

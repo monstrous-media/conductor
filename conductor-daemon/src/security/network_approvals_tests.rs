@@ -187,7 +187,7 @@ fn decision_matrix() {
 #[test]
 fn amplification_ack_gates_the_decision() {
     // The D11 amplification flag must actually gate `decision()`, not be
-    // ignored (the Council finding).
+    // ignored.
     let mut reg = ApprovalRegistry::new();
     let k = sample_key();
     reg.add_listener_approval(&k, ApprovingSurface::Cli);

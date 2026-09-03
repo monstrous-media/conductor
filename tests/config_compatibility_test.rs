@@ -59,7 +59,7 @@ fn test_cfg_001_basic_config_loads() {
 fn test_cfg_002_enhanced_config_loads() {
     let config_path = "config_enhanced.toml";
 
-    // #1565: the sample is shipped at the repo root, so its ABSENCE is itself a
+    // The sample is shipped at the repo root, so its ABSENCE is itself a
     // regression — skipping here would let an accidentally-unshipped sample pass
     // the suite green (and `Config::load` would silently create a default in its
     // place). Require it to exist before asserting it loads.
@@ -68,7 +68,7 @@ fn test_cfg_002_enhanced_config_loads() {
         "CFG-002: config_enhanced.toml must be shipped at the repo root"
     );
 
-    // #1565: the original "skip until v0.2.0" escape hatch is obsolete — every
+    // The original "skip until v0.2.0" escape hatch is obsolete — every
     // advanced trigger/action type the enhanced config uses (VelocityRange,
     // LongPress, DoubleTap, EncoderTurn, VolumeControl, ModeChange) shipped years
     // ago. The enhanced config MUST load now; a warning-only skip would let a
@@ -459,7 +459,7 @@ modifiers = []
 /// Regression test: every shipped config file must parse against the current
 /// schema.
 ///
-/// #1565: `config_enhanced.toml` used to be allowed to fail with only a warning
+/// `config_enhanced.toml` used to be allowed to fail with only a warning
 /// ("v0.2.0 features not yet available"). That rationale is obsolete — all those
 /// features shipped — so it's now a REQUIRED parse alongside `config.toml`. A
 /// warning-only check here couldn't catch the sample drifting out of sync with
@@ -543,7 +543,7 @@ modifiers = []
 future_action_field = "still ignored"
 "#;
 
-    // #1565: forward compatibility — unknown fields MUST be ignored — is the
+    // Forward compatibility — unknown fields MUST be ignored — is the
     // contract this test exists to protect, so assert it rather than warning.
     // A future `#[serde(deny_unknown_fields)]` on Config (or a nested type)
     // would silently break old/newer configs; this assertion catches it.
@@ -622,7 +622,7 @@ modifiers = []
 /// `tests/fixtures/v0.1.0/baseline.toml`. It opens with a legacy `[device]`
 /// block.
 ///
-/// Policy (#2124): Conductor does **not** support old config formats. A config
+/// Policy: Conductor does **not** support old config formats. A config
 /// file authored with a legacy I/O block (`[device]` / `[[devices]]` /
 /// `[[bindings]]` / `[[connectors]]`) is now **rejected** at `Config::load`
 /// with a migration hint — it is not silently dropped. This test pins that the

@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-/// Held notes are keyed by `(channel, note)` — NOT note alone (#1421). Keying by
+/// Held notes are keyed by `(channel, note)` — NOT note alone. Keying by
 /// note collapsed the same note held on different channels: a later press
 /// overwrote the earlier press time, and a release on either channel removed the
 /// single entry, so multi-channel / layered controllers reported wrong held
@@ -46,7 +46,7 @@ fn note_to_name(note: u8) -> String {
 /// NoteOff encoding). `held` is `Some(duration)` when a matching press was being
 /// tracked, `None` for an unmatched release.
 ///
-/// #1420: this ALWAYS returns a complete line. The previous inline code only
+/// This ALWAYS returns a complete line. The previous inline code only
 /// printed inside `if let Some(..)`, so an unmatched velocity-0 NoteOn (the
 /// diagnostic started after the note was down, missed the NoteOn, or got a
 /// stray release) left the already-printed timestamp/count prefix dangling with
@@ -79,7 +79,7 @@ fn format_note_off_velocity_zero(
 
 /// Resolve the optional port-index CLI argument.
 ///
-/// #2135: the previous code did `args().nth(1).and_then(|s| s.parse().ok())`,
+/// The previous code did `args().nth(1).and_then(|s| s.parse().ok())`,
 /// so `.ok()` collapsed a PRESENT-but-non-numeric argument (e.g. `abc`) into
 /// `None` — indistinguishable from "no argument given" — and the tool then
 /// silently auto-selected the Mikro port instead of reporting the bad input.
@@ -124,14 +124,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!();
 
-    // Resolve the explicit port argument first (#2135): a present-but-invalid
+    // Resolve the explicit port argument first: a present-but-invalid
     // argument is rejected here rather than being silently ignored and falling
     // back to Mikro auto-select.
     let arg = std::env::args().nth(1);
     let requested = match parse_port_arg(arg.as_deref()) {
         Ok(requested) => requested,
         Err(message) => {
-            // #2135: exit non-zero so scripts/operators can detect the bad
+            // Exit non-zero so scripts/operators can detect the bad
             // argument (a CLI that fails must not report success).
             eprintln!("{}", message.red());
             eprintln!("Usage: {} [port_number]", std::env::args().next().unwrap());
@@ -149,7 +149,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = match port_index {
         Some(idx) if idx < ports.len() => &ports[idx],
         _ => {
-            // #2135: same non-zero exit for "no usable port" — it's a failure,
+            // Same non-zero exit for "no usable port" — it's a failure,
             // not a successful no-op.
             eprintln!("{}", "No Mikro MK3 found and no valid port specified".red());
             eprintln!("Usage: {} [port_number]", std::env::args().next().unwrap());
@@ -234,7 +234,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 );
                             } else {
                                 // Note on with velocity 0 (acts as note off).
-                                // #1420: ALWAYS print a complete line — including
+                                // ALWAYS print a complete line — including
                                 // for an unmatched release — so the already-
                                 // printed prefix never dangles.
                                 let held =
@@ -394,7 +394,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|((ch, note), press_time)| {
                     let duration = Instant::now().duration_since(*press_time);
                     // Include the channel so the same note held on two channels
-                    // is shown as two distinct entries (#1421).
+                    // is shown as two distinct entries.
                     format!(
                         "{}@ch{}({:.1}s)",
                         note_to_name(*note),
@@ -431,7 +431,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 mod tests {
     use super::*;
 
-    /// #2135: no argument → Ok(None) so the caller may auto-select Mikro.
+    /// No argument → Ok(None) so the caller may auto-select Mikro.
     #[test]
     fn parse_port_arg_none_means_auto_select() {
         assert_eq!(parse_port_arg(None), Ok(None));
@@ -444,7 +444,7 @@ mod tests {
         assert_eq!(parse_port_arg(Some("0")), Ok(Some(0)));
     }
 
-    /// #2135: a PRESENT-but-non-numeric argument is REJECTED, not silently
+    /// A PRESENT-but-non-numeric argument is REJECTED, not silently
     /// turned into None (which used to fall through to Mikro auto-select).
     #[test]
     fn parse_port_arg_rejects_non_numeric() {
@@ -458,7 +458,7 @@ mod tests {
         assert!(parse_port_arg(Some("-1")).is_err());
     }
 
-    /// #1420: an unmatched velocity-0 NoteOn (no tracked press) must still emit a
+    /// An unmatched velocity-0 NoteOn (no tracked press) must still emit a
     /// complete `Note OFF` line — pre-fix it printed nothing, leaving the
     /// timestamp/count prefix dangling.
     #[test]
@@ -493,7 +493,7 @@ mod tests {
         );
     }
 
-    /// #1421: the same note held on two channels must be tracked independently —
+    /// The same note held on two channels must be tracked independently —
     /// releasing one channel leaves the other held with ITS OWN press time.
     #[test]
     fn held_notes_are_tracked_per_channel() {

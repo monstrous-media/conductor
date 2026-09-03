@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-040 D4 §4.2 (Slice 4c) — shared execution for the mode-lock MCP tools.
+//! ADR-040 D4 §4.2 — shared execution for the mode-lock MCP tools.
 //!
 //! `conductor_set_mode` / `conductor_unlock_mode` / `conductor_mode_status` need
 //! the live `EngineManager` lock state, which neither the MCP server (`mcp.rs`)
@@ -62,7 +62,7 @@ pub(crate) async fn set_mode(
         }
         Ok(Ok(Err(msg))) => ToolCallResult::error(&format!("Failed to set mode: {msg}")),
         // Receiver got RecvError: the engine dropped the reply (shutting down) —
-        // distinct from a timeout (Council #2290).
+        // distinct from a timeout.
         Ok(Err(_)) => ToolCallResult::error("Daemon dropped the set-mode reply"),
         Err(_) => ToolCallResult::error("Timed out awaiting set-mode result"),
     }
@@ -115,7 +115,7 @@ mod tests {
     /// oneshot, so each helper's send→await→format path is testable with a
     /// bare channel (no EngineManager). Returns the join handle so the caller
     /// can await it and surface any assertion panic from the handler — a
-    /// detached task would swallow it (Council #2290).
+    /// detached task would swallow it.
     fn channel_with_fake_engine<F>(
         handler: F,
     ) -> (mpsc::Sender<DaemonCommand>, tokio::task::JoinHandle<()>)

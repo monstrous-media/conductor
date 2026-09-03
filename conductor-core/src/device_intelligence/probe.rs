@@ -439,7 +439,7 @@ impl ProbeCoordinator {
     /// before flipping the flag, so it WAITS for any in-flight probe
     /// to finish its send + reply window before returning. This is
     /// what makes "no SysEx leaves the daemon" a hard contract rather
-    /// than a best-effort one (#975 review): once this call returns,
+    /// than a best-effort one: once this call returns,
     /// every subsequent `probe()` short-circuits to `SysExDisabled`
     /// AND no probe is currently mid-send. Worst case wait is the
     /// outer probe timeout (~1s for SysEx) — acceptable on a config-
@@ -538,7 +538,7 @@ impl ProbeCoordinator {
         // `set_enabled(false)` itself acquiring the global_lock to
         // drain in-flight probes (see its docstring) — combined with
         // the second `enabled` check we do AFTER acquiring the
-        // global_lock below (#975 review). Together those close the
+        // global_lock below. Together those close the
         // race window completely: any probe that's in-flight when
         // disable lands gets to finish; any probe that's queued
         // behind the lock will see the new state and bail.
@@ -558,8 +558,8 @@ impl ProbeCoordinator {
         // Step 2: global serialisation lock. Held for the entire probe.
         let _global = self.global_lock.lock().unwrap_or_else(|e| e.into_inner());
 
-        // Step 2a: master-toggle re-check under the global lock
-        // (#975 review). The fast-path gate above is Relaxed; a probe
+        // Step 2a: master-toggle re-check under the global lock.
+        // The fast-path gate above is Relaxed; a probe
         // that passed it could otherwise race a `set_enabled(false)`
         // call that landed between the two operations. Because
         // `set_enabled(false)` ITSELF takes the global lock to drain
@@ -1336,7 +1336,7 @@ mod tests {
 
     #[test]
     fn set_enabled_false_waits_for_in_flight_probe_to_complete() {
-        // PR #975 review (Copilot): the original implementation used
+        // The original implementation used
         // `Relaxed` atomics with a single load at the top of probe(),
         // which left a race window — a probe past the gate could still
         // call send_fn after a config flip. To honour the doc promise
@@ -2117,7 +2117,7 @@ mod tests {
                 // scheduler jitter — the spaced `thread::sleep` calls
                 // below can oversleep significantly under load on
                 // GitHub macOS runners, pushing the 2nd reply past a
-                // tight window (PR #1207). Production probe windows
+                // tight window. Production probe windows
                 // are a separate, smaller value.
                 .with_timeout(Duration::from_millis(1000))
                 .with_correlation_window(Duration::from_millis(500)),
@@ -2186,7 +2186,7 @@ mod tests {
             // sibling-port reply. The probe call should have returned
             // before this fires, so the late reply must be dropped.
             //
-            // Bumped from 150ms → 500ms (PR #1211): under macOS CI
+            // Bumped from 150ms → 500ms: under macOS CI
             // scheduler jitter the main probe thread can be preempted
             // for >150ms after seeing port-A, leaving its 30ms
             // correlation window still open by the time port-B's reply
@@ -2383,8 +2383,8 @@ mod tests {
         // race against CI scheduler jitter — the spaced `thread::sleep`
         // calls below can oversleep significantly under load on
         // GitHub macOS runners, pushing the 3rd reply past a tight
-        // window and causing flake (PR #1207 surfaced this once
-        // `--workspace` was added to the macOS test step). Production
+        // window and causing flake (this surfaced once `--workspace` was
+        // added to the macOS test step). Production
         // probe windows are a separate, smaller value.
         let coord = Arc::new(
             ProbeCoordinator::new()
@@ -2491,7 +2491,7 @@ mod tests {
                 // scheduler jitter — the spaced `thread::sleep` calls
                 // below can oversleep significantly under load on
                 // GitHub macOS runners, pushing the 2nd reply past a
-                // tight window (PR #1207). Production probe windows
+                // tight window. Production probe windows
                 // are a separate, smaller value.
                 .with_timeout(Duration::from_millis(1000))
                 .with_correlation_window(Duration::from_millis(500)),

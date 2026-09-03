@@ -1,9 +1,9 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Application launching for the `Launch` action (#1684 split from
+//! Application launching for the `Launch` action (split from
 //! `action_executor.rs`). Platform-specific spawn semantics with
-//! failure surfacing (#938).
+//! failure surfacing.
 
 use super::ActionExecutor;
 use conductor_core::dispatch::DispatchError;
@@ -15,9 +15,9 @@ impl ActionExecutor {
     ///
     /// Returns `DispatchError::Launch` on failure so the caller can
     /// surface the error in the dispatch outcome instead of pretending
-    /// the action completed (#938 — pre-fix this used `.spawn().ok()`
+    /// the action completed. Pre-fix this used `.spawn().ok()`
     /// which discarded all errors, producing fake-success dispatch
-    /// results with no log trail).
+    /// results with no log trail.
     ///
     /// Platform notes:
     /// - **macOS**: `open -a App` exits immediately after instructing
@@ -48,7 +48,7 @@ impl ActionExecutor {
                 })?;
             if !output.status.success() {
                 // Capture `open`'s actual error text from stderr — much
-                // more useful than a generic exit-code hint (#982 review).
+                // more useful than a generic exit-code hint.
                 let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
                 let msg = if stderr.is_empty() {
                     format!("'open -a {}' exited with status {}", app, output.status)
@@ -103,7 +103,7 @@ impl ActionExecutor {
 }
 
 // ========================================================================
-// #938: Launch action surfaces failures (was silently swallowed)
+// Launch action surfaces failures (was silently swallowed)
 // ========================================================================
 //
 // Pre-fix: `launch_app` used `.spawn().ok()` which discarded all errors,
@@ -131,8 +131,7 @@ mod tests {
         // "Unable to find application named '...'" to stderr. The fix
         // uses .output() (not .spawn() or .status()) so we capture that
         // stderr text and surface it in the error message — gives the
-        // user the actual failure reason instead of a generic hint
-        // (#982 review 3169357481).
+        // user the actual failure reason instead of a generic hint.
         let executor = test_executor();
         let result = executor.launch_app("DefinitelyNonexistentApp_xyzzy_12345");
         assert!(
@@ -148,7 +147,7 @@ mod tests {
                     "error message must include the app name for diagnosability: {}",
                     msg
                 );
-                // Captured-stderr contract (#982 review): the actual
+                // Captured-stderr contract: the actual
                 // failure reason from `open` must appear in the error
                 // message, not just an inferred guess.
                 assert!(

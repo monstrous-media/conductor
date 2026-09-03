@@ -33,7 +33,7 @@ fn led_address_strategies(note: u8) -> Vec<(&'static str, usize)> {
     strategies
 }
 
-/// Outcome of waiting for a pad press during a diagnostic round (#1414).
+/// Outcome of waiting for a pad press during a diagnostic round.
 #[derive(Debug, PartialEq, Eq)]
 enum WaitOutcome {
     /// A pad was captured (its MIDI note number).
@@ -47,7 +47,7 @@ enum WaitOutcome {
 ///
 /// This replaces the original inline wait loop, which `continue`d on
 /// timeout while `elapsed` stayed past the threshold — printing "Timeout"
-/// forever with no sleep or exit (#1414). Returning [`WaitOutcome::Timeout`]
+/// forever with no sleep or exit. Returning [`WaitOutcome::Timeout`]
 /// lets the caller fall back to a real prompt instead of spinning. The note
 /// source and clock step are parameters so the outcome logic is unit-testable
 /// without MIDI hardware.
@@ -67,7 +67,7 @@ where
     }
 }
 
-/// MIDI client/connection name this tool registers. #2136: derived from the
+/// MIDI client/connection name this tool registers. Derived from the
 /// Cargo bin target via `CARGO_BIN_NAME` (which is `led_tester`, underscored)
 /// rather than a hardcoded hyphenated `"led-tester"`, so the advertised name
 /// can never drift from the actual executable name.
@@ -138,7 +138,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         print!("Press any pad (60s timeout): ");
         io::stdout().flush()?;
 
-        // Wait for a pad press, or time out cleanly (#1414). The previous
+        // Wait for a pad press, or time out cleanly. The previous
         // inline loop spun printing "Timeout" forever and advertised a 'q'
         // quit it never read; this returns to a real prompt on timeout.
         *captured_note.lock().unwrap() = None;
@@ -245,7 +245,7 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU32, Ordering};
 
-    /// #2136: the advertised MIDI client name must equal the underscored Cargo
+    /// The advertised MIDI client name must equal the underscored Cargo
     /// bin target (`led_tester`), not a hyphenated alias. Using
     /// `env!("CARGO_BIN_NAME")` ties them together; this guards against a future
     /// re-hardcoding (e.g. back to `"led-tester"`) or a bin rename to a
@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn wait_for_pad_times_out_promptly_without_spinning() {
-        // #1414: a note that never arrives must yield Timeout quickly, not
+        // A note that never arrives must yield Timeout quickly, not
         // loop forever. The old inline loop `continue`d past the threshold.
         let calls = AtomicU32::new(0);
         let start = std::time::Instant::now();

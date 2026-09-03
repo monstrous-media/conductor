@@ -3,7 +3,7 @@
 
 use super::*;
 
-// ── resolve_device_io tests (GAP-B3 #718) ──
+// ── resolve_device_io tests (GAP-B3) ──
 
 #[test]
 fn resolve_device_io_unconfigured_returns_defaults() {
@@ -51,7 +51,7 @@ fn resolve_device_io_explicit_output_no_direction_upgrade() {
     assert!(!io.output_auto_paired);
 }
 
-// ── resolve_probe_output_port tests (ADR-026 Phase 2 / PR #910 review) ──
+// ── resolve_probe_output_port tests (ADR-026 Phase 2) ──
 
 #[test]
 fn resolve_probe_output_port_unknown_port_returns_no_paired_output() {
@@ -134,9 +134,8 @@ fn resolve_probe_output_port_disconnected_returns_input_disconnected() {
     // is currently disconnected. The helper must distinguish this
     // from "no paired output" so the caller can surface a SendFailed
     // outcome with a re-probe-after-reconnect hint instead of the
-    // misleading NoPairedOutput. Mirrors PR #910 review feedback —
-    // both the "5th-pass connected check" + "6th-pass outcome
-    // disambiguation" rolled into one error variant.
+    // misleading NoPairedOutput — the connected check and the outcome
+    // disambiguation rolled into one error variant.
     let bindings = vec![make_binding("mikro", "Mikro IN", false, true)];
     let mut output_map = HashMap::new();
     output_map.insert("mikro".to_string(), "Mikro OUT".to_string());

@@ -11,7 +11,7 @@
 //! This module is the file primitive — append/read/verify, the §D8.2 at-cap
 //! refusal in [`AuditOutbox::enqueue_pending`], and the §D8 sub-slice B2
 //! rewrite-from-genesis compaction in [`AuditOutbox::compact_retaining`]. The
-//! `mutate()` flow consumes it (#2210); the SQLite flusher *task* that drives
+//! `mutate()` flow consumes it; the SQLite flusher *task* that drives
 //! compaction and the full `AuditDegraded` lifecycle are follow-ups. It performs
 //! **no wall-clock reads** (`created_at` is caller-supplied) so it stays
 //! deterministic and unit-testable.
@@ -54,7 +54,7 @@ pub enum OutboxPhase {
     Applied,
     /// Marked when a mutation failed after the pending enqueue (rollback).
     Failed,
-    /// ADR-034 §D8 / #2380 — a meta-event, NOT a mutation: the operator ran
+    /// ADR-034 §D8 — a meta-event, NOT a mutation: the operator ran
     /// `conductorctl audit resume`, which rotated a corrupt outbox aside and
     /// started this fresh chain. Written as the FIRST record of the new file so
     /// the integrity break is attested (provenance carries the operator, the
@@ -71,7 +71,7 @@ pub enum OutboxPhase {
 /// `deny_unknown_fields`: an extra JSON key injected into a row would otherwise
 /// be dropped on deserialize and never enter `canonical_bytes`, so it would be
 /// invisible to the hash chain — undetectable tampering. Rejecting unknown
-/// fields makes any injected key a fatal parse error instead (Council review).
+/// fields makes any injected key a fatal parse error instead.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OutboxRecord {
@@ -99,8 +99,8 @@ pub struct OutboxRecord {
 ///
 /// The record is a **nested** object (not `#[serde(flatten)]`): flatten is
 /// incompatible with `deny_unknown_fields`, and without that guard an attacker
-/// could inject extra top-level keys that the hash chain would not cover
-/// (Council review). Nesting + `deny_unknown_fields` on both levels makes every
+/// could inject extra top-level keys that the hash chain would not cover.
+/// Nesting + `deny_unknown_fields` on both levels makes every
 /// byte of the line either hash-covered or a fatal parse error.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -212,7 +212,7 @@ pub fn read_entries(path: &Path) -> Result<Vec<OutboxEntry>, OutboxError> {
 /// Like [`read_entries`], but also returns the cumulative byte length of the
 /// **newline-terminated, chain-validated** prefix — the offset past the last
 /// fully-committed entry. [`AuditOutbox::open`] uses this to truncate any
-/// tolerated torn trailing bytes from disk (§D8.1 / #2228) before an `O_APPEND`
+/// tolerated torn trailing bytes from disk (§D8.1) before an `O_APPEND`
 /// write can glue a new entry onto a partial line.
 ///
 /// A record is "committed" only once its terminating `\n` is on disk: the append
@@ -253,7 +253,7 @@ fn read_entries_with_valid_len(path: &Path) -> Result<(Vec<OutboxEntry>, u64), O
     // Split on raw bytes and parse each line with `serde_json::from_slice`,
     // which validates UTF-8 itself — invalid bytes in a line are a clean parse
     // error, with no lossy `U+FFFD` substitution that could obscure what was on
-    // disk (Council review). A non-final parse error is fatal; the final line is
+    // disk. A non-final parse error is fatal; the final line is
     // tolerated (torn write).
     let mut lines: Vec<&[u8]> = bytes.split(|&b| b == b'\n').collect();
     // A clean file ends with '\n', producing a trailing empty segment. Whether it
@@ -322,7 +322,7 @@ fn read_entries_with_valid_len(path: &Path) -> Result<(Vec<OutboxEntry>, u64), O
     Ok((entries, valid_bytes))
 }
 
-/// ADR-034 §D8 / #2380 — best-effort `entry_hash` of the last hash-valid entry
+/// ADR-034 §D8 — best-effort `entry_hash` of the last hash-valid entry
 /// of a (possibly corrupt) outbox file, for the `ChainReset` attestation written
 /// by `conductorctl audit resume`. Walks the chain from genesis and stops at the
 /// FIRST break (mid-file `prev_hash` discontinuity, `entry_hash` tamper, parse
@@ -339,7 +339,7 @@ pub fn last_valid_entry_hash(path: &Path) -> String {
     // writer (POSIX). Together with the `is_file()` fstat below this keeps the
     // best-effort helper hang-free even if the outbox path was replaced by a
     // FIFO / device / socket — an attacker (or accidental admin action) must
-    // not be able to wedge the operator recovery flow on EOF (Copilot #2384).
+    // not be able to wedge the operator recovery flow on EOF.
     let file = match OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
@@ -377,8 +377,8 @@ pub fn last_valid_entry_hash(path: &Path) -> String {
     prev
 }
 
-/// Truncate any tolerated torn trailing bytes from the outbox file (§D8.1 /
-/// #2228). `valid_bytes` is the offset past the last fully-committed entry (from
+/// Truncate any tolerated torn trailing bytes from the outbox file (§D8.1).
+/// `valid_bytes` is the offset past the last fully-committed entry (from
 /// [`read_entries_with_valid_len`]). If the file on disk is longer, the excess is
 /// a torn/un-terminated final line that [`read_entries`] skipped — `set_len` +
 /// `sync_data` it away so a subsequent `O_APPEND` cannot glue a new entry onto
@@ -437,7 +437,7 @@ impl AuditOutbox {
     /// (§D8.3, consumed in sub-slice C).
     pub fn open(path: PathBuf) -> Result<(Self, Vec<OutboxEntry>), OutboxError> {
         let (entries, valid_bytes) = read_entries_with_valid_len(&path)?;
-        // §D8.1 (#2228): drop any tolerated torn trailing bytes from disk BEFORE
+        // §D8.1: drop any tolerated torn trailing bytes from disk BEFORE
         // an O_APPEND write can glue a new entry onto the partial line (which
         // would brick recovery on the next restart). No-op for a clean file.
         truncate_trailing_garbage(&path, valid_bytes)?;
@@ -555,7 +555,7 @@ impl AuditOutbox {
         })
     }
 
-    /// ADR-034 §D8 / #2380 — append the `ChainReset` attestation as the first
+    /// ADR-034 §D8 — append the `ChainReset` attestation as the first
     /// record of a freshly-opened (post-rotation) outbox. `provenance` is the
     /// JSON describing the reset (operator, rotated filename, last valid hash of
     /// the old chain, reason). Like every append it is `fdatasync`'d before it
@@ -802,7 +802,7 @@ mod tests {
         assert_eq!(read[1].record.id, "m1");
     }
 
-    /// §D8.1 (#2228): a tolerated torn trailing line must be TRUNCATED from disk
+    /// §D8.1: a tolerated torn trailing line must be TRUNCATED from disk
     /// at `open()`, so a subsequent `O_APPEND` write cannot glue a new entry onto
     /// the partial line and brick recovery on the next restart.
     #[test]
@@ -966,7 +966,7 @@ mod tests {
 
     /// `deny_unknown_fields`: an extra JSON key injected into a non-final entry
     /// is a fatal parse error, not silently dropped (would otherwise bypass the
-    /// hash chain — Council review).
+    /// hash chain).
     #[test]
     fn detects_injected_extra_field() {
         let dir = tempfile::tempdir().unwrap();
@@ -1108,10 +1108,10 @@ mod tests {
         assert_eq!(ob2.len(), 3);
     }
 
-    /// #2296 (§D8.4): a post-compaction append must survive a RESTART with no
+    /// A post-compaction append (§D8.4) must survive a RESTART with no
     /// `prev_hash` discontinuity at the compaction boundary. This is the exact
-    /// "drive mutations → compaction → restart → check chain" the issue
-    /// hypothesised could break. Compaction rewrites survivors from genesis and
+    /// "drive mutations → compaction → restart → check chain" scenario that
+    /// could break. Compaction rewrites survivors from genesis and
     /// advances the in-memory tail, so an entry appended afterwards chains onto
     /// the rewritten tail; re-opening from disk must read the whole chain cleanly.
     #[test]
@@ -1186,7 +1186,7 @@ mod tests {
         assert!(recovered.is_empty());
     }
 
-    // ── #2380: ChainReset record + last-valid-hash extraction ──────────────
+    // ── ChainReset record + last-valid-hash extraction ──────────────
 
     #[test]
     fn record_chain_reset_round_trips_and_chains_from_genesis() {
@@ -1261,7 +1261,7 @@ mod tests {
 
     #[test]
     fn last_valid_entry_hash_on_fifo_returns_genesis_without_hanging() {
-        // Copilot #2384: if the outbox path is replaced by a FIFO (or device),
+        // If the outbox path is replaced by a FIFO (or device),
         // the best-effort helper must NOT block forever on EOF — it returns
         // GENESIS. The test would hang (and fail by timeout) if O_NONBLOCK +
         // the is_file() fstat were missing. No writer is ever opened.

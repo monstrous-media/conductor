@@ -10,9 +10,9 @@
 //! can never reach `execve` (acceptance: "Vetoed actions never reach
 //! `execve`").
 //!
-//! # Threat model & scope (Council R1)
+//! # Threat model & scope
 //!
-//! Council reviewed this as a **best-effort deterrent, NOT a hard security
+//! This is a **best-effort deterrent, NOT a hard security
 //! boundary** — the hard boundary is D10b's OS-level sandbox
 //! (`sandbox-exec` / landlock). Two properties shape the implementation:
 //!
@@ -28,7 +28,7 @@
 //!        re-introduces redirects inside a single argv token, which the raw
 //!        command-string validation does not see.
 //!
-//! 2. **Reads are not writes.** Per Council, detection MUST differentiate
+//! 2. **Reads are not writes.** Detection MUST differentiate
 //!    `<` (read — *not* vetoed, e.g. `cat ~/.conductor/config > /tmp/out`)
 //!    from `>` / `>>` (write — vetoed). This module lexes interpreter
 //!    scripts with a shell-aware tokenizer rather than a naive regex so the
@@ -36,8 +36,8 @@
 //!
 //! # Environment-injection (D7 inheritance)
 //!
-//! Council flagged `LD_PRELOAD` / `DYLD_INSERT_LIBRARIES` / `PYTHONPATH`
-//! style hijacks as a P0 class. D10a inherits the mitigation *by
+//! `LD_PRELOAD` / `DYLD_INSERT_LIBRARIES` / `PYTHONPATH`
+//! style hijacks are a P0 class. D10a inherits the mitigation *by
 //! construction*: the veto runs inside `execute_shell`, which already spawns
 //! with [`sanitised_shell_env`](super::shell::sanitised_shell_env) (ADR-027
 //! §D7) — the child never sees the daemon's unsanitised environment, so the
@@ -377,7 +377,7 @@ fn write_targets(base: &str, args: &[String]) -> Vec<(String, &'static str)> {
 /// `cp`/`mv`/`install`/`ln` destination resolution. The destination is the
 /// final positional operand, except when `-t DIR` / `-tDIR` /
 /// `--target-directory[=]DIR` redirects it into a directory flag value (which
-/// the naive last-operand check misses — Council R1 round-1 bypass).
+/// the naive last-operand check misses).
 fn copy_move_targets(base: &str, args: &[String]) -> Vec<(String, &'static str)> {
     let label = command_label(base);
     let mut tdirs: Vec<String> = Vec::new();

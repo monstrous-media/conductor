@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Tests for the `mcp` module family (moved verbatim in #2601).
+//! Tests for the `mcp` module family (moved verbatim from `mcp.rs`).
 
 use conductor_core::config::Config;
 
@@ -115,8 +115,8 @@ fn test_handle_tools_list() {
 
     let result = response.result.unwrap();
     let tools = result.get("tools").unwrap().as_array().unwrap();
-    // ADR-035 Phase 2 #1748: −5 legacy tools removed (conductor_create_endpoint is the unified replacement); +1 ADR-042 #1899 B.7 conductor_security_status; −1 #2052 conductor_list_connectors removed; +3 ADR-040 4c mode tools (conductor_set_mode/conductor_unlock_mode/conductor_mode_status).
-    // ADR-045 D2 (#2492): full catalog is 54; compositions without
+    // ADR-035 Phase 2: −5 legacy tools removed (conductor_create_endpoint is the unified replacement); +1 ADR-042 B.7 conductor_security_status; −1 conductor_list_connectors removed; +3 ADR-040 4c mode tools (conductor_set_mode/conductor_unlock_mode/conductor_mode_status).
+    // ADR-045 D2: full catalog is 54; compositions without
     // `mcp-write` advertise only the 27 ReadOnly inspection tools.
     #[cfg(feature = "mcp-write")]
     assert_eq!(tools.len(), 54);
@@ -148,7 +148,7 @@ async fn test_handle_tools_call() {
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -160,7 +160,7 @@ async fn test_handle_tools_call() {
     assert!(!content.is_empty());
 }
 
-/// ADR-045 D2 (#2492): in a composition without `mcp-write`, a call to a
+/// ADR-045 D2: in a composition without `mcp-write`, a call to a
 /// write-tier tool (absent from the compiled catalog) returns the
 /// standard "not available in this build" error naming Conductor Studio
 /// — not a tier-ceiling denial, not a bare "Unknown tool".
@@ -206,7 +206,7 @@ async fn tools_call_absent_tool_returns_studio_error() {
     }
 }
 
-/// ADR-045 / Council R1 #2 — BUNDLE profile (`llm-executor` without
+/// ADR-045 — BUNDLE profile (`llm-executor` without
 /// `mcp-write`): the write tools' risk tiers resolve correctly (the IPC
 /// path compiled them), so this pins the rejection ORDERING — the
 /// is_compiled_tool check must fire BEFORE tier-based dispatch could
@@ -301,7 +301,7 @@ async fn test_handle_tools_call_with_daemon_state() {
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -348,7 +348,7 @@ async fn test_handle_tools_call_probe_no_shared_state() {
         &daemon_state,
         &tool_executor,
         &shared_state,
-        // #1311: conductor_probe_device_identity is HardwareIO tier,
+        // conductor_probe_device_identity is HardwareIO tier,
         // so unregistered (None) is denied. Use registered
         // HardwareIO ceiling here to test the original dispatch
         // contract (no shared_state → returns isError + readable
@@ -404,7 +404,7 @@ async fn test_handle_tools_call_get_device_identity_no_shared_state() {
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -431,8 +431,7 @@ async fn test_handle_tools_call_get_device_identity_missing_port_with_shared_sta
     // required argument: port_name" error — pinning the
     // documented contract that the tool requires that field.
     // This is the test that the previous "missing_port" name
-    // claimed to be but wasn't actually exercising; PR #910
-    // 9th-pass review feedback.
+    // claimed to be but wasn't actually exercising.
     let config = live_config_arc(create_test_config());
     let tool_executor = McpToolExecutor::new();
     let daemon_state: Option<crate::daemon::types::DaemonState> = None;
@@ -455,7 +454,7 @@ async fn test_handle_tools_call_get_device_identity_missing_port_with_shared_sta
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -548,7 +547,7 @@ async fn test_handle_tools_call_get_device_identity_returns_wrapper_with_null() 
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -640,7 +639,7 @@ async fn test_handle_tools_call_get_device_identity_surfaces_confidence_after_pr
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -698,7 +697,7 @@ async fn test_handle_tools_call_list_device_identities_returns_wrapper_with_arra
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -765,7 +764,7 @@ async fn test_handle_tools_call_list_device_identities_includes_confidence_per_e
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -816,7 +815,7 @@ async fn test_handle_tools_call_list_device_identities_no_shared_state() {
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // #1311: tests don't simulate registry; unregistered ceiling
+        None, // tests don't simulate registry; unregistered ceiling
     )
     .await;
 
@@ -860,7 +859,7 @@ async fn test_mcp_server_starts() {
     let _ = std::fs::remove_file(&socket_path);
 }
 
-/// #1480 — connections beyond `MAX_CONCURRENT_CLIENTS` must be refused
+/// Connections beyond `MAX_CONCURRENT_CLIENTS` must be refused
 /// and dropped immediately (permit acquired BEFORE spawn), not accepted
 /// and parked on a handler task blocked in `acquire()`. Saturate the cap
 /// with held-open clients, then assert the next connection is closed
@@ -1016,17 +1015,17 @@ async fn test_mcp_server_returns_tools_list() {
 }
 
 // -------------------------------------------------------------
-// ADR-031 P3 / #1274 slice 20 — ConfigChange dispatch tests
+// ADR-031 P3 — ConfigChange dispatch tests
 // -------------------------------------------------------------
 
 #[cfg(feature = "mcp-write")]
-/// Slice 20 AC #2: `conductor_batch_changes` over the daemon MCP
+/// `conductor_batch_changes` over the daemon MCP
 /// dispatch returns the auto-applied plan payload, NOT
 /// "Unknown tool".
 ///
-/// This was the gap the issue named explicitly — before slice 20,
-/// every ConfigChange tool fell through to the generic executor's
-/// "Unknown tool" arm even though `tools/list` advertised them.
+/// This was a known gap — previously every ConfigChange tool fell
+/// through to the generic executor's "Unknown tool" arm even though
+/// `tools/list` advertised them.
 #[tokio::test]
 async fn test_handle_tools_call_dispatches_batch_changes() {
     use crate::daemon::types::DaemonState;
@@ -1043,7 +1042,7 @@ async fn test_handle_tools_call_dispatches_batch_changes() {
             "name": "conductor_batch_changes",
             "arguments": {
                 "operations": [{
-                    // ADR-035 Phase 2 #1748 removed the connector batch ops;
+                    // ADR-035 Phase 2 removed the connector batch ops;
                     // exercise the ConfigChange dispatch arm with a create_mode
                     // op (no alias cross-references to resolve at apply time).
                     "type": "create_mode",
@@ -1053,7 +1052,7 @@ async fn test_handle_tools_call_dispatches_batch_changes() {
         })),
     };
 
-    // #1311 update: pass an explicit ConfigChange ceiling so
+    // Pass an explicit ConfigChange ceiling so
     // this test still exercises the dispatch arm (it represents
     // a peer that was registered via `conductorctl mcp register
     // --tier ConfigChange`). The unregistered variant of this
@@ -1133,11 +1132,11 @@ async fn test_handle_tools_call_dispatches_batch_changes() {
 }
 
 #[cfg(feature = "mcp-write")]
-/// #1311 regression test: an UNREGISTERED MCP peer (no entry in
+/// Regression test: an UNREGISTERED MCP peer (no entry in
 /// `McpRegistry`, ceiling = `None`) MUST be denied
-/// `ConfigChange` tools. Pre-fix, the dispatch synthesised
+/// `ConfigChange` tools. Previously the dispatch synthesised
 /// `CallerContext::internal_trusted()` and let any same-UID
-/// process invoke `conductor_batch_changes`. Post-fix, the
+/// process invoke `conductor_batch_changes`. Now the
 /// tier-ceiling check at the top of `handle_tools_call` returns
 /// a permission_denied JSON-RPC error before the dispatch arm
 /// runs.
@@ -1157,7 +1156,7 @@ async fn test_handle_tools_call_unregistered_peer_denied_config_change() {
             "name": "conductor_batch_changes",
             "arguments": {
                 "operations": [{
-                    // ADR-035 Phase 2 #1748: connector batch ops removed.
+                    // ADR-035 Phase 2: connector batch ops removed.
                     // The op is irrelevant here — the peer is denied BEFORE
                     // dispatch — but use a live op (create_mode) anyway.
                     "type": "create_mode",
@@ -1177,13 +1176,13 @@ async fn test_handle_tools_call_unregistered_peer_denied_config_change() {
         &daemon_state,
         &tool_executor,
         &shared_state,
-        None, // unregistered peer — the #1311 attack scenario
+        None, // unregistered peer — the attack scenario this guards against
     )
     .await;
 
     // JSON-RPC error must be present with permission_denied
-    // semantics. The error message must reference #1311 so it's
-    // greppable in any future audit.
+    // semantics. The error message must reference the denial
+    // reason so it's greppable in any future audit.
     let err = response
         .error
         .as_ref()
@@ -1205,7 +1204,7 @@ async fn test_handle_tools_call_unregistered_peer_denied_config_change() {
 }
 
 #[cfg(feature = "mcp-write")]
-/// Slice 20 AC #4 (schema-drift regression): every ConfigChange
+/// Schema-drift regression: every ConfigChange
 /// tool in `get_tool_definitions()` must dispatch through the
 /// ConfigChange arm, NOT fall through to "Unknown tool".
 ///
@@ -1265,7 +1264,7 @@ async fn test_all_configchange_tools_are_dispatched() {
             &daemon_state,
             &tool_executor,
             &shared_state,
-            None, // #1311: tests don't simulate registry
+            None, // tests don't simulate registry
         )
         .await;
 
@@ -1293,19 +1292,19 @@ async fn test_all_configchange_tools_are_dispatched() {
     );
 }
 
-// ── ADR-031 P4 § 6.5 / #1144 slice 8 — integration tests ─────────
+// ── ADR-031 P4 § 6.5 — integration tests ─────────
 //
-// End-to-end coverage that ties the P4 backend slices (1-5) together
+// End-to-end coverage that ties the P4 backend pieces together
 // through the public MCP surface:
 // - `test_mcp_get_connector_metrics_returns_recorded_activity` proves
-//   the runtime metrics from slices 1-3 actually flow through the
-//   MCP tool added in slice 4. Other audit-table tests
+//   the runtime metrics actually flow through the
+//   MCP tool. Other audit-table tests
 //   (test_metrics_throughput_calculation, test_metrics_error_count,
 //   test_record_activity_wired_into_route_forward) are already
-//   pinned by `connector_registry::tests` (slice 3) and
-//   `daemon::engine_manager::tests::test_stage9_*` (slice 3a).
+//   pinned by `connector_registry::tests` and
+//   `daemon::engine_manager::tests::test_stage9_*`.
 // - `test_metrics_persist_across_disconnect_and_rebind` closes
-//   AC #1 from #1144: "ConnectorMetrics updates on every route
+//   the requirement: "ConnectorMetrics updates on every route
 //   forward; survives connector reconnect".
 
 /// Helper that constructs SharedDaemonStateRefs with a pre-populated
@@ -1366,9 +1365,9 @@ fn build_test_shared_refs_with_connector(alias: &str) -> Arc<SharedDaemonStateRe
     })
 }
 
-/// Slice 8 / AC #2: `conductor_get_connector_metrics` over the MCP
+/// `conductor_get_connector_metrics` over the MCP
 /// dispatch returns the live registry counters — proves the
-/// slices-1-through-4 chain (record_activity wiring →
+/// full chain (record_activity wiring →
 /// ConnectorMetrics → MCP tool payload) works end-to-end.
 #[tokio::test]
 async fn test_mcp_get_connector_metrics_returns_recorded_activity() {
@@ -1379,7 +1378,7 @@ async fn test_mcp_get_connector_metrics_returns_recorded_activity() {
     let shared_state = Some(refs.clone());
 
     // Pre-record 5 forwards on the connector. record_activity also
-    // feeds the ThroughputWindow (slice 3 / gap C), so the MCP
+    // feeds the ThroughputWindow (gap C), so the MCP
     // tool's throughput field should reflect non-zero rate.
     {
         let mut registry = refs.connector_registry.write().await;
@@ -1431,7 +1430,7 @@ async fn test_mcp_get_connector_metrics_returns_recorded_activity() {
         .find(|c| c["alias"] == "absynth")
         .expect("absynth connector must appear in payload");
 
-    // Slice 1-3 wiring all visible through slice 4's tool surface:
+    // Backend wiring all visible through the MCP tool surface:
     assert_eq!(
         absynth["total_messages"], 5,
         "5 record_activity calls must surface as total_messages=5 via the MCP tool"
@@ -1462,7 +1461,7 @@ async fn test_mcp_get_connector_metrics_returns_recorded_activity() {
     );
 }
 
-/// Slice 8 / AC #1: ConnectorMetrics survives a disconnect + rebind
+/// ConnectorMetrics survives a disconnect + rebind
 /// cycle. The registry's port-binding lifecycle is independent of
 /// metric state — counters keep counting across hot-plug, otherwise
 /// throughput dashboards lie every time a USB cable is wiggled.

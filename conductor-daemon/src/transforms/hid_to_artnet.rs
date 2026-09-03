@@ -1,12 +1,12 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! HID → Art-Net transform (ADR-031 § 7.3 / #1145 P5 slice 7).
+//! HID → Art-Net transform (ADR-031 § 7.3).
 //!
 //! Translates a gamepad/HID `InputEvent` into a single DMX channel-update
 //! record based on a `SignalTransform::HidToArtNet` config. Pure function —
 //! no I/O, no state. Mirrors [`midi_to_artnet`](super::midi_to_artnet) for
-//! the HID side of P5: the runtime sender shipped in slice 6
+//! the HID side: the runtime sender
 //! (`ConnectorRegistry::send_artnet`) is reused as-is.
 //!
 //! ## Supported HID inputs
@@ -76,7 +76,7 @@
 //! - **No HID input ingest** — gamepad → `InputEvent` conversion lives in
 //!   `gamepad_device.rs` and flows through the unified pump.
 //!
-//! As of ADR-039-B (#1762) this transform IS wired through route dispatch:
+//! As of ADR-039-B this transform IS wired through route dispatch:
 //! `RouteEngine::compile()` admits `HidToArtNet`, and `evaluate_route` applies
 //! it on the structured `InputEvent` threaded via `RouteEvalContext` (spec
 //! §6.2.1) — so a gamepad event on a `HidToArtNet` route produces a DMX update.
@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn scale_endpoints_match_midi_to_artnet() {
-        // Sanity: the scaler is identical to slice 5's so configs
+        // Sanity: the scaler is identical to midi_to_artnet's so configs
         // see consistent DMX levels for equivalent 7-bit inputs.
         assert_eq!(scale_7bit_to_8bit(0), 0);
         assert_eq!(scale_7bit_to_8bit(127), 255);

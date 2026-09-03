@@ -76,7 +76,7 @@ fn generate_keypair(output_path: &str) {
         let private_path = format!("{}.private", output_path);
         let public_path = format!("{}.public", output_path);
 
-        // Preflight (#1419): refuse if EITHER output already exists, before
+        // Preflight: refuse if EITHER output already exists, before
         // creating anything. Otherwise a missing `.private` but existing
         // `.public` would let us create a fresh private key while silently
         // clobbering the existing public key — a trust-distribution
@@ -98,7 +98,7 @@ fn generate_keypair(output_path: &str) {
         // owner-only) AND `create_new` so we never silently
         // overwrite an existing key.
         //
-        // #1316: previously `std::fs::write` honoured the process
+        // Previously `std::fs::write` honoured the process
         // umask (typically 022 → 0644 file mode), leaving the
         // signing credential world-readable. The atomic
         // `OpenOptions::mode(0o600).create_new(true)` combination
@@ -147,7 +147,7 @@ fn generate_keypair(output_path: &str) {
             process::exit(1);
         });
 
-        // Write public key (hex-encoded) with `create_new` too (#1419), so
+        // Write public key (hex-encoded) with `create_new` too, so
         // the no-overwrite guarantee covers the WHOLE keypair prefix, not
         // just the private half. Compute the encoding once so we can reuse
         // it for the file write AND the println.
@@ -166,7 +166,7 @@ fn generate_keypair(output_path: &str) {
             // The private key was already written above; a failed public
             // write (e.g. the `.public` was created in the TOCTOU window
             // after our preflight) would otherwise leave an orphaned
-            // private key (#1419 partial state). Best-effort cleanup so we
+            // private key (partial state). Best-effort cleanup so we
             // never leave half a keypair behind.
             let _ = std::fs::remove_file(&private_path);
             if e.kind() == std::io::ErrorKind::AlreadyExists {
@@ -347,7 +347,7 @@ fn verify_plugin(plugin_path: &str) {
                         sanitize_for_terminal(&sig_metadata.public_key),
                         sanitize_for_terminal(&sig_metadata.developer.name)
                     );
-                    // #1312: previously the function returned naturally
+                    // Previously the function returned naturally
                     // here, giving an exit code of 0 — automation
                     // running `conductor-sign verify plugin.wasm` in CI
                     // would treat an untrusted signature as accepted.
@@ -432,7 +432,7 @@ fn trust_remove(public_key: &str) {
 
     #[cfg(feature = "plugin-signing")]
     {
-        // #1315: use the full-record load/save helpers so retained
+        // Use the full-record load/save helpers so retained
         // keys' name/email/added_at survive. The string-only
         // `load_trusted_keys` + `save_trusted_keys` round-trip
         // reconstructed every record with empty name/email and a
@@ -1203,7 +1203,7 @@ mod tests {
 
     #[test]
     fn migration_manifest_escapes_untrusted_fields() {
-        // Council R-high: a crafted `signed_at` (from an attacker's .sig) with
+        // A crafted `signed_at` (from an attacker's .sig) with
         // embedded JSON metacharacters must be ESCAPED into the string value,
         // never injected as document structure.
         let pk = valid_pk_hex(7);

@@ -165,7 +165,7 @@ async fn test_obs_switch_scene() {
 
     let context = TriggerContext::default();
 
-    // #1446: with the scene_name parameter supplied, switch_scene succeeds...
+    // With the scene_name parameter supplied, switch_scene succeeds...
     let with_param = plugin
         .execute("switch_scene", &["Scene 1".to_string()], &context)
         .await;
@@ -195,7 +195,7 @@ async fn test_obs_toggle_mute() {
 
     let context = TriggerContext::default();
 
-    // #1446: with the source_name parameter supplied, toggle_mute succeeds...
+    // With the source_name parameter supplied, toggle_mute succeeds...
     let with_param = plugin
         .execute("toggle_mute", &["Mic/Aux".to_string()], &context)
         .await;

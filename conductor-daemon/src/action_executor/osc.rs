@@ -1,9 +1,9 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! OSC message sending for the `OscSend` action (#1684 split from
+//! OSC message sending for the `OscSend` action (split from
 //! `action_executor.rs`). Encodes args via `rosc` and sends over UDP
-//! (v4.26.0 — ADR-009 Gap H).
+//! (ADR-009 Gap H).
 
 use super::ActionExecutor;
 use conductor_core::dispatch::{DispatchError, DispatchOutcome, DispatchResult};
@@ -48,7 +48,7 @@ impl ActionExecutor {
     }
 }
 
-// ========== OscSend Tests (v4.26.0 - ADR-009 Gap H) ==========
+// ========== OscSend Tests (ADR-009 Gap H) ==========
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_osc_forward_resends_inbound_to_output_endpoint() {
-        // ADR-039-A Slice 3 (#2326): OscForward re-sends the inbound OSC
+        // ADR-039-A: OscForward re-sends the inbound OSC
         // message (from the trigger context) verbatim to the target OSC
         // output endpoint resolved by alias.
         use crate::action_executor::TriggerContext;

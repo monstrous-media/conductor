@@ -74,7 +74,7 @@ impl LivePaths {
     ///    stays bootable on weird systems).
     /// 4. Returns an error if none resolve.
     ///
-    /// **XDG-spec compliance (Council #1293 round 1 fix):** the prior
+    /// **XDG-spec compliance:** the prior
     /// implementation accepted any value of `$XDG_STATE_HOME`,
     /// including empty strings and relative paths. An empty value
     /// would land state at `conductor/` (a relative path interpreted

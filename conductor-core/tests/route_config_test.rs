@@ -3,13 +3,13 @@
 
 //! ADR-031 Phase 2A § 4.1–4.2 — `[[routes]]` config block parsing.
 //!
-//! Smallest atomic TDD slice for ADR-031 P2 (#1142): the new
+//! Smallest atomic TDD slice for ADR-031 P2: the new
 //! `RouteConfig` / `SignalFilter` / `SignalTransform` types deserialize
 //! from TOML into a `Config` struct field `routes: Vec<RouteConfig>`.
 //!
 //! Spec reference: `docs/signal-routing/ADR-031-implementation-spec.md` §§ 4.1, 4.2.
 //!
-//! Subsequent slices in this PR will add: validation (4 reject rules +
+//! Subsequent work will add: validation (4 reject rules +
 //! 3 overlap-warning rules per § 4.3), the `RouteEngine` runtime in
 //! conductor-daemon (§ 4.4), stage-9 integration into the event pump
 //! (§ 4.5), and 4 MCP tools (§ 4.7) with 5-surface LLM-discoverability
@@ -45,7 +45,7 @@ to = "absynth"
 #[test]
 fn parses_route_with_filter_message_types() {
     // SignalFilter.message_types reuses MidiMessageType from ADR-030 P1.
-    // This is the spec § 4.1 post-#1139 update — same vocabulary as
+    // This is the spec § 4.1 update — same vocabulary as
     // Trigger::Raw.message_types so users learn one set of names.
     let toml = r#"
 [[modes]]
@@ -89,7 +89,7 @@ type = "Midi"
 channel = 5
 "#;
     let cfg: Config = toml::from_str(toml).expect("MidiTransform parses");
-    // Slice 9 hardening (Council finding): pin the inner value too
+    // Hardening: pin the inner value too
     // — bare `Some(SignalTransform::Midi(_)) => {}` silently passed
     // even when `channel = 5` was dropped on the floor by serde.
     match &cfg.routes[0].transform {
@@ -162,7 +162,7 @@ fn empty_signal_filter_round_trips() {
 
 #[test]
 fn parses_route_with_osc_address_prefix_filter() {
-    // Council finding on PR #1161: SignalFilter.osc_address_prefix
+    // SignalFilter.osc_address_prefix
     // had no test coverage. Pin the round-trip shape so future serde
     // changes don't silently drop the field.
     let toml = r#"

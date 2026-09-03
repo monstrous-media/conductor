@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Integration tests for the Slice 9 (#1667) ReadOnly routing MCP tools
+//! Integration tests for the Slice 9 ReadOnly routing MCP tools
 //! — `conductor_explain_route_match` and `conductor_get_dispatch_trace`
 //! — driven end-to-end through the in-process `ToolExecutor` (the same
 //! dispatch path the GUI chat panel uses).
@@ -14,7 +14,7 @@
 //! `SharedDaemonStateRefs::for_routing_tools_test` (CI + pre-push gates
 //! run `cargo test --all-features`, same as the live_config suite).
 
-// ADR-045 D1 (#2492): drives the LLM ToolExecutor; llm-executor builds only.
+// ADR-045 D1: drives the LLM ToolExecutor; llm-executor builds only.
 #![cfg(feature = "llm-executor")]
 
 use std::collections::VecDeque;
@@ -250,7 +250,7 @@ async fn get_dispatch_trace_returns_last_n_newest_last() {
     assert_eq!(entries[1]["destinations"][0], "absynth");
     // Wire-shape guarantee: `matched_mapping` must be PRESENT in the serialized
     // payload (serde_json indexing returns Null for a missing key too, so assert
-    // the key exists before checking it's null — Copilot review on PR #1882).
+    // the key exists before checking it's null — Copilot review).
     let entry1 = entries[1]
         .as_object()
         .expect("trace entry is a JSON object");

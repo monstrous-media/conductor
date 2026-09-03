@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-040 Slice 2 — `[per_app_modes]` + `WindowRule` schema + validation.
+//! ADR-040 — `[per_app_modes]` + `WindowRule` schema + validation.
 //!
 //! Schema-layer half of mode auto-switching (D3) and window-title matching
 //! (D5). This slice only proves the config deserializes, defaults correctly,
@@ -13,7 +13,7 @@
 //! later slices.
 //!
 //! Spec: `docs/context-consolidation/ADR-040-implementation-spec.md`
-//! §4.1, §5 Slice 2. Closes #1765.
+//! §4.1, §5.
 
 use conductor_core::Config;
 use conductor_core::config::validation::{ValidationReport, validate_config};
@@ -26,7 +26,7 @@ fn parse(toml: &str) -> Config {
 /// `fragment` (case-insensitive). Exact-match (not a prefix) so a test can't
 /// pass on an error from a sibling/child path — e.g. an assertion targeting
 /// `per_app_modes.window_rules[0]` (mutual-exclusivity) won't be satisfied by
-/// an error at `per_app_modes.window_rules[0].mode` (Council review on #2274).
+/// an error at `per_app_modes.window_rules[0].mode`.
 fn assert_error_at(report: &ValidationReport, path: &str, fragment: &str) {
     let hit = report
         .errors
@@ -225,7 +225,7 @@ mode = "Default"
 }
 
 /// Happy path: a *valid* `title_regex` (with a declared target mode) compiles
-/// and passes validation (Council review on #2274 — the suite previously only
+/// and passes validation (the suite previously only
 /// covered the bad-regex error path).
 #[test]
 fn valid_title_regex_is_accepted() {

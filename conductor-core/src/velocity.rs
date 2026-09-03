@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Velocity mapping and calculation engine (v2.2)
+//! Velocity mapping and calculation engine
 //!
 //! Provides functions to map trigger velocity to output velocity
 //! based on VelocityMapping configuration.
@@ -10,7 +10,7 @@
 //!
 //! ## Fixed
 //! Always returns the same velocity value, regardless of trigger velocity.
-//! This is the v2.1 behavior and provides backward compatibility.
+//! This is the original behavior and provides backward compatibility.
 //!
 //! ## PassThrough
 //! Output velocity = trigger velocity (1:1 mapping).

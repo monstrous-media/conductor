@@ -1,10 +1,10 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-036 Phase 3 (#1697) — the route `phase` field (and `pre_mapping`) is
+//! ADR-036 Phase 3 — the route `phase` field (and `pre_mapping`) is
 //! removed entirely. All routes are post-mapping.
 //!
-//! Phase 1 (Slice 3) auto-lowered `Raw` to a `pre_mapping` route; Phase 2
+//! Phase 1 auto-lowered `Raw` to a `pre_mapping` route; Phase 2
 //! rejected `Raw` at parse. Phase 3 eliminates the `pre_mapping` escape hatch:
 //! the `phase` field no longer exists on `RouteConfig`. Because serde silently
 //! ignores unknown fields, `Config::load` performs an explicit check and

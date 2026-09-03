@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Regression tests for #1311 — MCP `ConfigChange` over Unix socket
+//! Regression tests: MCP `ConfigChange` over Unix socket
 //! must consult the `McpRegistry` for per-client tier ceilings
 //! rather than fall through to `CallerContext::internal_trusted()`.
 //!
@@ -17,7 +17,7 @@
 //! the requested tool tier. Unregistered peers (= `None`) get
 //! ReadOnly only.
 
-// ADR-045 D1 (#2494): exercises the MCP server's peer tier ceiling; the mcp module only exists in mcp compositions.
+// ADR-045 D1: exercises the MCP server's peer tier ceiling; the mcp module only exists in mcp compositions.
 #![cfg(feature = "mcp")]
 
 use conductor_daemon::daemon::audit::AuditRiskTier;
@@ -35,7 +35,7 @@ fn unregistered_peer_allowed_read_only() {
     );
 }
 
-/// THE REGRESSION TEST for #1311. Unregistered peer requesting any
+/// THE REGRESSION TEST. Unregistered peer requesting any
 /// ConfigChange tool MUST be denied. Without the fix, the daemon
 /// invoked these tools under `CallerContext::internal_trusted()` and
 /// they ran successfully.
@@ -147,7 +147,7 @@ fn registered_hardware_io_denied_privileged() {
     );
 }
 
-// ─── Council R1: Stateful tier ceiling coverage ────────────────────
+// ─── Stateful tier ceiling coverage ────────────────────
 
 /// Registered Stateful peer can invoke ReadOnly + Stateful tools.
 /// Mirrors the ConfigChange-allows-lower test for the middle tier.
@@ -175,7 +175,7 @@ fn registered_stateful_denied_higher_tiers() {
     }
 }
 
-// ─── Council R1: ArtifactRender tool tier coverage ─────────────────
+// ─── ArtifactRender tool tier coverage ─────────────────
 
 /// ArtifactRender tools (rendering content into MCP responses) are
 /// mapped to ConfigChange-equivalent ceiling. A ConfigChange peer
@@ -215,13 +215,13 @@ fn unregistered_peer_denied_artifact_render() {
     );
 }
 
-// ─── Council R1: Internal tier ceiling coverage ────────────────────
+// ─── Internal tier ceiling coverage ────────────────────
 
-/// Council R3 (rejected verdict on 14659c17): `AuditRiskTier::Internal`
+/// `AuditRiskTier::Internal`
 /// is in the registry vocabulary, but if an operator mistakenly runs
 /// `conductorctl mcp register --tier Internal ...` it would (under
 /// the prior implementation) escalate the external peer to
-/// allow-all-except-Privileged. That defeats the purpose of #1311.
+/// allow-all-except-Privileged. That defeats the purpose of this ceiling check.
 ///
 /// New defensive behaviour: `Internal` as the REGISTRY-OBSERVED
 /// ceiling is treated as if the peer were unregistered — ReadOnly
@@ -250,7 +250,7 @@ fn registered_internal_treated_as_unregistered_for_security() {
     }
 }
 
-// ─── Council R2: fail-open posture pin (documentation contract) ────
+// ─── Fail-open posture pin (documentation contract) ────
 
 /// Documents the chosen fail-open posture on pin / registry-load
 /// failures: `resolve_peer_tier_ceiling` returns `None` (not Err),

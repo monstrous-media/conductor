@@ -113,10 +113,9 @@ impl Default for ConnectionLimiter {
 /// refusals so a same-user attacker hammering the socket while
 /// the server is at-cap can't drive arbitrary log volume.
 ///
-/// Surfaced by Copilot review on PR #1028 (2026-05-02): the D16
-/// per-refusal `warn!` line was a fresh DoS vector — disk/CPU
-/// pressure from spammed warnings, even after the connection
-/// itself was correctly refused.
+/// The D16 per-refusal `warn!` line was a fresh DoS vector —
+/// disk/CPU pressure from spammed warnings, even after the
+/// connection itself was correctly refused.
 ///
 /// Pattern: at most one warning per [`Self::DEFAULT_INTERVAL`]
 /// (5s). Refusals during the suppression window are counted and
@@ -196,7 +195,7 @@ impl RefusalLogger {
             None => true,
             // `saturating_duration_since` returns `Duration::ZERO`
             // when `now < last`, instead of panicking like
-            // `duration_since` does (PR #1028 review, 2026-05-02).
+            // `duration_since` does.
             // A `now < last` reading is theoretically impossible
             // for `Instant` (it's monotonic), but a tokio runtime
             // restart, a containerised time-skew, or a future
@@ -317,8 +316,7 @@ mod tests {
     }
 
     // ─── ADR-027 D16 follow-up: log-flood mitigation ──────────
-    // PR #1028 review (Copilot, 2026-05-02): every refused
-    // connection logged a warn! line. A same-user attacker
+    // Every refused connection logged a warn! line. A same-user attacker
     // hammering the socket while at-cap turns the mitigation into
     // a log-flood vector — disk pressure, journald CPU. These
     // tests pin the rate-limit semantics: at most one warn per
@@ -396,8 +394,7 @@ mod tests {
         // explicit time) and `record_at(Instant::now())` MUST
         // route through the same code path.
         //
-        // PR #1028 review (2026-05-02 12:47): the previous
-        // version used a 10ms interval + real `thread::sleep`,
+        // The previous version used a 10ms interval + real `thread::sleep`,
         // which was timing-fragile under loaded CI (a >10ms
         // scheduling delay between two "immediate" calls would
         // make the second call emit, intermittently failing the

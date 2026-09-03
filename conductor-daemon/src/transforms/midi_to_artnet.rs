@@ -1,11 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! MIDI → Art-Net transform (ADR-031 § 7.3 / #1145 P5 slice 5).
+//! MIDI → Art-Net transform (ADR-031 § 7.3).
 //!
 //! Translates raw MIDI bytes into a single DMX channel-update record
 //! based on a `SignalTransform::MidiToArtNet` config. Pure function —
-//! no I/O, no state. The caller (slice 6's Art-Net sender) merges the
+//! no I/O, no state. The caller (the Art-Net sender) merges the
 //! update into a persistent per-connector DMX frame and emits OpDmx
 //! UDP packets.
 //!
@@ -18,7 +18,7 @@
 //! ChannelAftertouch, PitchBend) have no mapping table in
 //! `MidiToArtNet` today. They return `None`. NoteOn with velocity=0
 //! is MIDI-spec NoteOff and also returns None (consistent with
-//! `midi_to_osc` slice 1 — don't synthesize a fake "0-intensity"
+//! `midi_to_osc` — don't synthesize a fake "0-intensity"
 //! DMX update from what's semantically a release).
 //!
 //! ## Value scaling
@@ -39,9 +39,9 @@
 //! with `filter = { channels = [N] }` and different transform configs,
 //! since the filter applies BEFORE the transform.
 //!
-//! ## What this slice does NOT do
+//! ## What this transform does NOT do
 //!
-//! - **No Art-Net frame construction** — that's slice 6 (`artnet_send`
+//! - **No Art-Net frame construction** — that's the Art-Net sender (`artnet_send`
 //!   in `connector_registry`). The transform produces a single channel
 //!   update; the sender holds the frame state and emits OpDmx packets.
 //! - **No Art-Net validation** — DMX channel addresses (1-512 per
@@ -52,7 +52,7 @@
 use conductor_core::config::types::SignalTransform;
 use conductor_core::transform::MidiMessage;
 
-/// A single DMX channel update produced by `MidiToArtNet`. Slice 6's
+/// A single DMX channel update produced by `MidiToArtNet`. The
 /// Art-Net sender accumulates these into a per-connector DMX frame
 /// before emitting OpDmx packets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,7 +79,7 @@ pub struct DmxUpdate {
 /// - The CC number / note number is not in the relevant mapping table
 /// - The MIDI message is NoteOn with velocity 0 (MIDI-spec NoteOff)
 ///
-/// Shape mirrors `midi_to_osc::apply` so slice 6's stage-9 dispatch
+/// Shape mirrors `midi_to_osc::apply` so the stage-9 dispatch
 /// can branch on transform variant uniformly.
 pub fn apply(transform: &SignalTransform, midi_bytes: &[u8]) -> Option<DmxUpdate> {
     let SignalTransform::MidiToArtNet {
@@ -133,8 +133,8 @@ pub fn apply(transform: &SignalTransform, midi_bytes: &[u8]) -> Option<DmxUpdate
 /// every call from `apply()`. Defense-in-depth via `debug_assert!` —
 /// if a future caller bypasses the parser (or the parser invariant
 /// silently regresses), debug builds panic loudly here rather than
-/// silently producing wrapped DMX values via the `as u8` cast
-/// (Council review on PR #1349). Release builds clamp via `.min(127)`
+/// silently producing wrapped DMX values via the `as u8` cast.
+/// Release builds clamp via `.min(127)`
 /// so the cast can never wrap regardless.
 fn scale_7bit_to_8bit(v: u8) -> u8 {
     debug_assert!(
@@ -263,7 +263,7 @@ mod tests {
         assert_eq!(scale_7bit_to_8bit(64), 128);
     }
 
-    /// Defense-in-depth (Council R1 on PR #1349): if upstream MIDI
+    /// Defense-in-depth: if upstream MIDI
     /// parsing ever lets a value > 127 through, release builds must
     /// clamp rather than silently wrap via `as u8`. Debug builds
     /// panic via the `debug_assert!` (covered by a separate
@@ -275,9 +275,9 @@ mod tests {
     /// this test does NOT run in the default CI matrix. The
     /// `should_panic` test below DOES run in CI and covers the
     /// debug-build contract. To run THIS test, invoke
-    /// `cargo test --release transforms::midi_to_artnet`. Council R2
-    /// on PR #1349 flagged this gap; documenting rather than rerouting
-    /// CI to run both modes (broader infrastructure change).
+    /// `cargo test --release transforms::midi_to_artnet`. This gap is
+    /// documented rather than fixed by rerouting CI to run both modes
+    /// (broader infrastructure change).
     #[cfg(not(debug_assertions))]
     #[test]
     fn scale_clamps_out_of_range_in_release_builds() {

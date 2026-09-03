@@ -5,7 +5,6 @@
 //!
 //! Verifies that ArcSwap-based rule_set and current_mode provide
 //! wait-free reads and atomic config reloads.
-//! Issue: #125
 
 use arc_swap::ArcSwap;
 use conductor_core::config::types::Config;
@@ -220,7 +219,7 @@ keys = "c"
     assert!(engine_result.is_some());
 }
 
-/// #1530: a REAL concurrency test. The other tests in this file do
+/// A REAL concurrency test. The other tests in this file do
 /// single-threaded load/store sequences (one even labels a second sequential
 /// load "concurrent"), so they validate ArcSwap API usage, not the wait-free /
 /// atomic-reload semantic guarantee.

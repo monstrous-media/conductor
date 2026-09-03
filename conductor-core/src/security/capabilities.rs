@@ -1,14 +1,14 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Capability vocabulary for ADR-027 D3 — sub-pieces (1/N) and (2/N).
+//! Capability vocabulary for ADR-027 D3.
 //!
 //! This module hosts:
 //!
-//! - **(1/N)** the closed-vocabulary [`Capability`] enum, supporting
+//! - the closed-vocabulary [`Capability`] enum, supporting
 //!   [`InterpreterFamily`] and [`PathScope`] enums, and the
 //!   [`CapabilitySet`] alias.
-//! - **(2/N)** the per-`ActionConfig`-variant mapping function
+//! - the per-`ActionConfig`-variant mapping function
 //!   [`capabilities_for_action`] (per spec §3.1, "Derive required
 //!   capabilities from an `ActionConfig`"), implemented as an
 //!   exhaustive match (no `_` arm) so adding a new variant fails
@@ -16,13 +16,13 @@
 //!
 //! The runtime wrapper-resolution + interpreter-classification step
 //! (per spec §3.2 — defeating the `/usr/bin/env python3 -c '…'` bypass
-//! class, adding `InterpreterExec(family)` on top of `ShellExec`) lands
-//! in (3/N). The Shell argv-form schema migration is tracked separately
-//! as `#1037`, deliberately sequenced after Phase 1A per epic `#999`.
+//! class, adding `InterpreterExec(family)` on top of `ShellExec`) is a
+//! later follow-up. The Shell argv-form schema migration is likewise
+//! tracked separately, deliberately sequenced after Phase 1A.
 //!
 //! D5's gate signature does not yet take `granted_capabilities:
 //! CapabilitySet` — that gate-signature change lands together with D1
-//! (peer-credential IPC auth) and the wiring sub-piece, to keep the
+//! (peer-credential IPC auth) and the wiring follow-up, to keep the
 //! Phase 1A atomic-bundle invariant.
 
 use crate::config::ActionConfig;
@@ -47,9 +47,9 @@ use std::path::PathBuf;
 ///
 /// - [`InterpreterExec`](Self::InterpreterExec) is keyed by
 ///   [`InterpreterFamily`] so the gate can grant `python` while denying
-///   `bash`. The single biggest bypass of the v1.0 design was running
+///   `bash`. The single biggest bypass of the original design was running
 ///   interpreters via wrapper binaries (`/usr/bin/env python3 -c '…'`);
-///   the (3/N) wrapper-resolution + classification step (per spec §3.2)
+///   the wrapper-resolution + classification step (per spec §3.2)
 ///   walks the wrapper chain and classifies the *effective* binary
 ///   before the gate sees it.
 /// - [`FsRead`](Self::FsRead) / [`FsWrite`](Self::FsWrite) are keyed by
@@ -66,7 +66,7 @@ pub enum Capability {
     /// list — e.g. `/usr/bin/say`, `/usr/bin/afplay`, `/usr/bin/open`,
     /// `/bin/ls`. Note: `/usr/bin/osascript` is **not** an example here
     /// — it executes AppleScript via `-e`, so it is classified as
-    /// `InterpreterExec(InterpreterFamily::Other)` once the (3/N)
+    /// `InterpreterExec(InterpreterFamily::Other)` once the
     /// wrapper-resolution + classification step lands.
     ShellExec,
 
@@ -117,7 +117,7 @@ pub enum Capability {
     /// Plugin invocation — WASM (sandboxed via wasmtime) or native
     /// (`.dylib` / `.so` / `.dll`). Required by `Plugin` actions. The
     /// per-plugin filesystem sandbox is a separate concern (ADR-027
-    /// D10c, PR #1029, captured by [`FsRead`](Self::FsRead) /
+    /// D10c, captured by [`FsRead`](Self::FsRead) /
     /// [`FsWrite`](Self::FsWrite) with [`PathScope::PluginData`]); this
     /// capability is the right *to invoke a plugin at all*.
     PluginExec,
@@ -148,7 +148,7 @@ pub enum Capability {
 /// while denying `bash`. The resolution path that maps an effective
 /// binary path to one of these variants — including wrapper-chain
 /// unwinding for `env`, `xargs`, `sudo`, `nice`, etc. — lands in D3
-/// (3/N) per spec §3.2.
+/// per spec §3.2.
 ///
 /// `#[non_exhaustive]` so e.g. `Tcsh`, `Ksh`, `Mawk`, `RubyJit` can be
 /// added later without breaking downstream `match` arms.
@@ -200,7 +200,7 @@ pub enum InterpreterFamily {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum PathScope {
-    /// Per-plugin sandbox subdirectory. ADR-027 D10c (#1029) wires the
+    /// Per-plugin sandbox subdirectory. ADR-027 D10c wires the
     /// per-plugin filesystem scope; this variant names it for the
     /// capability vocabulary.
     PluginData,
@@ -226,12 +226,12 @@ pub type CapabilitySet = HashSet<Capability>;
 ///
 /// 1. The Shell variant declares only [`Capability::ShellExec`]. Wrapper
 ///    resolution and interpreter classification (the `/usr/bin/env python3
-///    -c '…'` bypass class) is a runtime step that lands in D3 (3/N) per
+///    -c '…'` bypass class) is a runtime step that lands in D3 per
 ///    spec §3.2 and adds [`Capability::InterpreterExec`] on top.
 /// 2. The function does **not** inspect file paths inside `Shell.command`
 ///    or `Plugin.params`, so it never declares [`Capability::FsRead`] /
-///    [`Capability::FsWrite`]. That tracking lands in (3/N) once argv
-///    parsing exists.
+///    [`Capability::FsWrite`]. That tracking lands in a later follow-up
+///    once argv parsing exists.
 ///
 /// **Composition.** Recursive variants (`Sequence`, `Repeat`,
 /// `Conditional`, `PcContextSwitch`, `CcContextSwitch`) return the
@@ -266,7 +266,7 @@ pub fn capabilities_for_action(action: &ActionConfig) -> CapabilitySet {
         Text { .. } => caps_singleton(Capability::KeystrokeSend),
         Launch { .. } => caps_singleton(Capability::LaunchApp),
         Shell { command, args, .. } => {
-            // D3 3/N wiring (issue #1037 Phase 2): unwind wrappers,
+            // D3 wiring: unwind wrappers,
             // classify the effective binary, and add
             // `InterpreterExec(family)` on top of the baseline
             // `ShellExec` when the resolved binary is a known
@@ -284,16 +284,16 @@ pub fn capabilities_for_action(action: &ActionConfig) -> CapabilitySet {
         MouseClick { .. } => caps_singleton(Capability::MouseSend),
         // VolumeControl spawns processes (osascript on macOS, pactl on
         // Linux). Cross-platform minimum is ShellExec; macOS-specific
-        // InterpreterExec(Other) follows in (3/N).
+        // InterpreterExec(Other) follows as a later follow-up.
         VolumeControl { .. } => caps_singleton(Capability::ShellExec),
         SendMidi { .. } | MidiForward { .. } => caps_singleton(Capability::MidiOut),
         OscSend { .. } => caps_singleton(Capability::OscOut),
         // OscForward re-sends an inbound OSC message to an OSC output endpoint
-        // (ADR-039-A Slice 3, #2326) — same OscOut capability as OscSend.
+        // (ADR-039-A) — same OscOut capability as OscSend.
         OscForward { .. } => caps_singleton(Capability::OscOut),
         // HidForward V1 forwards a gamepad event to a MIDI output (HidToMidi
         // only — HID→OSC/Art-Net stay route-only, rejected at config-load),
-        // so it needs MidiOut, same as MidiForward (ADR-039-B #1762 step 4b).
+        // so it needs MidiOut, same as MidiForward (ADR-039-B).
         HidForward { .. } => caps_singleton(Capability::MidiOut),
         Plugin { .. } => caps_singleton(Capability::PluginExec),
         // ModeChange persists `last_selected_mode` to the config TOML
@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     fn hid_forward_requires_midi_out() {
-        // ADR-039-B #1762 step 4b: HidForward V1 sends to a MIDI output, so it
+        // ADR-039-B: HidForward V1 sends to a MIDI output, so it
         // needs MidiOut (same as MidiForward) regardless of transform fields.
         use crate::config::types::SignalTransform;
         let action = ActionConfig::HidForward {
@@ -507,7 +507,7 @@ mod tests {
     fn interpreter_family_is_copy_for_cheap_passing() {
         // Copy is structurally important — the gate evaluates per-action
         // capability sets in hot paths and passes families by value into
-        // the (3/N) wrapper-resolution code. If a future variant breaks
+        // the wrapper-resolution code. If a future variant breaks
         // Copy (e.g. by carrying a String name), this test fails at
         // build time and the trade-off is reviewed deliberately.
         fn assert_copy<T: Copy>() {}

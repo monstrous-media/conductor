@@ -604,7 +604,7 @@ async fn test_load_plugin_via_rotation_chain_untrusted_root_rejected() {
     );
 }
 
-/// SECURITY REGRESSION (Council R1): a plugin signed by a *rotated-away-from
+/// SECURITY REGRESSION: a plugin signed by a *rotated-away-from
 /// predecessor* key must be rejected, even though that key is a valid,
 /// trusted-rooted member of the chain. The loader binds to the key active at
 /// the verifier's clock (the head, here), not to mere chain membership — so a

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Persistent MIDI watcher thread for macOS CoreMIDI hot-plug detection (v4.26.1)
+//! Persistent MIDI watcher thread for macOS CoreMIDI hot-plug detection
 //!
 //! On macOS, CoreMIDI caches the list of MIDI sources. Newly connected devices
 //! (or apps that create virtual MIDI ports after the daemon starts) are only
@@ -21,7 +21,7 @@
 //!
 //! On non-macOS platforms this is a no-op.
 //!
-//! See: GitHub issue #116, v4.18.3 (GUI watcher), ADR-009 Phase 4a (hot-plug)
+//! See: ADR-009 Phase 4a (hot-plug)
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

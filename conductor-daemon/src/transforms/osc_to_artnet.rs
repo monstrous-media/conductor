@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! OSC → Art-Net structured transform (ADR-039-A Slice 1b, #2324).
+//! OSC → Art-Net structured transform (ADR-039-A).
 //!
 //! Mirrors [`crate::transforms::midi_to_artnet`] on the output side (produces
 //! a single [`DmxUpdate`] the Art-Net sender merges into its per-connector
@@ -21,7 +21,7 @@
 //! The `{dmx}` capture comes straight off the wire, so it is parsed
 //! **fallibly** and range-checked to the DMX universe `1..=512` **before**
 //! any update is built — `/dmx/0`, `/dmx/513`, `/dmx/99999`, `/dmx/left` all
-//! yield `None` (route skips), never a panic. Same Council R1 blocker-4
+//! yield `None` (route skips), never a panic. Same security
 //! reasoning as `osc_to_midi`.
 //!
 //! ## Value coercion

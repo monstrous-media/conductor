@@ -1,14 +1,14 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-039-B #1762 step 4b — `HidForward` action config-load validation.
+//! ADR-039-B — `HidForward` action config-load validation.
 //!
 //! HidForward forwards the structured gamepad event that fired a mapping to a
-//! MIDI output (V1: HidToMidi only). Validation enforces the Council safety
-//! rules: the transform variant must match the target protocol, the target
+//! MIDI output (V1: HidToMidi only). Validation enforces the safety rules:
+//! the transform variant must match the target protocol, the target
 //! must be a declared endpoint, and the action may only sit on an
 //! exclusively-HID trigger (else the structured event is absent → silent
-//! drop). Kept in its own small file to fit the LLM-Council review window.
+//! drop).
 
 use conductor_core::Config;
 use conductor_core::config::validation::validate_config;

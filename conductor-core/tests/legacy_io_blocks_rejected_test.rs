@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #2124 (clawpatch #2103) — the legacy `[device]` / `[[devices]]` /
+//! The legacy `[device]` / `[[devices]]` /
 //! `[[bindings]]` / `[[connectors]]` I/O blocks were removed in ADR-035. They
 //! are no longer `Config` fields and `Config` has no `deny_unknown_fields`, so
 //! `Config::load` would otherwise silently drop them — a config authored in the

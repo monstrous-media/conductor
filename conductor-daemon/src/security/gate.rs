@@ -7,9 +7,9 @@
 //! `(RiskTier, TrustLevel)` pair to a [`GateDecision`] per spec §2.2 + §2.5.
 //! Earlier sub-pieces:
 //!
-//! - **(1/N)** PR #1047 — moved `RiskTier` to `conductor-core::security`,
+//! - **(1/N)** (landed pre-migration): moved `RiskTier` to `conductor-core::security`,
 //!   eliminating the historical `ToolRiskTier` divergence.
-//! - **(2/N)** PR #1049 — landed the gate skeleton (`GateDecision`,
+//! - **(2/N)** (landed pre-migration): landed the gate skeleton (`GateDecision`,
 //!   `CallerContext`, `SecurityPolicy`, `TrustLevel`, `enforce`) in shadow
 //!   mode, returning `Allow` for everything.
 //!
@@ -215,7 +215,7 @@ pub enum TrustLevel {
 
 /// Identity and authority of the caller invoking an action or MCP tool.
 ///
-/// Current shape (D1 wiring PR-A):
+/// Current shape (D1 wiring):
 ///
 /// - `trust_level: TrustLevel` — the band consumed by the decision table.
 /// - `peer: Option<Arc<PinnedPeer>>` — `Some` for IPC flows that build

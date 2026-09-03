@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Lock-free compiled rule set for zero-contention event matching
-//! (v4.21.0 - ADR-009 Phase 3, decisions D16/D17)
+//! (ADR-009 Phase 3, decisions D16/D17)
 //!
 //! CompiledRuleSet is an immutable data structure created by [`rule_compiler::compile()`]
 //! and swapped atomically via `ArcSwap`. Reads are wait-free (~1ns), and config reloads
@@ -26,15 +26,15 @@ pub struct CompiledRuleSet {
     global_rules: GlobalRuleSet,
     /// Monotonic version for debugging/logging
     version: u64,
-    /// Channel scopes per device alias (#751).
+    /// Channel scopes per device alias.
     /// Missing key = no restriction (all channels). Only non-empty scopes are stored.
     channel_scopes: HashMap<String, Vec<u8>>,
 }
 
 /// Rules for a single mode, split only by device filter (ADR-037 D1).
 /// Device-filtered rules are checked before any-device rules within the
-/// mode. The Raw sub-buckets were removed in ADR-037 Slice 4: `Trigger::Raw`
-/// is lowered to a route at config load (ADR-036 Slice 3), so it never
+/// mode. The Raw sub-buckets were removed in ADR-037: `Trigger::Raw`
+/// is lowered to a route at config load (ADR-036), so it never
 /// reaches the compiled rule set and the matcher no longer needs a
 /// specific-vs-Raw axis.
 #[derive(Debug, Clone)]
@@ -75,7 +75,7 @@ pub enum ModeScope {
     /// Scoped to the named mode(s). A mode block's mappings compile to
     /// `Named([that mode's name])`. The list is shared (`Arc`) so every rule
     /// in a mode points at one allocation — per-rule `scope.clone()` is a
-    /// refcount bump, not a deep clone (Copilot review on #2269).
+    /// refcount bump, not a deep clone.
     Named(Arc<[ModeId]>),
 }
 
@@ -108,11 +108,11 @@ pub struct CompiledRule {
     /// ADR-038: fire the action AND let the event continue to the route stage.
     /// Metadata on the winning rule only — never consulted by the match
     /// algorithm; copied onto the [`ActionEnvelope`] and consumed at the
-    /// event pump's route-disposition gate (Slice 3).
+    /// event pump's route-disposition gate.
     pub let_through: bool,
     /// ADR-038: positional index of the source mapping within its list
     /// (a mode's `mappings` or `global_mappings`). Identifies which mapping
-    /// consented/consumed for the dispatch trace (Slice 4).
+    /// consented/consumed for the dispatch trace.
     ///
     /// Trace mapping IDs are positionally bound and valid only within the
     /// config generation that produced them: a hot-reload that inserts or
@@ -144,15 +144,15 @@ pub struct TriggerConstraints {
     /// (`pc = Some(n)`); false for the wildcard `pc = None`. Without this
     /// dimension a specific-program rule and a wildcard rule had identical
     /// constraint sets, so a wildcard declared first could shadow the specific
-    /// rule (#2132). Mirrors how `has_velocity_range` distinguishes a
+    /// rule. Mirrors how `has_velocity_range` distinguishes a
     /// value-constrained CC/Note from an unconstrained one.
     pub has_program: bool,
 }
 
 impl TriggerConstraints {
     /// Pack the constraint dimensions into a bitmask for cheap set comparison.
-    /// `u16` (not `u8`) because there are now nine dimensions (#2132 added
-    /// `has_program`).
+    /// `u16` (not `u8`) because there are now nine dimensions, since
+    /// `has_program` was added.
     fn bits(&self) -> u16 {
         (self.has_device as u16)
             | (self.has_channel as u16) << 1
@@ -260,7 +260,7 @@ impl TriggerConstraints {
             }
             T::ProgramChange { channel, pc } => {
                 c.has_channel = channel.is_some();
-                // #2132: a specific program (`pc = Some(n)`) is a strict
+                // A specific program (`pc = Some(n)`) is a strict
                 // superset of the wildcard (`pc = None`), so it must sort first
                 // and win regardless of declaration order.
                 c.has_program = pc.is_some();
@@ -272,7 +272,7 @@ impl TriggerConstraints {
             // which isn't one of the MIDI-oriented dimensions; their device
             // bucket already separates them from MIDI rules.
             T::GamepadButton { .. } | T::GamepadButtonChord { .. } | T::GamepadTrigger { .. } => {}
-            // OSC triggers (ADR-039-A Slice 2, #2325) constrain only the OSC
+            // OSC triggers (ADR-039-A) constrain only the OSC
             // address/args — not the MIDI-oriented specificity dimensions.
             // An exact address (OscMessage) is strictly more specific than a
             // pattern or arg-range, expressed through has_note as the generic
@@ -314,7 +314,7 @@ impl CompiledRuleSet {
         }
     }
 
-    /// Check if an event's channel is in scope for a device (#751)
+    /// Check if an event's channel is in scope for a device.
     fn is_channel_in_scope(&self, device_id: &str, event: &ProcessedEvent) -> bool {
         match self.channel_scopes.get(device_id) {
             Some(channels) => channel_in_scope(channels, event.channel()),
@@ -333,8 +333,8 @@ impl CompiledRuleSet {
     /// 3. global.specific_device_rules\[device\]
     /// 4. global.specific_any_device_rules
     ///
-    /// The Raw sub-buckets (previously stages 3,4,7,8) were removed in
-    /// Slice 4: `Trigger::Raw` is lowered to a route at load (Slice 3) and
+    /// The Raw sub-buckets (previously stages 3,4,7,8) were removed:
+    /// `Trigger::Raw` is lowered to a route at load and
     /// never reaches the compiled rule set.
     pub fn match_event(
         &self,
@@ -342,17 +342,17 @@ impl CompiledRuleSet {
         mode_index: usize,
         device_id: Option<&str>,
     ) -> Option<Action> {
-        // Channel scope check (#751) — mirrored in match_event_with_provenance().
+        // Channel scope check — mirrored in match_event_with_provenance().
         // If either changes, update both.
         //
-        // NOTE (pre-#751 behaviour, unchanged by ADR-037 Slice 4):
+        // NOTE (behaviour predating the channel-scope feature, unchanged by ADR-037):
         // `device_in_scope` gates only the device-filtered buckets. The
         // any-device buckets are intentionally NOT channel-gated — an
         // any-device rule is device-agnostic, so a per-device channel scope
         // doesn't apply to it. This was the behaviour before the 8→4 bucket
         // simplification and is preserved verbatim. Whether per-device
         // channel scope should also suppress any-device matches is a
-        // separate #751 question, deliberately out of scope for this
+        // separate question about the channel-scope feature, deliberately out of scope for this
         // refactor.
         let device_in_scope =
             device_id.is_none_or(|device| self.is_channel_in_scope(device, event));
@@ -401,7 +401,7 @@ impl CompiledRuleSet {
         self.mode_rules.get(index).map(|m| m.name.as_str())
     }
 
-    /// Find the mode index by name (v4.25.0 - ADR-009 Gap 1)
+    /// Find the mode index by name (ADR-009 Gap 1)
     pub fn find_mode_index(&self, name: &str) -> Option<usize> {
         self.mode_rules.iter().position(|m| m.name == name)
     }
@@ -415,8 +415,8 @@ impl CompiledRuleSet {
     }
 
     /// Borrow the global (all-modes) any-device rules. For tests and
-    /// diagnostics, mirroring [`mode_rules`](Self::mode_rules). ADR-040
-    /// Slice 1: every rule here carries [`ModeScope::All`].
+    /// diagnostics, mirroring [`mode_rules`](Self::mode_rules). Per ADR-040,
+    /// every rule here carries [`ModeScope::All`].
     pub fn global_any_device_rules(&self) -> &[CompiledRule] {
         &self.global_rules.specific_any_device_rules
     }
@@ -434,17 +434,17 @@ impl CompiledRuleSet {
     ) -> Option<ActionEnvelope> {
         let mode_name = self.mode_name(mode_index).map(String::from);
 
-        // Channel scope check (#751) — mirrored in match_event().
+        // Channel scope check — mirrored in match_event().
         // If either changes, update both.
         //
-        // NOTE (pre-#751 behaviour, unchanged by ADR-037 Slice 4):
+        // NOTE (behaviour predating the channel-scope feature, unchanged by ADR-037):
         // `device_in_scope` gates only the device-filtered buckets. The
         // any-device buckets are intentionally NOT channel-gated — an
         // any-device rule is device-agnostic, so a per-device channel scope
         // doesn't apply to it. This was the behaviour before the 8→4 bucket
         // simplification and is preserved verbatim. Whether per-device
         // channel scope should also suppress any-device matches is a
-        // separate #751 question, deliberately out of scope for this
+        // separate question about the channel-scope feature, deliberately out of scope for this
         // refactor.
         let device_in_scope =
             device_id.is_none_or(|device| self.is_channel_in_scope(device, event));
@@ -524,7 +524,7 @@ fn find_matching_envelope(
     None
 }
 
-/// Check if a MIDI channel is within a channel scope (#751).
+/// Check if a MIDI channel is within a channel scope.
 /// Shared logic used by both CompiledRuleSet and DeviceIdentityConfig.
 /// Empty scope = all channels. None channel (non-MIDI) = pass through.
 pub(crate) fn channel_in_scope(channels: &[u8], channel: Option<u8>) -> bool {

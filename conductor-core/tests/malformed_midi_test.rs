@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #2131 (clawpatch #2103): `MidiEvent::from_midi_msg` must reject a MIDI
+//! `MidiEvent::from_midi_msg` must reject a MIDI
 //! channel-voice frame that carries MORE bytes than the message uses, instead
 //! of silently dropping the trailing byte(s).
 //!
@@ -34,7 +34,7 @@ fn exact_length_note_on_is_accepted() {
     MidiEvent::from_midi_msg(&[0x90, 60, 100]).expect("a 3-byte NoteOn is valid");
 }
 
-// ---- Over-long frames are rejected (the #2131 fix) ------------------------
+// ---- Over-long frames are rejected ------------------------
 
 #[test]
 fn program_change_with_trailing_byte_is_rejected() {

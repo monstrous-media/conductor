@@ -1,8 +1,8 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `conductor_security_status` MCP tool payload (ADR-042 Phase B-early, #1899
-//! Slice B.7 visibility).
+//! `conductor_security_status` MCP tool payload (ADR-042 Phase B-early
+//! visibility).
 //!
 //! Builds the JSON the ReadOnly `conductor_security_status` tool returns: the
 //! network-approval HMAC key's rotation status. Mirrors the
@@ -218,6 +218,5 @@ mod tests {
     // The read can block on a macOS keychain-access prompt; even bounded by
     // `READ_TIMEOUT`, the leaked `spawn_blocking` thread would stall the
     // `#[tokio::test]` runtime at drop. The schema is fully covered by the pure
-    // builders above; the timeout/error degradation is simple, branch-obvious,
-    // and Council-reviewed.
+    // builders above; the timeout/error degradation is simple and branch-obvious.
 }

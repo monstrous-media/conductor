@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Unified config validation system (Issue #322)
+//! Unified config validation system
 //!
 //! Merges the two previous validation layers:
 //! - Structural + security validation (formerly in `loader.rs` `Config::validate()`)
@@ -102,17 +102,17 @@ struct ValidationCtx {
     /// Declared endpoint alias → protocol, captured alongside
     /// `device_aliases`. Used by the `HidForward` action validator to check
     /// the transform variant matches the target endpoint's protocol
-    /// (ADR-039-B #1762 step 4b), reusing the same protocol vocabulary as
+    /// (ADR-039-B), reusing the same protocol vocabulary as
     /// route validation.
     device_protocols: std::collections::HashMap<String, crate::config::protocol::Protocol>,
     /// Declared endpoint alias → (direction, enabled), captured alongside
     /// `device_protocols`. `OscForward` uses this to require its target be an
     /// *enabled OSC output* (Output/Bidirectional) endpoint — mirroring the
     /// daemon's runtime `osc_output_endpoints` map criteria so a config that
-    /// loads is exactly one whose target can actually be sent to (#2326).
+    /// loads is exactly one whose target can actually be sent to.
     endpoint_dir_enabled:
         std::collections::HashMap<String, (crate::config::types::ConnectorDirection, bool)>,
-    /// ADR-027 D3 §3.2 (issue #1037 Phase 2C): policy applied to Shell
+    /// ADR-027 D3 §3.2: policy applied to Shell
     /// actions whose resolved binary is a known interpreter family.
     /// Populated from `config.advanced_settings.allow_interpreters` at
     /// the entry to `validate_config`. Defaults to `Warn` for
@@ -190,7 +190,7 @@ pub fn validate_config(config: &Config) -> ValidationReport {
         .map(|e| (e.alias.clone(), (e.direction, e.enabled)))
         .collect();
 
-    // ADR-027 D3 §3.2 (issue #1037 Phase 2C): seed the interpreter
+    // ADR-027 D3 §3.2: seed the interpreter
     // policy so the Shell validation arm can emit warnings/errors per
     // user preference. Defaults to Warn; existing configs without the
     // field set get the default via serde.
@@ -205,7 +205,7 @@ pub fn validate_config(config: &Config) -> ValidationReport {
     // ── Conditional+ModeIs deprecation (ADR-040 §4.4 / §D6 Phase 1) ──
     validate_conditional_modeis_deprecation(config, &mut ctx);
 
-    // ── LED config validation (Issue #324, #330, #332, #367) ──
+    // ── LED config validation ──
     validate_led_config(config, &mut ctx);
     validate_midi_led_config(config, &mut ctx);
     validate_hid_led_config(config, &mut ctx);
@@ -217,8 +217,8 @@ pub fn validate_config(config: &Config) -> ValidationReport {
     // ── Specificity duplicates (ADR-037 D2) ──────────────────
     validate_trigger_duplicates(config, &mut ctx);
 
-    // ── Unified endpoints (ADR-035 Slice 5) ──────────────────
-    // Endpoint channel-scope + protocol validation (#751, #746) lives in
+    // ── Unified endpoints (ADR-035) ──────────────────
+    // Endpoint channel-scope + protocol validation lives in
     // `validate_endpoints`.
     validate_endpoints(config, &mut ctx);
 
@@ -272,7 +272,7 @@ pub fn validate_config(config: &Config) -> ValidationReport {
             let path = format!("{}.mappings[{}]", mode_path, map_idx);
             validate_mapping(mapping, &path, &device_aliases, &device_protocols, &mut ctx);
         }
-        // #847: detect mappings shadowed by an earlier same-mode mapping.
+        // Detect mappings shadowed by an earlier same-mode mapping.
         warn_shadowed_mappings(
             &mode.mappings,
             &format!("Mode '{}'", mode.name),
@@ -313,7 +313,7 @@ pub fn validate_config(config: &Config) -> ValidationReport {
         "GamepadButtonChord".to_string(),
         "GamepadAnalogStick".to_string(),
         "GamepadTrigger".to_string(),
-        // ADR-039-B #1762 step 4b: HidForward is pushed to `hid_features` by
+        // ADR-039-B: HidForward is pushed to `hid_features` by
         // validate_action, so it must appear here too or HID coverage can
         // exceed 100%.
         "HidForward".to_string(),
@@ -362,7 +362,7 @@ pub fn validate_config(config: &Config) -> ValidationReport {
 /// Runs full validation and converts any errors into a `ConfigError`.
 pub fn validate_for_loading(config: &Config) -> Result<(), ConfigError> {
     let report = validate_config(config);
-    // Surface warnings even on successful validation (council review requirement)
+    // Surface warnings even on successful validation
     for w in &report.warnings {
         tracing::warn!("Config warning: {}: {}", w.path, w.message);
     }
@@ -719,7 +719,7 @@ fn validate_structure(config: &Config, ctx: &mut ValidationCtx) {
     //    the unified [[endpoints]] set per ADR-035) ──
     validate_routes(config, ctx);
 
-    // ── #2398 (epic #2395) — warn on MIDI feedback-loop topologies: a route /
+    // ── Warn on MIDI feedback-loop topologies: a route /
     //    SendMidi / MidiForward output target that is also a listened input. ──
     ctx.warnings
         .extend(crate::config::feedback_loops::detect_feedback_loops(config));
@@ -728,7 +728,7 @@ fn validate_structure(config: &Config, ctx: &mut ValidationCtx) {
 /// ADR-037 D2: within a single scope (one mode, or the global mappings),
 /// two structurally identical triggers put the second rule permanently in
 /// the shadow of the first (first-match-wins on identical match sets), so
-/// it can never fire. Promoted to an ERROR per Council R2.
+/// it can never fire.
 ///
 /// "Identical" here means the full trigger (variant + all values + device)
 /// is the same — NOT merely the same constraint *dimensions*. Two `Note`
@@ -767,7 +767,7 @@ fn validate_trigger_duplicates(config: &Config, ctx: &mut ValidationCtx) {
     check_scope(&config.global_mappings, "global_mappings", ctx);
 }
 
-/// Validate the unified `[[endpoints]]` set (ADR-035 Slice 5 / §4.1, §5).
+/// Validate the unified `[[endpoints]]` set (ADR-035 §4.1, §5).
 /// Type↔field consistency is already enforced by the hand-written
 /// `EndpointConfig` deserializer (§4.1); this adds the semantic checks:
 /// the non-empty-matchers invariant (hard error) and direction legality
@@ -777,14 +777,14 @@ fn validate_endpoints(config: &Config, ctx: &mut ValidationCtx) {
     for (i, ep) in config.endpoints.iter().enumerate() {
         let path = format!("endpoints[{}] ('{}')", i, ep.alias);
 
-        // ADR-042 Phase A (Slice A.2) — loopback-only network-listener gate +
+        // ADR-042 Phase A — loopback-only network-listener gate +
         // ACL shape validation for OSC/Art-Net Input/Bidirectional endpoints.
         validate_network_listener(ep, &path, ctx);
 
         // HID is Input-only (ADR-039 D7 — HID output was dropped entirely).
         // A HID endpoint declaring Output/Bidirectional would silently never
         // produce output (the output resolver gates non-MIDI out of the MIDI
-        // port map, ADR-035 Slice 9.5) — reject it at load instead.
+        // port map, ADR-035) — reject it at load instead.
         if ep.effective_protocol() == ConnectorProtocol::Hid
             && ep.direction != ConnectorDirection::Input
         {
@@ -798,7 +798,7 @@ fn validate_endpoints(config: &Config, ctx: &mut ValidationCtx) {
             );
         }
 
-        // Channel-scope validation (#751, #746): channels are 0-indexed MIDI
+        // Channel-scope validation: channels are 0-indexed MIDI
         // channels (0-15) and only meaningful for MIDI endpoints.
         for &ch in &ep.channels {
             if ch > 15 {
@@ -855,8 +855,8 @@ fn validate_endpoints(config: &Config, ctx: &mut ValidationCtx) {
         // Direction↔matcher consistency (ADR-035 §4.1): `effective_matchers`
         // only consults `output_matchers` for Output and `input_matchers` for
         // Input, so an asymmetric matcher set that doesn't match the declared
-        // direction is silently ignored at resolve time — surprising/broken
-        // (Copilot #1884). Reject the contradiction at load instead. (A
+        // direction is silently ignored at resolve time — surprising/broken.
+        // Reject the contradiction at load instead. (A
         // Bidirectional endpoint legitimately uses both sides.)
         if let EndpointKind::Matcher {
             input_matchers,
@@ -892,7 +892,7 @@ fn validate_endpoints(config: &Config, ctx: &mut ValidationCtx) {
     }
 }
 
-/// ADR-042 Phase A (Slice A.2) — validate the network-security policy on an
+/// ADR-042 Phase A — validate the network-security policy on an
 /// OSC/Art-Net *listener* endpoint (`direction = Input` or `Bidirectional`).
 ///
 /// Output endpoints *send* to a remote host (a lighting rig at `10.0.0.5` is
@@ -1120,7 +1120,7 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
         })
         .collect();
 
-    // Slice 2 (ADR-036 D1): set of declared mode names, for validating
+    // ADR-036 D1: set of declared mode names, for validating
     // each route's `modes` scope references something real.
     let mode_names: HashSet<&str> = config.modes.iter().map(|m| m.name.as_str()).collect();
 
@@ -1199,12 +1199,10 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
         // runtime route engine (Phase 2B § 4.5) is the second line of
         // defence: it can break cycles via per-event recursion guards
         // (mirrors `MidiRecursionGuard` from ADR-015 D8). Multi-hop
-        // static detection is tracked as a future hardening in the
-        // PR #1161 description.
+        // static detection is tracked as a future hardening item.
         //
         // Gate on both endpoints being known + non-self-ref so we don't
-        // cascade an extra "cycle" error onto an already-broken route
-        // (Copilot review on PR #1161 finding #2).
+        // cascade an extra "cycle" error onto an already-broken route.
         if from_known && to_known && route.from != route.to {
             if forward_edges.contains(&(route.to.as_str(), route.from.as_str())) {
                 ctx.error(
@@ -1230,10 +1228,8 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
         //     in ADR-031 (e.g. HID→OSC, ArtNet→MIDI). Route is rejected
         //     regardless of transform value.
         //
-        // (Tightened in slice 5 per Copilot review on PR #1161 finding #1;
-        // unsupported case fixed in slice 7 per Copilot review on slice 5
-        // — the prior `Some("MidiToOsc")` fallback let HID→OSC routes
-        // silently validate.)
+        // (Historically, a prior `Some("MidiToOsc")` fallback let HID→OSC
+        // routes silently validate; that gap is now closed.)
         if from_known && to_known {
             let from_proto = protocol_for.get(route.from.as_str()).copied();
             let to_proto = protocol_for.get(route.to.as_str()).copied();
@@ -1291,7 +1287,7 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                                 // Variant matches expected — validate its
                                 // value ranges so out-of-range config is
                                 // REJECTED at load, not silently masked at
-                                // runtime (Council #2215). Mirrors the
+                                // runtime. Mirrors the
                                 // existing CC/channel range checks elsewhere.
                                 if let crate::config::types::SignalTransform::HidToMidi {
                                     trigger_to_cc,
@@ -1321,7 +1317,7 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                                         }
                                     }
                                 }
-                                // HidToOsc (#1762 step 3): OSC addresses must
+                                // HidToOsc: OSC addresses must
                                 // start with '/' — reject malformed ones at
                                 // config-load rather than emit invalid packets.
                                 if let crate::config::types::SignalTransform::HidToOsc {
@@ -1343,7 +1339,7 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                                         }
                                     }
                                 }
-                                // OscToArtNet (ADR-039-A Slice 1b, #2324): the
+                                // OscToArtNet (ADR-039-A): the
                                 // address template must be a valid OSC address
                                 // (starts with '/') carrying exactly one
                                 // `{dmx}` placeholder — without it the
@@ -1370,7 +1366,7 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                     }
                 }
 
-                // Rule 4b (#1762 step 4a / ADR-039-B §6.2.1): byte-filters on
+                // Rule 4b (ADR-039-B §6.2.1): byte-filters on
                 // HID-source routes are rejected. A HID event serializes to
                 // MIDI bytes lossily (gamepad button 128 → `pad & 0x7F` = MIDI
                 // note 0), so a `channels`/`cc_range`/`note_range`/
@@ -1394,10 +1390,10 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                     );
                 }
 
-                // ADR-039-A Slice 1 (#1361): OSC-source routes must be catch-all
-                // in Slice 1. MIDI byte-filters are meaningless for OSC (there are
+                // ADR-039-A: OSC-source routes must currently be catch-all.
+                // MIDI byte-filters are meaningless for OSC (there are
                 // no MIDI bytes); OSC-address filtering arrives with typed
-                // triggers in Slice 2. Reject any active filter on an OSC source.
+                // triggers separately. Reject any active filter on an OSC source.
                 if fp == crate::config::protocol::Protocol::Osc
                     && route.filter.as_ref().is_some_and(signal_filter_is_active)
                 {
@@ -1413,17 +1409,17 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                     );
                 }
 
-                // ADR-039-A D8 (#1361): cross-protocol feedback-loop guard. An
+                // ADR-039-A D8: cross-protocol feedback-loop guard. An
                 // OSC-source route whose MIDI output is ALSO a Conductor MIDI
                 // input forms a system-level loop (OSC → OscToMidi → MIDI out →
                 // OS/virtual loopback → MIDI in → mapping engine → Action) that
-                // the route-only Slice-1 D17 argument cannot otherwise see — the
+                // the route-only D17 argument cannot otherwise see — the
                 // re-entrant bytes carry no OSC provenance, so taint-tracking
                 // would never catch them. Fail closed at config-load. Detectable
                 // in-app cases: a Bidirectional MIDI target, or a distinct MIDI
                 // input endpoint with identical matchers. (Partial-overlap and
                 // cross-application loopback are an accepted, documented Phase-A
-                // residual — ADR-042 / Council R1.)
+                // residual — ADR-042.)
                 if fp == crate::config::protocol::Protocol::Osc
                     && tp == crate::config::protocol::Protocol::Midi
                     && let Some(to_ep) = config.endpoints.iter().find(|e| e.alias == route.to)
@@ -1471,9 +1467,8 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                 );
             }
 
-            // Rule 5b (Copilot review on PR #1161 finding #3): channel
-            // values must be 0-15 (parity with `devices[*].channels`
-            // per #751 / ADR-022).
+            // Rule 5b: channel values must be 0-15 (parity with
+            // `devices[*].channels` per ADR-022).
             for &ch in &filter.channels {
                 if ch > 15 {
                     ctx.error(
@@ -1483,11 +1478,10 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                 }
             }
 
-            // Rule 5c (Copilot review on PR #1161 finding #3): reject
-            // SysEx / ChannelPressure in `message_types` — the input
-            // pipeline doesn't emit them yet, so a route with such a
-            // filter would silently never match. Mirrors the Raw
-            // trigger validator's identical check (PR #1105 follow-up).
+            // Rule 5c: reject SysEx / ChannelPressure in `message_types`
+            // — the input pipeline doesn't emit them yet, so a route with
+            // such a filter would silently never match. Mirrors the Raw
+            // trigger validator's identical check.
             for mt in &filter.message_types {
                 if matches!(
                     mt,
@@ -1532,8 +1526,7 @@ fn warn_route_overlaps(config: &Config, ctx: &mut ValidationCtx) {
     // MCP-created output, a virtual MIDI port) doesn't emit trigger events,
     // so trigger-shadowing warnings against those routes are false positives.
     // Build the input-capable endpoint-alias set once and gate the scan on it.
-    // (Copilot review on PR #1161 finding #1; ADR-035: input = direction
-    // Input or Bidirectional.)
+    // (ADR-035: input = direction Input or Bidirectional.)
     use crate::config::types::ConnectorDirection;
     let binding_aliases: std::collections::HashSet<&str> = config
         .endpoints
@@ -1568,7 +1561,7 @@ fn warn_route_overlaps(config: &Config, ctx: &mut ValidationCtx) {
             for trig in &all_triggers {
                 let trig_device = trig.device();
                 // Borrow-compare to avoid the per-trigger `to_string()`
-                // allocation flagged by Copilot on PR #1161 finding #1.
+                // allocation.
                 let device_matches =
                     trig_device.is_none() || trig_device.map(|s| s.as_str()) == Some(from);
                 if !device_matches {
@@ -1621,9 +1614,8 @@ fn warn_route_overlaps(config: &Config, ctx: &mut ValidationCtx) {
 /// transforms on the same source/dest is legitimate fan-out" intent:
 /// two routes with same from/to/filter but DIFFERENT transforms are
 /// correctly distinguished and don't false-warn as duplicates.
-/// (Slice 5 fix per Copilot review on PR #1161 finding #2 — the
-/// previous implementation excluded transform, which inverted the
-/// intended logic.)
+/// (Historically the implementation excluded transform, which inverted
+/// the intended logic.)
 /// Two route mode scopes "overlap" when at least one mode could be
 /// active for both. An empty scope means "all modes" (legacy bare-route
 /// behaviour), so it overlaps any other scope. Two non-empty scopes
@@ -1700,7 +1692,7 @@ fn signal_filter_is_active(f: &crate::config::types::SignalFilter) -> bool {
         || f.osc_address_prefix.is_some()
 }
 
-/// ADR-039-A D8 (#1361): does this MIDI-output endpoint also get ingested as a
+/// ADR-039-A D8: does this MIDI-output endpoint also get ingested as a
 /// MIDI input by Conductor? Detects the two config-load-visible self-loop
 /// shapes: a Bidirectional MIDI endpoint (both out and in), or a distinct
 /// enabled MIDI input/bidirectional endpoint with an identical matcher set
@@ -1720,7 +1712,7 @@ fn midi_output_is_self_ingested(
         return true;
     }
 
-    // Virtual MIDI port output (Copilot review on PR #2328): a `MidiVirtualPort`
+    // Virtual MIDI port output: a `MidiVirtualPort`
     // has NO DeviceMatchers — it is matched by `port_name` — so the
     // matcher-signature path below would always miss it (empty signature). Yet a
     // Conductor-created virtual port is the *classic* loopback vector: a route
@@ -1957,7 +1949,7 @@ fn is_outermost_modeis(condition: &crate::actions::Condition) -> bool {
 /// guarded by a non-`ModeIs`/composite condition, breaks the chain and means the
 /// action is doing real branching → not part of the deprecation.
 ///
-/// Depth-bounded (Copilot #2334): action configs are user-controlled, so a
+/// Depth-bounded: action configs are user-controlled, so a
 /// pathologically deep `else if ModeIs(…)` chain must not overflow the stack. At
 /// the cap we return `false` — we can't confirm a *pure* `ModeIs` chain, so we
 /// don't claim the deprecation (under-warn rather than risk a crash). Such a
@@ -2003,7 +1995,7 @@ fn warn_modeis_dispatch(action: &ActionConfig, path: &str, ctx: &mut ValidationC
             {
                 ctx.warning(path, MODEIS_DEPRECATION_HINT);
                 // Warn ONCE for the chain, but still scan every link's sub-actions
-                // for an unrelated nested dispatch (Copilot #2334).
+                // for an unrelated nested dispatch.
                 scan_chain_for_nested(action, path, ctx, depth);
             } else {
                 warn_modeis_dispatch(then_action, &format!("{path}.then_action"), ctx, depth + 1);
@@ -2026,7 +2018,7 @@ fn warn_modeis_dispatch(action: &ActionConfig, path: &str, ctx: &mut ValidationC
 
 /// Scan an already-warned `ModeIs` dispatch chain for *nested* deprecated
 /// dispatches without re-warning the chain links themselves (preserves "warn once
-/// per chain", Copilot #2334). For each link: full-scan its then-branch (which
+/// per chain"). For each link: full-scan its then-branch (which
 /// may contain an unrelated nested dispatch), then descend the else-chain to the
 /// next link. Depth-bounded like the other walkers.
 fn scan_chain_for_nested(action: &ActionConfig, path: &str, ctx: &mut ValidationCtx, depth: usize) {
@@ -2044,7 +2036,7 @@ fn scan_chain_for_nested(action: &ActionConfig, path: &str, ctx: &mut Validation
         // Caller only invokes this on an action `else_is_modeis_chain_or_absent`
         // already accepted, so every link's else is `None` or another `ModeIs`
         // `Conditional` — a non-conditional else is unreachable here. Descend the
-        // next link; do nothing for `None` (Copilot/Council #2334: no dead tail).
+        // next link; do nothing for `None` (no dead tail).
         if let Some(next @ ActionConfig::Conditional { .. }) = else_action.as_deref() {
             scan_chain_for_nested(next, &format!("{path}.else_action"), ctx, depth + 1);
         }
@@ -2069,12 +2061,12 @@ fn validate_mapping(
     validate_action(&mapping.action, &action_path, ctx, 0);
     validate_let_through(mapping, path, device_protocols, ctx);
 
-    // ADR-039-B #1762 step 4b: a `HidForward` action reads the structured
+    // ADR-039-B: a `HidForward` action reads the structured
     // gamepad `InputEvent` that fired the mapping. If the mapping's trigger is
     // not exclusively HID, that event is absent (a MIDI trigger yields a MIDI
     // event whose `channel: Some(_)` the HID transforms reject) and the
     // forward would silently do nothing. Reject at load rather than silent-drop
-    // at runtime (Council safety rule #1).
+    // at runtime.
     if action_contains_hid_forward(&mapping.action)
         && !trigger_is_exclusively_hid(&mapping.trigger, device_protocols)
     {
@@ -2203,7 +2195,7 @@ fn validate_trigger(
 ) {
     // Device reference validation (from former loader.rs)
     //
-    // #891: the original wording was misleading — it said "mapping will only
+    // The original wording was misleading — it said "mapping will only
     // match if this device connects", implying the issue would resolve when
     // the hardware appeared. It won't: the alias is a config-level identifier.
     // Even with the hardware connected, without a matching `[[endpoints]]`
@@ -2439,7 +2431,7 @@ fn validate_trigger(
                 );
             }
         }
-        // OSC triggers (ADR-039-A Slice 2, #2325)
+        // OSC triggers (ADR-039-A)
         Trigger::OscMessage { address, .. } => {
             if address.is_empty() || !address.starts_with('/') {
                 ctx.error(
@@ -2485,7 +2477,7 @@ fn validate_trigger(
     }
 }
 
-/// #847: Within each mode, the rule engine matches first-match-wins. If
+/// Within each mode, the rule engine matches first-match-wins. If
 /// two mappings have overlapping triggers and the broader one appears
 /// first, the narrower one will never fire — a class of bug that is
 /// silent today (the user sees no error, just an action that doesn't
@@ -2496,7 +2488,7 @@ fn validate_trigger(
 /// Scope is intentionally narrow in v1: only the four trigger types
 /// most often involved in shadow bugs (Note, CC, Aftertouch,
 /// PolyAftertouch) are analysed by `Trigger::shadows`. Cross-type pairs
-/// and uncovered variants are not flagged. Follow-ups on #847 will
+/// and uncovered variants are not flagged. Future follow-ups will
 /// extend coverage; the validator wiring stays the same.
 fn warn_shadowed_mappings(
     mappings: &[crate::config::Mapping],
@@ -2535,10 +2527,9 @@ fn warn_shadowed_mappings(
 /// structurally-impossible expressions (e.g. `CcValueInRange { min: 80,
 /// max: 20 }` which can never be satisfied at runtime).
 ///
-/// Surfacing at load time prevents the silent-always-false failure mode
-/// the Copilot reviewer flagged on PR #844 — a broken condition would
-/// otherwise just send every trigger down the `else_action` branch with
-/// no user-visible feedback.
+/// Surfacing at load time prevents the silent-always-false failure mode:
+/// a broken condition would otherwise just send every trigger down the
+/// `else_action` branch with no user-visible feedback.
 fn validate_condition(condition: &crate::actions::Condition, path: &str, ctx: &mut ValidationCtx) {
     use crate::actions::Condition;
     match condition {
@@ -2599,7 +2590,7 @@ fn validate_condition(condition: &crate::actions::Condition, path: &str, ctx: &m
                 );
             }
             if *min > *max {
-                // ADR-025 P2 review (#844): a CcValueInRange with
+                // ADR-025 P2: a CcValueInRange with
                 // min > max is unsatisfiable. Catching at load time
                 // avoids the silent always-false branch at runtime.
                 ctx.error(
@@ -2746,7 +2737,7 @@ fn validate_action(action: &ActionConfig, path: &str, ctx: &mut ValidationCtx, d
             // needed.
             sandbox: _,
         } => {
-            // ADR-027 D7 (#1166) — clamp timeout to [1000, 300000] so
+            // ADR-027 D7 — clamp timeout to [1000, 300000] so
             // sub-second timeouts can't kill kid-script shells before
             // their first sigchld and multi-minute timeouts can't
             // defeat the watchdog. `None` is the default-fallthrough
@@ -2812,7 +2803,7 @@ fn validate_action(action: &ActionConfig, path: &str, ctx: &mut ValidationCtx, d
                     validate_shell_arg(arg, &arg_path, ctx);
                 }
             }
-            // ADR-027 D3 §3.2 (issue #1037 Phase 2C): apply the
+            // ADR-027 D3 §3.2: apply the
             // `allow_interpreters` policy. Wrapper resolution +
             // interpreter classification already happens in
             // `capabilities_for_action`; here we re-run it to drive
@@ -2991,7 +2982,7 @@ fn validate_action(action: &ActionConfig, path: &str, ctx: &mut ValidationCtx, d
             if target.is_empty() {
                 ctx.error(path, "MidiForward requires target port name");
             } else if !ctx.device_known(target) {
-                // #1136 / ADR-035: a `target` that doesn't match any
+                // ADR-035: a `target` that doesn't match any
                 // `[[endpoints]]` alias is a raw port name. It still works,
                 // but the hot-plug rescan loop only refreshes the device
                 // output map for aliased outputs — raw-port-name targets
@@ -3121,7 +3112,7 @@ fn validate_action(action: &ActionConfig, path: &str, ctx: &mut ValidationCtx, d
             // Target must resolve to a declared, *enabled OSC output*
             // (Output/Bidirectional) endpoint — exactly the criteria the daemon
             // uses to build its runtime `osc_output_endpoints` map, so a config
-            // that loads is one whose target can actually be sent to (#2326).
+            // that loads is one whose target can actually be sent to.
             // Reachability over the wire is still enforced at send time by the
             // connector registry. The OSC-*source* gate is enforced at dispatch
             // (parity with HidForward): the executor requires the inbound OSC
@@ -3369,12 +3360,11 @@ fn validate_action(action: &ActionConfig, path: &str, ctx: &mut ValidationCtx, d
             }
         }
         // ADR-038 §4.1: observation sugar. Only the schema-level check
-        // (non-empty message) lives here in Slice 1; the let-through
-        // advisories (Tap-consumes, HID hard error) land in Slice 5.
+        // (non-empty message) lives here currently; the let-through
+        // advisories (Tap-consumes, HID hard error) are not yet implemented.
         ActionConfig::Tap { message } => {
             // Treat whitespace-only messages as blank, mirroring the
-            // alias/command `trim()` checks elsewhere in this module
-            // (Copilot review on PR #1854).
+            // alias/command `trim()` checks elsewhere in this module.
             if message.trim().is_empty() {
                 ctx.error(path, "Tap action requires a non-empty message");
             }
@@ -3398,7 +3388,7 @@ fn validate_shell_command(command: &str, path: &str, ctx: &mut ValidationCtx) {
     validate_shell_input(command, path, ctx, ShellInputKind::Command);
 }
 
-/// ADR-027 D3 §3.2 (issue #1037 Phase 2C): apply the
+/// ADR-027 D3 §3.2: apply the
 /// `allow_interpreters` policy.
 ///
 /// Resolves the effective binary via the same wrapper-unwinding pass
@@ -3481,8 +3471,8 @@ fn command_has_runnable_token(command: &str) -> bool {
         .any(|c| !c.is_whitespace() && c != '\'' && c != '"')
 }
 
-/// Validate an argv-form `args[i]` token (ADR-027 D3 §3.1, issue
-/// #1037). Same blocklist as [`validate_shell_command`] — only the
+/// Validate an argv-form `args[i]` token (ADR-027 D3 §3.1). Same
+/// blocklist as [`validate_shell_command`] — only the
 /// error wording changes so the diagnostic reads "Shell argument
 /// contains…" instead of "Shell command contains…", which is otherwise
 /// confusing when the failure path is `…args[2]` rather than the
@@ -3647,7 +3637,7 @@ mod tests {
         )
     }
 
-    // ── ADR-039-A Slice 1 (#1361): OSC route validation (D8 + filter) ──
+    // ── ADR-039-A: OSC route validation (D8 + filter) ──
 
     fn ep_osc_input(alias: &str) -> EndpointConfig {
         use crate::config::types::NetworkSecurityConfig;
@@ -3712,7 +3702,7 @@ mod tests {
         }
     }
 
-    // ── ADR-039-A Slice 1b (#2324): OscToArtNet route validation ──
+    // ── ADR-039-A: OscToArtNet route validation ──
 
     fn ep_artnet_output(alias: &str) -> EndpointConfig {
         use crate::config::types::NetworkSecurityConfig;
@@ -3827,7 +3817,7 @@ mod tests {
         );
     }
 
-    // ── ADR-039-A Slice 3 (#2326): OscForward action validation ──
+    // ── ADR-039-A: OscForward action validation ──
 
     fn ep_osc_output(alias: &str) -> EndpointConfig {
         use crate::config::types::NetworkSecurityConfig;
@@ -3951,7 +3941,7 @@ mod tests {
     #[test]
     fn osc_forward_to_input_only_osc_target_rejected() {
         // An OSC endpoint that is Input-only can't be sent to — the daemon's
-        // runtime map would never contain it, so load must reject (#2326).
+        // runtime map would never contain it, so load must reject.
         let cfg = config_with_osc_forward(
             vec![ep_osc_input("osc-in")],
             ActionConfig::OscForward {
@@ -3973,7 +3963,7 @@ mod tests {
     #[test]
     fn osc_forward_to_disabled_osc_output_rejected() {
         // A disabled OSC output is excluded from the daemon's runtime map, so
-        // load must reject it for clear UX rather than a silent no-op (#2326).
+        // load must reject it for clear UX rather than a silent no-op.
         let mut disabled = ep_osc_output("eos-out");
         disabled.enabled = false;
         let cfg = config_with_osc_forward(
@@ -4098,7 +4088,7 @@ mod tests {
 
     #[test]
     fn osc_route_with_filter_rejected() {
-        // Slice 1 OSC routes are catch-all only.
+        // OSC routes are currently catch-all only.
         let filter = SignalFilter {
             message_types: vec![],
             channels: vec![5],
@@ -4148,7 +4138,7 @@ mod tests {
 
     #[test]
     fn osc_route_to_self_ingested_virtual_port_rejected() {
-        // D8 (Copilot #2328): a MidiVirtualPort output has no DeviceMatchers, so
+        // D8: a MidiVirtualPort output has no DeviceMatchers, so
         // the matcher-signature path misses it — but a Conductor-created virtual
         // port that an input endpoint also names is the classic loopback.
         let cfg = config_with_osc_route(
@@ -4746,7 +4736,7 @@ mod tests {
     }
 
     // ───────────────────────────────────────────────────────────
-    // ADR-027 D3 §3.1 (issue #1037) — argv-form `args` also
+    // ADR-027 D3 §3.1 — argv-form `args` also
     // get the metacharacter blocklist applied, so users can't
     // smuggle redirects / pipes / chains past the validator by
     // moving them into argv.
@@ -4754,8 +4744,7 @@ mod tests {
 
     #[test]
     fn test_shell_argv_form_args_metacharacters_blocked() {
-        // The exact bypass class from #1037 / Copilot review on PR
-        // #1137 — `>` redirect smuggled via argv-form args.
+        // The exact bypass class — `>` redirect smuggled via argv-form args.
         let config = config_with_mapping(
             Trigger::Note {
                 note: 60,
@@ -5317,7 +5306,7 @@ mod tests {
         // Undefined device alias is a warning (not error) since ListenMode::All
         // auto-discovers devices without needing [[devices]] entries
         assert!(report.is_valid());
-        // #891 / ADR-035: warning must mention `[[endpoints]]` (the config
+        // ADR-035: warning must mention `[[endpoints]]` (the config
         // section that resolves the alias) and the alternative remediation
         // (remove the device filter). Both phrasings must be present so the
         // operator doesn't read the message as a connectivity hint.
@@ -5420,7 +5409,7 @@ mod tests {
         );
     }
 
-    // ── LED config validation tests (Issue #324) ─────────────
+    // ── LED config validation tests ─────────────
 
     #[test]
     fn test_led_config_valid() {
@@ -5590,7 +5579,7 @@ mod tests {
         );
     }
 
-    // ── MIDI LED Config Validation Tests (Issue #330) ────────
+    // ── MIDI LED Config Validation Tests ────────
 
     #[test]
     fn test_midi_led_config_valid() {
@@ -5647,7 +5636,7 @@ mod tests {
         assert!(report.is_valid());
     }
 
-    // ========== HID LED Validation Tests — Issue #367 ==========
+    // ========== HID LED Validation Tests ==========
 
     #[test]
     fn test_hid_led_valid_profile() {
@@ -5792,7 +5781,7 @@ mod tests {
         assert!(report.is_valid());
     }
 
-    // ========== Velocity Color Map Validation — Issue #332 ==========
+    // ========== Velocity Color Map Validation ==========
 
     #[test]
     fn test_velocity_map_valid_default() {
@@ -5978,7 +5967,7 @@ mod tests {
     }
 
     /// Helper: a `[[endpoints]]` Matcher endpoint with the given direction and
-    /// asymmetric matcher sets (ADR-035 Slice 9.5 direction↔matcher checks).
+    /// asymmetric matcher sets (ADR-035 direction↔matcher checks).
     fn endpoint_with_matchers(
         alias: &str,
         direction: crate::config::types::ConnectorDirection,
@@ -6152,7 +6141,7 @@ mod tests {
 
     #[test]
     fn test_hid_to_midi_out_of_range_is_rejected() {
-        // ADR-039-B (#1762 / Council #2215): out-of-range HidToMidi channel/CC
+        // ADR-039-B: out-of-range HidToMidi channel/CC
         // must be REJECTED at config-load, not silently masked at runtime.
         use crate::config::types::ConnectorDirection;
         let mut config = default_config();
@@ -6234,7 +6223,7 @@ mod tests {
 
     #[test]
     fn test_hid_to_osc_invalid_address_is_rejected() {
-        // ADR-039-B (#1762 step 3): an OSC address not starting with '/' must be
+        // ADR-039-B: an OSC address not starting with '/' must be
         // rejected at config-load (else an invalid OSC packet is emitted).
         use crate::config::types::ConnectorDirection;
         let mut config = default_config();
@@ -6383,7 +6372,7 @@ mod tests {
         );
     }
 
-    // ─── ADR-025 Phase 2: validate_condition (PR #844 review) ─────────
+    // ─── ADR-025 Phase 2: validate_condition ─────────
 
     fn make_config_with_condition(condition: crate::actions::Condition) -> Config {
         use crate::config::types::{ActionConfig, Mapping, Mode, Trigger};
@@ -6602,7 +6591,7 @@ mod tests {
         );
     }
 
-    // ─── Symmetric coverage (PR #848 review) ──────────────────────────
+    // ─── Symmetric coverage ──────────────────────────
     //
     // The shared validator arm uses a `matches!(condition, CcIsOn {..})`
     // check to pick which of the two error-message kinds to emit. These
@@ -6698,7 +6687,7 @@ mod tests {
         );
     }
 
-    // ─── ADR-025 Phase 2.G: context-switch validator (#852) ──────────
+    // ─── ADR-025 Phase 2.G: context-switch validator ──────────
     //
     // Two new classes of check on top of the field-level bounds that
     // already shipped in 2.D:
@@ -7092,7 +7081,7 @@ mod tests {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // ADR-027 D3 §3.2 — `allow_interpreters` policy (issue #1037 Phase 2C)
+    // ADR-027 D3 §3.2 — `allow_interpreters` policy
     //
     // The validator runs `resolve_effective_binary` against every Shell
     // action; when the resolved binary is a known interpreter family
@@ -7317,7 +7306,7 @@ mod tests {
         );
     }
 
-    // ── #847: shadowed-mapping detection ─────────────────────────────
+    // ── Shadowed-mapping detection ─────────────────────────────
     //
     // The rule engine matches first-match-wins. If two mappings in the
     // same mode have overlapping triggers and the broader one appears
@@ -7533,7 +7522,7 @@ mod tests {
         );
     }
 
-    // ── #1136: MidiForward raw-port-name target lint ─────────────────
+    // ── MidiForward raw-port-name target lint ─────────────────
     //
     // A `MidiForward.target` that matches a `[[bindings]]` alias gets
     // hot-plug-aware output routing (the rescan loop refreshes the
@@ -7714,7 +7703,7 @@ mod tests {
     #[test]
     fn test_midi_forward_empty_target_still_errors_not_warns() {
         // Empty target is a hard error (pre-existing behaviour); the
-        // #1136 warning must not replace or suppress it.
+        // raw-port-name warning must not replace or suppress it.
         let config = config_with_action(midi_forward(""));
         let report = validate_config(&config);
         assert!(!report.is_valid(), "empty target must remain a hard error");
@@ -7734,7 +7723,7 @@ mod tests {
         );
     }
 
-    // ── #1602: input-direction connectors are off-spec (ADR-031 §3.4) ──
+    // ── Input-direction connectors are off-spec (ADR-031 §3.4) ──
     //
     // ADR-031 line 124/136/143 establishes that input identity is
     // configured via [[bindings]] (ADR-022); [[connectors]] carries
@@ -7768,7 +7757,7 @@ mod tests {
 
     #[test]
     fn test_validate_accepts_input_direction_connector_adr035() {
-        // ADR-035 Slice 5 REMOVED the `direction = Input` endpoint rejection —
+        // ADR-035 REMOVED the `direction = Input` endpoint rejection —
         // input endpoints are now first-class (unblocks ADR-039 input listeners).
         let mut config = default_config();
         config

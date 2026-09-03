@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Tests for ADR-038 Slice 1 — `let_through` flag and `Tap` action schema.
+//! Tests for ADR-038 — `let_through` flag and `Tap` action schema.
 //!
 //! Covers:
 //! - `Mapping.let_through` parses when present, defaults to `false` when omitted,
@@ -9,7 +9,7 @@
 //! - `ActionConfig::Tap { message }` parses from TOML.
 //! - `Tap` lowers (compiles) to the runtime `Action::Tap { message }`.
 //!
-//! Spec: docs/let-through/ADR-038-implementation-spec.md §4.1, §5 Slice 1.
+//! Spec: docs/let-through/ADR-038-implementation-spec.md §4.1, §5.
 
 use conductor_core::ActionConfig;
 use conductor_core::actions::Action;

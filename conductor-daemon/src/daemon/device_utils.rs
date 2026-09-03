@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Shared MIDI device enumeration utilities (v4.17.0, #104)
+//! Shared MIDI device enumeration utilities
 //!
 //! Provides reliable MIDI device enumeration using the warmup pattern
 //! required by macOS Core MIDI to avoid stale cached device lists.
@@ -22,7 +22,7 @@ const MAX_MIDI_DEVICES: usize = 64;
 /// 1. Create a warmup `MidiInput` instance (registers a Core MIDI client)
 /// 2. Sleep 100ms while the warmup client is alive — Core MIDI delivers
 ///    "device added" notifications only to active clients, so dropping
-///    before sleep would lose the notification (#110)
+///    before sleep would lose the notification
 /// 3. Drop the warmup client, then create a fresh `MidiInput` for enumeration
 ///
 /// Results are capped at [`MAX_MIDI_DEVICES`] (64) to prevent unbounded allocation.
@@ -36,7 +36,7 @@ pub fn enumerate_midi_devices_fresh() -> Vec<MidiDeviceInfo> {
     {
         // Step 1: Create warmup MidiInput and keep it alive during the sleep.
         // Core MIDI sends "device added" notifications to active clients only;
-        // dropping before sleep means no client receives the notification (#110).
+        // dropping before sleep means no client receives the notification.
         let _warmup = match MidiInput::new("Conductor Warmup") {
             Ok(mi) => Some(mi),
             Err(e) => {
@@ -105,7 +105,7 @@ mod tests {
         let _ = devices.len();
     }
 
-    /// Verify warmup pattern keeps instance alive during sleep (#110).
+    /// Verify warmup pattern keeps instance alive during sleep.
     /// Uses `_warmup` (named binding) not `_` (immediate drop).
     #[test]
     fn test_warmup_keeps_instance_alive() {

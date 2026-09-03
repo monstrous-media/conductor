@@ -307,7 +307,7 @@ fn state_conditions_compose_with_not() {
 // ────────────────────────────────────────────────────────────────
 
 /// Regression: parse the exact Conditional+ActivePcIs TOML pattern
-/// from PR #844's manual-validation example. The Condition enum was
+/// from a manual-validation example. The Condition enum was
 /// missing `#[serde(tag = "type")]` so external authors hit
 /// "invalid value: map, expected map with a single key" the moment
 /// they wrote `type = "ActivePcIs"` in TOML.

@@ -148,7 +148,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // conductor-capture is in early development: the session, storage,
         // and upload paths do not exist yet. These commands fail honestly
         // with a non-zero exit rather than printing a success message or
-        // panicking via todo! (#1418).
+        // panicking via todo!.
         Commands::Start { .. } => return Err(not_implemented("start")),
 
         Commands::Stop { .. } => return Err(not_implemented("stop")),
@@ -166,7 +166,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // `info` needs the storage layer to look a capture up; until that
         // exists it must not print a "Capture: <name>" header implying the
-        // capture was found (#1418).
+        // capture was found.
         Commands::Info { .. } => return Err(not_implemented("info")),
 
         Commands::Delete { .. } => return Err(not_implemented("delete")),
@@ -192,7 +192,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// `conductor-capture` is in early development. Commands that cannot yet
 /// perform their session, storage, or network action must fail with a
-/// non-zero exit rather than printing a success message (#1418). Returning
+/// non-zero exit rather than printing a success message. Returning
 /// this error from `main` causes a clean `Error: …` message and exit code 1.
 fn not_implemented(command: &str) -> Box<dyn std::error::Error> {
     format!("the `{command}` command is not yet implemented in conductor-capture").into()

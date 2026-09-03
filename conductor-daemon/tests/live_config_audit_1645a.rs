@@ -1,19 +1,19 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Bundle A regression tests for epic #1645 (Council audit follow-ups).
+//! Regression tests for a set of live-config audit follow-ups.
 //!
 //! Three fixes ship together because they all live in
 //! `conductor-daemon/src/daemon/live_config/mod.rs`:
 //!
-//! - **#1607** — `std::fs::read` in `compute_candidate` is now driven
+//! - `std::fs::read` in `compute_candidate` is now driven
 //!   via `tokio::task::spawn_blocking`, off the executor thread, so
 //!   a slow/hung disk on the known-good file path can no longer stall
 //!   a tokio worker. Regression test: `rollback_with_known_good_file_succeeds_via_async_read`
 //!   below exercises the new path end-to-end against a real on-disk
 //!   fixture under a multi-thread runtime.
 //!
-//! - **#1608** — `LiveConfig::install_test_snapshot` and
+//! - `LiveConfig::install_test_snapshot` and
 //!   `LiveConfig::with_compiler` are now gated behind
 //!   `#[cfg(any(test, feature = "test-helpers"))]`. This file itself
 //!   is a regression guard: it uses both helpers, so it MUST be
@@ -22,7 +22,7 @@
 //!   downstream consumer linking `conductor-daemon` as a plain lib
 //!   no longer sees the silent-corruption surface.
 //!
-//! - **#1610** — `Arc::new(compiled.clone())` in the Inherit publish
+//! - `Arc::new(compiled.clone())` in the Inherit publish
 //!   arm has been replaced with `Arc::new(compiled)`. There is no
 //!   meaningful behavioural test for "we don't clone needlessly" —
 //!   the existing mutate-flow suite is the regression net for the
@@ -65,7 +65,7 @@ action = { type = "Keystroke", keys = "z", modifiers = [] }
 }
 
 // ────────────────────────────────────────────────────────────────────
-// #1607 — Rollback reads known_good via spawn_blocking
+// Rollback reads known_good via spawn_blocking
 // ────────────────────────────────────────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -124,7 +124,7 @@ async fn rollback_with_known_good_file_succeeds_via_async_read() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// #1608 — test-helpers feature gate
+// test-helpers feature gate
 // ────────────────────────────────────────────────────────────────────
 
 #[test]

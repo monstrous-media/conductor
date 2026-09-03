@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! HID → OSC structured transform (ADR-039-B, #1762 step 3).
+//! HID → OSC structured transform (ADR-039-B, step 3).
 //!
 //! Maps a gamepad trigger (button/axis) to an OSC message: the trigger's
 //! canonical name (see [`crate::transforms::hid_trigger`]) selects the OSC

@@ -1,11 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager` methods extracted from `engine_manager::mod` (refactor #2073).
+//! `EngineManager` methods extracted from `engine_manager::mod`.
 
 use super::*;
 
-/// A non-loopback listener withheld by the ADR-042 B-early bind gate (#1899):
+/// A non-loopback listener withheld by the ADR-042 B-early bind gate:
 /// the fail-closed reason as an audit `summary` (with `acl_hash` for forensics)
 /// plus a prominent operator message. Present in the withheld map ⇒ do not bind.
 struct WithheldListener {
@@ -15,7 +15,7 @@ struct WithheldListener {
 
 impl EngineManager {
     /// Materialize the configured `MidiVirtualPort` endpoints as real OS MIDI
-    /// ports, tearing down any no longer configured (#2063 / ADR-035, ADR-031
+    /// ports, tearing down any no longer configured (ADR-035, ADR-031
     /// D10 "DAW proxy model").
     ///
     /// Called from every path that (re)builds the output map — initial connect,
@@ -25,7 +25,7 @@ impl EngineManager {
     ///
     /// Infallible (runs in the ADR-044 APPLY phase).
     ///
-    /// #2396: the OS virtual ports MUST be created on the DISPATCH-thread
+    /// The OS virtual ports MUST be created on the DISPATCH-thread
     /// executor (midir handles are thread-affine, ADR-009 D1), not on the
     /// mutex-guarded `self.action_executor` (which never dispatches — the bug).
     /// We send the desired names over the `watch` channel; the executor thread
@@ -48,7 +48,7 @@ impl EngineManager {
         Self::enumerate_midi_devices()
     }
 
-    /// Connect to input devices based on config (v4.27.0: always multi-device)
+    /// Connect to input devices based on config (always multi-device)
     ///
     /// Legacy single-device path removed — always uses `connect_multi_device()`.
     pub(crate) async fn connect_input_devices(&mut self) -> Result<()> {
@@ -56,11 +56,11 @@ impl EngineManager {
         self.connect_multi_device(&config).await
     }
 
-    /// Disconnect from input devices (v3.0)
+    /// Disconnect from input devices
     pub(crate) async fn disconnect_input_devices(&mut self) {
         info!("Disconnecting input devices");
 
-        // Drop device manager (closes connections) (v3.0)
+        // Drop device manager (closes connections)
         if let Some(mut manager) = self.input_manager.lock().await.take() {
             manager.disconnect();
         }
@@ -84,7 +84,7 @@ impl EngineManager {
     ///
     /// Thin wrapper over [`Self::bind_network_listeners`]: the only fallible
     /// step is the config/ACL parse (`ListenerManager::from_config`); the bind
-    /// itself is non-fatal. (#2100 / ADR-044 split the parse out so the
+    /// itself is non-fatal. (ADR-044 split the parse out so the
     /// post-commit APPLY phase can bind an already-parsed set infallibly.)
     pub(crate) async fn start_network_listeners(&mut self, config: &Config) -> Result<()> {
         let manager = ListenerManager::from_config(config)
@@ -94,7 +94,7 @@ impl EngineManager {
     }
 
     /// Bind an already-parsed [`ListenerManager`] — the **infallible** half of
-    /// listener (re)start (#2100 / ADR-044). Stops the current set, refreshes
+    /// listener (re)start (ADR-044). Stops the current set, refreshes
     /// the action-class allow-map from `config`, then binds each edge; a bind
     /// failure is non-fatal (logged + audited) and counted. Returns
     /// `(bound, skipped)`.
@@ -105,7 +105,7 @@ impl EngineManager {
     ) -> (usize, usize) {
         self.stop_network_listeners();
 
-        // ADR-045 D5 invariant 3 (#2493): network listeners' audit trail is a
+        // ADR-045 D5 invariant 3: network listeners' audit trail is a
         // security control (ADR-042), not telemetry — with NO audit sink
         // available, refuse to start ANY listener (fail-closed). Everything
         // else in the daemon stays up (fail-open with the warning logged at
@@ -121,12 +121,12 @@ impl EngineManager {
             return (0, withheld);
         }
 
-        // ADR-042 D17 (Slice A.6.6) + ADR-039-A Slice 3 (#2326): refresh the
+        // ADR-042 D17 + ADR-039-A: refresh the
         // dispatch-thread executor's read-mostly config from the live endpoints:
         //   - per-listener `allow_sensitive_actions` (alias → bool) for the
         //     action-class gate;
         //   - OscForward output endpoints (alias → (host, port)).
-        // #2396: store BOTH atomically in ONE `SharedActionConfig` via the shared
+        // Store BOTH atomically in ONE `SharedActionConfig` via the shared
         // ArcSwap, so a dispatch can never observe new endpoints against an old
         // allow-map (no cross-map torn read), and — critically — so they reach
         // the executor that actually DISPATCHES (previously set on the
@@ -149,7 +149,7 @@ impl EngineManager {
                     ConnectorDirection::Output | ConnectorDirection::Bidirectional
                 );
                 // Only OSC/Art-Net *listeners* (Input/Bidirectional) become a
-                // network origin (Copilot review on #1953).
+                // network origin.
                 if is_listener
                     && let EndpointKind::OscEndpoint { security, .. }
                     | EndpointKind::ArtNetEndpoint { security, .. } = &ep.kind
@@ -194,7 +194,7 @@ impl EngineManager {
             .filter_map(|a| manager.edge(a).map(|e| (a.to_string(), e.protocol())))
             .collect();
 
-        // Accepted-packet consumer. ADR-039-A Slice 1 (#1361): OSC listeners'
+        // Accepted-packet consumer. ADR-039-A: OSC listeners'
         // packets are decoded to `OscInbound` and forwarded onto the unified
         // pump as `ProtocolEvent::Osc`; the route engine consumes them
         // (route-only — never the mapping engine). Non-OSC listeners (Art-Net,
@@ -227,7 +227,7 @@ impl EngineManager {
                     );
                 }
 
-                // ADR-039-A: only OSC listeners have a consumer in Slice 1.
+                // ADR-039-A: only OSC listeners have a consumer.
                 if listener_protocols.get(&pkt.listener)
                     != Some(&conductor_core::config::types::ConnectorProtocol::Osc)
                 {
@@ -286,7 +286,7 @@ impl EngineManager {
         });
 
         let edges: Vec<_> = manager.into_edges().collect();
-        // ADR-042 B-early (#1899): which non-loopback listeners are withheld
+        // ADR-042 B-early: which non-loopback listeners are withheld
         // pending an HMAC-verified approval (fail-closed). Loopback + approved
         // listeners are absent from the map and bind normally.
         let withheld = self.network_bind_decisions(&edges, config).await;
@@ -365,7 +365,7 @@ impl EngineManager {
         (bound, skipped)
     }
 
-    /// ADR-042 B-early (#1899): decide which **non-loopback** listeners are
+    /// ADR-042 B-early: decide which **non-loopback** listeners are
     /// withheld pending an HMAC-verified approval. Returns only the withheld
     /// aliases (loopback + approved are absent → they bind). Every gate failure
     /// — no gate, keychain unavailable/expired, registry tampered, no approval —
@@ -545,7 +545,7 @@ impl EngineManager {
             .as_mut()
             .ok_or_else(|| DaemonError::Ipc("Input manager not initialized".to_string()))?;
 
-        // Reconnect to the specified port (#885: legacy listener now emits
+        // Reconnect to the specified port (legacy listener now emits
         // DeviceEvent<InputEvent> on the unified channel)
         let (port_idx, port_name) = input_manager
             .reconnect_midi_port(
@@ -566,14 +566,14 @@ impl EngineManager {
         Ok((port_name, port_idx))
     }
 
-    /// Process hot-plug check — rescan MIDI ports for new/removed devices (v4.22.0 - ADR-009 Phase 4)
-    /// Apply a hot-plug rescan from ports ALREADY enumerated off the run-loop
-    /// (#2390). `HotPlugCheck` spawns the slow CoreMIDI enumeration and
+    /// Process hot-plug check — rescan MIDI ports for new/removed devices (ADR-009 Phase 4)
+    /// Apply a hot-plug rescan from ports ALREADY enumerated off the run-loop.
+    /// `HotPlugCheck` spawns the slow CoreMIDI enumeration and
     /// re-delivers the result as `HotPlugApply { port_infos, gamepad_available }`;
     /// this does only the cheap diff/open, so it's safe to run inline on the
     /// run-loop.
     ///
-    /// #2392: `gamepad_available` is the result of the (fixed ~500ms when no
+    /// `gamepad_available` is the result of the (fixed ~500ms when no
     /// controller) gilrs probe, run off-loop by the spawning task. The connect
     /// itself (`rescan_gamepad`) is cheap when a controller is actually present,
     /// so it stays here under the lock — but ONLY when one was found.
@@ -592,8 +592,8 @@ impl EngineManager {
         // Bound the input_manager lock to this scope so it's
         // guaranteed released before `dispatch_probe_on_connect_for_new_ports`
         // runs below — that method re-acquires the same lock and
-        // would deadlock if mgr_guard were held across it. PR #930
-        // review caught this on the no-change path (the explicit
+        // would deadlock if mgr_guard were held across it. This matters
+        // on the no-change path (the explicit
         // `drop(mgr_guard);` only fires inside the
         // `opened > 0 || removed > 0` branch). Wrapping in a block
         // makes the release path uniform across all branches: NLL
@@ -640,10 +640,10 @@ impl EngineManager {
                                     (device_id.as_str().to_string(), port_name.clone())
                                 })
                                 .collect();
-                            // ADR-035 Slice 9.5: unified endpoint set drives both
+                            // ADR-035: unified endpoint set drives both
                             // the output map and hot-plug pickup for output/
                             // bidirectional endpoints (subsumes the legacy device
-                            // + #1611 connector builders).
+                            // connector builders).
                             let (endpoints, _findings) =
                                 conductor_core::config::loader::normalize_to_endpoints(&config)?;
                             let output_map = crate::daemon::output_resolver::build_output_map(
@@ -659,7 +659,7 @@ impl EngineManager {
                                 .collect();
                             self.device_output_map.store(Arc::new(flat_map));
 
-                            // #2063: recreate/teardown OS virtual MIDI ports on
+                            // Recreate/teardown OS virtual MIDI ports on
                             // hot-plug rescan so they survive device changes.
                             self.sync_virtual_ports(&endpoints);
 
@@ -690,7 +690,7 @@ impl EngineManager {
                                             output_connected: io.output_connected,
                                             output_port_name: io.output_port_name,
                                             output_auto_paired: io.output_auto_paired,
-                                            // TODO(#742): Currently MIDI-only. Derive from binding source
+                                            // TODO: Currently MIDI-only. Derive from binding source
                                             // when HID/OSC devices are added to the binding path.
                                             protocol: "midi".to_string(),
                                         }
@@ -717,11 +717,11 @@ impl EngineManager {
             }
         } // mgr_guard guaranteed released here — no deadlock with the dispatch below
 
-        // ADR-039-B #2293: gamepad hot-plug. The MIDI rescan above is MIDI-only
+        // ADR-039-B: gamepad hot-plug. The MIDI rescan above is MIDI-only
         // (`rescan_ports`), so a gamepad switched on / paired AFTER daemon start
         // was never picked up (the gamepad was only connected at startup).
         //
-        // #2392: the SLOW part — the gilrs `list_gamepads` probe, a FIXED ~500ms
+        // The SLOW part — the gilrs `list_gamepads` probe, a FIXED ~500ms
         // window when no controller is connected — now runs OFF the run-loop in
         // the task `HotPlugCheck` spawns; its boolean result arrives as
         // `gamepad_available`. Here we only do the cheap connect, and only when a
@@ -753,7 +753,7 @@ impl EngineManager {
 
     /// Enumerate available MIDI devices
     pub(crate) fn enumerate_midi_devices() -> Result<Vec<crate::daemon::types::MidiDeviceInfo>> {
-        // Delegate to shared utility with warmup pattern (#104)
+        // Delegate to shared utility with warmup pattern
         Ok(crate::daemon::device_utils::enumerate_midi_devices_fresh())
     }
 }

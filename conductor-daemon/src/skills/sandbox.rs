@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Skill sandbox for user-provided skills (P5-05)
+//! Skill sandbox for user-provided skills
 //!
 //! This module provides security sandboxing for user-provided Agent Skills,
 //! enforcing tool access restrictions based on the `allowed-tools` metadata.
@@ -73,8 +73,8 @@ impl ToolAccessResult {
 }
 
 /// Matching strategy for a `ToolPattern`. The legacy `namespace:pattern`
-/// grammar (`Namespaced`) was the only one the validator understood
-/// before issue #1410 — but every SKILL.md shipped in this repo uses
+/// grammar (`Namespaced`) was originally the only one the validator
+/// understood — but every SKILL.md shipped in this repo uses
 /// Claude Code's space-separated grammar instead. The extra modes let
 /// `ToolPattern` represent Claude tokens without breaking the legacy
 /// matching semantics that existing tests rely on.
@@ -110,7 +110,7 @@ pub struct ToolPattern {
     /// Whether this is the global "*" pattern
     pub is_global: bool,
     /// Which grammar produced this pattern; drives [`Self::matches`].
-    /// `MatchMode::Namespaced` reproduces pre-#1410 behaviour.
+    /// `MatchMode::Namespaced` reproduces the legacy behaviour.
     mode: MatchMode,
 }
 
@@ -181,7 +181,7 @@ impl ToolPattern {
         })
     }
 
-    /// Parse a single Claude Code permission token (#1410).
+    /// Parse a single Claude Code permission token.
     ///
     /// Claude's grammar covers four shapes — all shipped SKILL.md files
     /// in this repo use one of them:
@@ -403,8 +403,7 @@ impl TrustLevel {
         }
     }
 
-    /// Parse a trust level from a SKILL-PROVIDED (self-declared) value (#2118 /
-    /// clawpatch #2103).
+    /// Parse a trust level from a SKILL-PROVIDED (self-declared) value.
     ///
     /// A skill's frontmatter is attacker-controlled, so it must never let the
     /// skill ESCALATE its own privilege: a skill declaring `trust-level:
@@ -520,7 +519,7 @@ pub struct SkillSandbox {
 impl SkillSandbox {
     /// Create a sandbox from a validated skill.
     ///
-    /// SECURITY (#2118): the trust level is derived from the skill's
+    /// SECURITY: the trust level is derived from the skill's
     /// SELF-DECLARED `trust-level` via [`TrustLevel::from_self_declared`], which
     /// can never yield `Bundled`. A skill therefore cannot grant itself
     /// unrestricted / `*`-capable access by writing `trust-level: bundled` in
@@ -532,7 +531,7 @@ impl SkillSandbox {
     }
 
     /// Create a sandbox with an EXPLICIT trust level assigned by a trusted
-    /// caller based on the skill's provenance (#2118).
+    /// caller based on the skill's provenance.
     ///
     /// This is the ONLY path to a `Bundled` sandbox: the caller — not the
     /// skill's metadata — vouches for the trust level (e.g. the skill was
@@ -559,7 +558,7 @@ impl SkillSandbox {
     ///
     /// The custom config may only TIGHTEN the sandbox (e.g. add deny-list
     /// entries). Because trust here is self-declared (always capped below
-    /// Bundled, #2118), restriction enforcement is forced ON regardless of the
+    /// Bundled), restriction enforcement is forced ON regardless of the
     /// supplied config — otherwise a caller could hand an untrusted skill an
     /// unrestricted config (`SandboxConfig::for_bundled()`, where
     /// `enforce_restrictions == false`) and bypass pattern checks entirely.
@@ -570,7 +569,7 @@ impl SkillSandbox {
         mut config: SandboxConfig,
     ) -> SandboxResult<Self> {
         let trust_level = TrustLevel::from_self_declared(skill.metadata.get_trust_level());
-        // #2118 footgun guard: never let a self-declared skill run unrestricted.
+        // Footgun guard: never let a self-declared skill run unrestricted.
         config.enforce_restrictions = true;
         let patterns = Self::parse_patterns(&skill.metadata, trust_level)?;
 
@@ -586,8 +585,7 @@ impl SkillSandbox {
 
     /// Create a sandbox from metadata only.
     ///
-    /// Trust is derived from self-declared metadata and capped below Bundled
-    /// (#2118).
+    /// Trust is derived from self-declared metadata and capped below Bundled.
     pub fn from_metadata(metadata: &SkillMetadata) -> SandboxResult<Self> {
         let trust_level = TrustLevel::from_self_declared(metadata.get_trust_level());
         let config = SandboxConfig::from_trust_level(trust_level);
@@ -609,7 +607,7 @@ impl SkillSandbox {
     /// SECURITY: Non-bundled skills without allowed_tools get NO access (fail-closed).
     /// Only bundled skills are allowed unrestricted access. The `trust_level` is
     /// supplied by the caller (NOT re-read from `metadata`) so a skill cannot
-    /// self-declare `bundled` to unlock `*` / wildcard access (#2118).
+    /// self-declare `bundled` to unlock `*` / wildcard access.
     fn parse_patterns(
         metadata: &SkillMetadata,
         trust_level: TrustLevel,
@@ -631,7 +629,7 @@ impl SkillSandbox {
             }
         };
 
-        // Grammar dispatch (#1410): commas select the legacy
+        // Grammar dispatch: commas select the legacy
         // `namespace:pattern, …` parser; otherwise we use the Claude
         // space-separated grammar that every shipped SKILL.md uses.
         let parsed: Vec<ToolPattern> = if allowed_tools.contains(',') {
@@ -890,7 +888,7 @@ mod tests {
         assert!(ToolPattern::parse("conductor:get status").is_err()); // space
     }
 
-    // ==================== Claude-style token tests (#1410) ====================
+    // ==================== Claude-style token tests ====================
 
     #[test]
     fn test_pattern_parse_claude_bare_name() {
@@ -940,7 +938,7 @@ mod tests {
     #[test]
     fn test_sandbox_from_skill_with_claude_style_bare() {
         // The sandbox must build from Claude-style allowed-tools — the
-        // core regression that #1410 unblocks.
+        // core capability this grammar support unblocks.
         let tmp = TempDir::new().unwrap();
         let skill_path =
             create_test_skill_with_tools(tmp.path(), "claude-bare", Some("Bash Read Write"));
@@ -1029,7 +1027,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
 
         // Test 1: A skill whose Bundled provenance is asserted by the trusted
-        // caller (NOT self-declared) gets global access. #2118: this must go
+        // caller (NOT self-declared) gets global access. This must go
         // through `from_skill_with_trust`, not `from_skill`.
         let bundled_path =
             create_test_skill_full(tmp.path(), "bundled-skill", None, Some("bundled"));
@@ -1049,7 +1047,7 @@ mod tests {
         );
         assert!(bundled_sandbox.check_tool_access("any_tool").is_allowed());
 
-        // Test 1b (#2118): the SAME skill, self-declaring `bundled` via
+        // Test 1b: the SAME skill, self-declaring `bundled` via
         // `from_skill`, is capped to User and so fails closed without
         // allowed_tools — it cannot self-elevate to global access.
         let result = SkillSandbox::from_skill(&bundled_skill);
@@ -1068,7 +1066,7 @@ mod tests {
         assert!(matches!(result, Err(SandboxError::NoRestrictions)));
     }
 
-    /// Regression test for #2118 (clawpatch #2103): a skill must not be able to
+    /// Regression test: a skill must not be able to
     /// grant itself `Bundled` trust (unrestricted / `*`-capable) by writing
     /// `trust-level: bundled` in its own frontmatter. Self-declared trust is
     /// derived via `from_self_declared` and capped to `User`; `Bundled` is only
@@ -1120,7 +1118,7 @@ mod tests {
         );
     }
 
-    /// Regression test for the #2118 follow-up (Copilot review): passing an
+    /// Regression test: passing an
     /// unrestricted config (`for_bundled`, `enforce_restrictions == false`) to
     /// `from_skill_with_config` must NOT bypass pattern enforcement for a
     /// self-declared skill — enforcement is forced on.
@@ -1175,8 +1173,8 @@ mod tests {
         let result = SkillSandbox::from_skill(&remote_skill);
         assert!(matches!(result, Err(SandboxError::InvalidPattern(_))));
 
-        // A skill self-declaring `bundled` does NOT get '*' via from_skill
-        // (#2118): self-declared trust is capped below Bundled.
+        // A skill self-declaring `bundled` does NOT get '*' via from_skill:
+        // self-declared trust is capped below Bundled.
         let self_bundled_path = create_test_skill_full(
             tmp.path(),
             "self-bundled-wildcard",
@@ -1464,7 +1462,7 @@ trust-level: bundled
         std::fs::write(skill_dir.join("SKILL.md"), skill_md).unwrap();
 
         let skill = validate_skill(&skill_dir).unwrap();
-        // #2118: Bundled trust comes from the trusted caller (provenance), not
+        // Bundled trust comes from the trusted caller (provenance), not
         // the skill's self-declared `trust-level`. `from_skill` would cap this
         // to User; the unrestricted bundled behaviour is exercised via
         // `from_skill_with_trust`.
@@ -1485,7 +1483,7 @@ trust-level: bundled
                 .is_allowed()
         );
 
-        // #2118: the same skill self-declaring `bundled` via `from_skill` is
+        // The same skill self-declaring `bundled` via `from_skill` is
         // capped to User and does NOT get unrestricted access.
         let self_declared = SkillSandbox::from_skill(&skill);
         assert!(matches!(self_declared, Err(SandboxError::NoRestrictions)));

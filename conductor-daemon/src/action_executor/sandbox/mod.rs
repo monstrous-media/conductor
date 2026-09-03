@@ -9,7 +9,7 @@
 //!
 //! - **macOS**: a Seatbelt profile applied via the `sandbox_init(3)` C API
 //!   in the child between `fork` and `exec` (a `pre_exec` hook). We bypass the
-//!   deprecated `sandbox-exec` CLI per the ADR-027 D10b Council review — the
+//!   deprecated `sandbox-exec` CLI per the ADR-027 D10b decision — the
 //!   profiles are stable even though the CLI is not.
 //! - **Linux**: a Landlock ruleset (kernel 5.13+) built in the parent and
 //!   committed in the child via `restrict_self()` in a `pre_exec` hook.
@@ -24,8 +24,8 @@
 //! always-safe temp / `/dev/null` paths) and **network egress** (denied
 //! unless opted in). Reads and exec stay broadly allowed so ordinary commands
 //! keep working. A full deny-default fork/exec jail is intentionally out of
-//! scope for this slice — it breaks most real shell actions and is the part
-//! the epic flagged for a dedicated soak period.
+//! scope for now — it breaks most real shell actions and needs a dedicated
+//! soak period.
 
 use conductor_core::config::types::ShellSandboxConfig;
 use std::path::PathBuf;

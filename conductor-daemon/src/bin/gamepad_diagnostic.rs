@@ -4,13 +4,13 @@
 // CLI binary: legitimate println!/eprintln! to stdout/stderr.
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
-//! gamepad_diagnostic — dump raw gilrs events for troubleshooting (#599).
+//! gamepad_diagnostic — dump raw gilrs events for troubleshooting.
 //!
 //! Prints every event gilrs delivers (button presses, button analog changes,
 //! axis changes) exactly as the backend reports them, alongside the Conductor
 //! encoder/button ID each would map to. Use this to diagnose why a control
 //! doesn't reach the daemon: if a movement prints nothing here, the gap is in
-//! the gilrs backend (e.g. macOS Bluetooth — see #2229), not in Conductor.
+//! the gilrs backend (e.g. macOS Bluetooth), not in Conductor.
 //!
 //! Usage:
 //!   cargo run --bin gamepad_diagnostic            # dump events until Ctrl-C
@@ -26,7 +26,7 @@ fn main() {
     // ADR-047 §D1: build gilrs through the daemon's shared constructor so the
     // diagnostic applies the SAME user `~/.conductor/gamecontrollerdb.txt`
     // mapping layer the daemon uses — otherwise verifying a user override here
-    // would be misleading (Copilot review, PR #2440).
+    // would be misleading.
     let mut gilrs = match conductor_daemon::gamepad_device::build_gilrs() {
         Ok(g) => g,
         Err(e) => {
@@ -36,7 +36,7 @@ fn main() {
     };
 
     // Give the async IOKit callback time to register Bluetooth-LE controllers
-    // (~50ms after Gilrs::new(); see #2229).
+    // (~50ms after Gilrs::new()).
     std::thread::sleep(std::time::Duration::from_millis(200));
     while gilrs.next_event().is_some() {} // drain connect events for the listing
 

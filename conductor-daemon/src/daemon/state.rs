@@ -525,7 +525,7 @@ mod tests {
                 // $XDG_RUNTIME_DIR to its value before checking — the pre-fix
                 // code did `path_str.contains("XDG_RUNTIME_DIR")`, which
                 // doesn't reliably detect XDG paths because it matches the
-                // env-var name rather than its value. See #922.
+                // env-var name rather than its value.
                 //
                 // Assert the socket path's parent dir is EXACTLY
                 // `$XDG_RUNTIME_DIR/conductor` — `Path::starts_with` alone
@@ -619,7 +619,7 @@ mod tests {
         }
     }
 
-    /// Regression test for #922: lock in the corrected predicate.
+    /// Regression test: lock in the corrected predicate.
     ///
     /// The pre-fix code used `path_str.contains("XDG_RUNTIME_DIR")` to
     /// "verify" the XDG branch. That predicate doesn't reliably detect XDG

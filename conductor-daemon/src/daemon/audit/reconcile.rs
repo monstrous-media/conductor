@@ -107,7 +107,7 @@ pub fn reconcile(entries: &[OutboxEntry], live_revision: &str) -> Vec<Reconciled
 
     for entry in entries {
         let rec = &entry.record;
-        // #2380: a ChainReset record is a meta-event (operator reset the chain
+        // A ChainReset record is a meta-event (operator reset the chain
         // via `audit resume`), not a config mutation — never group/reconcile it.
         if matches!(rec.phase, OutboxPhase::ChainReset) {
             continue;

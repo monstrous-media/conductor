@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase B-early — network-listener approval registry (Slice B.3).
+//! ADR-042 Phase B-early — network-listener approval registry.
 //!
 //! The first phase that binds a non-loopback socket gates it behind an
 //! HMAC-signed, manually-approved registry. This module is the registry: the

@@ -1,21 +1,21 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-027 D1 (2/N) lifecycle tests for [`PinnedPeer::still_pinned`].
+//! ADR-027 D1 lifecycle tests for [`PinnedPeer::still_pinned`].
 //!
-//! These tests exercise the TOCTOU defence that 2/N adds. They spawn
+//! These tests exercise the TOCTOU defence added here. They spawn
 //! a real subprocess (the `d1-peer-test-helper` bin) so that the
 //! peer's pid + exe can be captured and then forcibly terminated —
 //! the unit tests inside `peer_pin.rs` use same-process self-connect
 //! and can't kill themselves without taking the test runner with
 //! them.
 //!
-//! ## Failure mode under the (1/N) scaffold
+//! ## Failure mode under the prior stub scaffold
 //!
-//! `still_pinned()` always returns `true` in 1/N. The test
+//! `still_pinned()` always returns `true` in the prior stub scaffold. The test
 //! `still_pinned_returns_false_after_peer_exits` MUST fail against
-//! that scaffold. Once 2/N replaces the stub with a kernel-handle
-//! check (`pidfd` / `audit_token`), the test goes green.
+//! that scaffold. Once the kernel-handle
+//! check (`pidfd` / `audit_token`) replaces the stub, the test goes green.
 
 #![cfg(any(target_os = "linux", target_os = "macos"))]
 
@@ -29,11 +29,11 @@ use std::time::{Duration, Instant};
 /// How long to wait for the helper to connect before giving up. Generous
 /// (the helper connects in milliseconds) but finite, so a helper that exits
 /// early, hangs, or is the wrong binary fails the test promptly instead of
-/// blocking `cargo test` forever (#1503).
+/// blocking `cargo test` forever.
 const ACCEPT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Accept the helper's connection with a bound instead of a naked
-/// `listener.accept()` that blocks indefinitely (#1503). Polls the
+/// `listener.accept()` that blocks indefinitely. Polls the
 /// non-blocking listener while also checking the child: if the helper exits
 /// before connecting we fail immediately with its status; on timeout we kill
 /// it. The child is reaped on every error path — an already-exited child is
@@ -46,7 +46,7 @@ fn accept_helper(
     timeout: Duration,
 ) -> Result<UnixStream, String> {
     // Kill (if still running) and reap the child, then return the error, so no
-    // failure path leaves a stray child (Copilot review on #1821).
+    // failure path leaves a stray child (Copilot review).
     fn reap_and_err(child: &mut Child, msg: String) -> Result<UnixStream, String> {
         let _ = child.kill();
         let _ = child.wait();
@@ -88,7 +88,7 @@ fn accept_helper(
     };
 
     // Restore the listener to blocking on every path so a caller that reuses
-    // it isn't surprised by a non-blocking accept (Copilot review on #1821).
+    // it isn't surprised by a non-blocking accept (Copilot review).
     let _ = listener.set_nonblocking(false);
 
     let stream = outcome?;
@@ -131,7 +131,7 @@ fn still_pinned_returns_false_after_peer_exits() {
         .spawn()
         .expect("spawn d1-peer-test-helper");
 
-    // Accept the helper's connection (bounded — never block forever, #1503)
+    // Accept the helper's connection (bounded — never block forever)
     // and read its greeting byte to confirm it's the connecting peer (not a
     // bystander). A read timeout guards against a connected-but-mute helper.
     let mut server_side =
@@ -145,8 +145,8 @@ fn still_pinned_returns_false_after_peer_exits() {
         .expect("read helper greeting");
     assert_eq!(greet[0], b'x', "expected helper greeting byte");
 
-    // Pin the peer. Under 1/N this captures uid/pid/initial_exe; the
-    // 2/N implementation also captures a kernel handle (pidfd on
+    // Pin the peer. The prior stub captured uid/pid/initial_exe; the
+    // current implementation also captures a kernel handle (pidfd on
     // Linux, audit_token on macOS) for race-free liveness.
     let pinned = PinnedPeer::from_stream(&server_side).expect("pin peer");
     assert_eq!(
@@ -167,9 +167,9 @@ fn still_pinned_returns_false_after_peer_exits() {
     );
 
     // The TOCTOU defence: still_pinned() must observe that the
-    // pinned process no longer exists. Under the 1/N stub this is
+    // pinned process no longer exists. Under the prior stub this is
     // hard-coded `true` and this assertion fails — that failure is
-    // the TDD red bar 2/N must turn green.
+    // the TDD red bar this kernel-handle check must turn green.
     assert!(
         !pinned.still_pinned(),
         "still_pinned() must return false after peer process has exited; \
@@ -177,7 +177,7 @@ fn still_pinned_returns_false_after_peer_exits() {
     );
 }
 
-/// #1503 regression: when the spawned child exits before ever connecting,
+/// Regression: when the spawned child exits before ever connecting,
 /// `accept_helper` must fail FAST (detecting the child's exit) rather than
 /// blocking until the timeout — and it must reap the child. A naked
 /// `listener.accept()` would block forever here.

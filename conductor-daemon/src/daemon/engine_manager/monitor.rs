@@ -1,13 +1,13 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager` methods extracted from `engine_manager::mod` (refactor #2073).
+//! `EngineManager` methods extracted from `engine_manager::mod`.
 
 use super::*;
 use crate::midi_bytes::extract_raw_midi;
 
 /// Canonical MIDI wire bytes for a channel-voice event, but only when the
-/// channel is known (#840). `extract_raw_midi` folds `channel: None` into
+/// channel is known. `extract_raw_midi` folds `channel: None` into
 /// channel 0, which would misrepresent a channel-less event — the Channel row
 /// shows "—" for those, so the Raw row stays hidden to match.
 fn raw_bytes_if_channelled(channel: Option<u8>, event: &InputEvent) -> Option<Vec<u8>> {
@@ -42,7 +42,7 @@ impl EngineManager {
             return;
         }
 
-        // #2410: stamp a monotonic emission sequence so the GUI can reconstruct
+        // Stamp a monotonic emission sequence so the GUI can reconstruct
         // true daemon order across both Tauri channels. `mapping_fired` is pushed
         // from a different run-loop select arm than the raw event, so push order
         // — not webview arrival order — is authoritative. Stamped after the
@@ -70,7 +70,7 @@ impl EngineManager {
 
         // Check triggers (R915-R917)
         // Collect fired triggers under lock, then log outside to avoid
-        // holding the mutex during I/O (council review: logging under lock).
+        // holding the mutex during I/O (avoid logging under lock).
         let fired_triggers = if let Ok(mut engine) = self.trigger_engine.lock().or_else(|p| {
             tracing::error!("Trigger engine mutex poisoned — recovering");
             Ok::<_, ()>(p.into_inner())
@@ -109,14 +109,14 @@ impl EngineManager {
             buffer.push_back(event.clone());
         }
 
-        // Push to broadcast channel for subscribers (#394)
+        // Push to broadcast channel for subscribers
         // send() fails silently if no receivers — zero cost when nobody is subscribed
         let _ = self.event_broadcast_tx.send(event);
     }
 
-    /// Persist mode change to config file and update in-memory state (Phase 2 - Issue #321)
+    /// Persist mode change to config file and update in-memory state
     ///
-    /// Council review fix: Updates in-memory state FIRST for backwards compatibility,
+    /// Updates in-memory state FIRST for backwards compatibility,
     /// then persists to disk asynchronously via spawn_blocking, then does a targeted
     /// config update (not full overwrite) to avoid TOCTOU race conditions.
     ///
@@ -233,7 +233,7 @@ impl EngineManager {
         .map_err(|e| DaemonError::Ipc(e.to_string()))?
     }
 
-    /// Create a MonitorEvent from an InputEvent (Issue #326)
+    /// Create a MonitorEvent from an InputEvent
     pub(crate) fn create_monitor_event(
         input_event: &InputEvent,
         device_id: Option<&str>,
@@ -452,7 +452,7 @@ impl EngineManager {
                 }
             }
             InputEvent::ControlChange { control, value, .. } => {
-                // #1451: forward the CC value so the fingerprinter can tell a
+                // Forward the CC value so the fingerprinter can tell a
                 // relative encoder from a repeatedly-moved absolute fader.
                 stats.record_cc(*control, *value);
             }
@@ -465,7 +465,7 @@ impl EngineManager {
             }
             _ => {} // PadReleased, Aftertouch, PitchBend, etc. don't help classification
         }
-        // Update last event timestamp for health reporting (#747)
+        // Update last event timestamp for health reporting
         if let Some(ts) = now_ms {
             stats.touch(ts);
         }

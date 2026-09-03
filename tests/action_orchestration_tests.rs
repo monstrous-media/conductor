@@ -4,7 +4,7 @@
 //! Integration tests for action orchestration (Sequence, Delay, Repeat,
 //! Conditional) — exercised through the PRODUCTION `ActionExecutor`.
 //!
-//! #1531: the previous version of this file only imported chrono + std and
+//! The previous version of this file only imported chrono + std and
 //! tested local loops, structs, `thread::sleep`, and boolean expressions —
 //! none of the real conductor action types or the executor. It could pass even
 //! if the orchestration implementation was missing or regressed.

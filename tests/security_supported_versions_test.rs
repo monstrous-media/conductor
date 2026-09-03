@@ -1,11 +1,11 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1487: keep `SECURITY.md`'s supported-versions table in sync with the active
+//! Keep `SECURITY.md`'s supported-versions table in sync with the active
 //! release line.
 //!
-//! The table had drifted to `0.2.x` / `0.1.x` while the workspace shipped
-//! `5.6.1-alpha`, leaving the current published line with no documented
+//! The table can drift out of sync with the workspace version,
+//! leaving the current published line with no documented
 //! security-support status. This test derives the current `major.minor` line
 //! from the workspace version (`CARGO_PKG_VERSION` of the root crate, which is
 //! `version.workspace = true`) and fails if `SECURITY.md` doesn't mark that line
@@ -17,7 +17,7 @@ fn security_md_lists_current_release_line_as_supported() {
     // Root-crate tests run with the repo root as the working directory.
     let security = std::fs::read_to_string("SECURITY.md").expect("SECURITY.md at repo root");
 
-    // Workspace version, e.g. "5.6.1-alpha" → line "5.6.x".
+    // Workspace version, e.g. "0.1.1-alpha" → line "0.1.x".
     let version = env!("CARGO_PKG_VERSION");
     let mut parts = version.split('.');
     let major = parts.next().expect("version has a major component");

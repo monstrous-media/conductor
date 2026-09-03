@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! RUSTSEC-2026-0194 / RUSTSEC-2026-0195 regression pins (#2609).
+//! RUSTSEC-2026-0194 / RUSTSEC-2026-0195 regression pins.
 //!
 //! `.ncmm3` profiles are USER-SUPPLIED XML parsed by quick-xml via
 //! `DeviceProfile::from_ncmm3` (`conductor-core/src/device.rs`) — exactly

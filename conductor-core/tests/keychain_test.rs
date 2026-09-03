@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-042 Phase B-early Slice B.1 — `FilePermsKeychain` contract tests.
+//! ADR-042 Phase B-early — `FilePermsKeychain` contract tests.
 //!
 //! These run on any Unix (macOS + Linux CI). The cross-platform OS-keyring
 //! roundtrip lives in `keychain_keyring_test.rs` so it also compiles on Windows

@@ -1,18 +1,18 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Bundle B regression tests for epic #1645 (Council audit follow-ups).
+//! Regression tests for hardware I/O confirmation-gating fixes.
 //!
 //! Both fixes live in `conductor-daemon/src/daemon/hardware_io/confirmation.rs`:
 //!
-//! - **#1618** — `request_midi_send_confirmation` now validates each
+//! - `request_midi_send_confirmation` now validates each
 //!   `MidiSendMessage` at the gate before auto-confirming. A malformed
 //!   message (channel out of 1–16, missing required field, etc.) used
 //!   to slip past the gate and surface later in the executor's
 //!   `to_bytes()` call with less context. Now it returns `Blocked`
 //!   with the offending message index + the validate-error string.
 //!
-//! - **#1619** — every `request_*_confirmation` entry now calls
+//! - Every `request_*_confirmation` entry now calls
 //!   `cleanup_expired()` opportunistically so the `pending` HashMap
 //!   can't grow unbounded under an adversarial caller that issues
 //!   tokens without ever following up. Bound is now
@@ -49,11 +49,11 @@ fn invalid_channel_message() -> MidiSendMessage {
 }
 
 /// Roland parameter-change SysEx that classifies as requiring
-/// confirmation — used to populate `pending` for #1619 tests.
+/// confirmation — used to populate `pending` for the cleanup tests below.
 const PARAM_CHANGE: &[u8] = &[0xF0, 0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x01, 0xF7];
 
 // ────────────────────────────────────────────────────────────────────
-// #1618 — MIDI validation at the gate
+// MIDI validation at the gate
 // ────────────────────────────────────────────────────────────────────
 
 #[test]
@@ -119,7 +119,7 @@ fn midi_send_with_all_valid_messages_still_confirms() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// #1619 — opportunistic cleanup_expired on each request entry
+// Opportunistic cleanup_expired on each request entry
 // ────────────────────────────────────────────────────────────────────
 
 #[test]

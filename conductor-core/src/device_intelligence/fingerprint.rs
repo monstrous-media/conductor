@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Event fingerprinting engine (ADR-022 Phase 5D, #755)
+//! Event fingerprinting engine (ADR-022 Phase 5D)
 //!
 //! Classifies device type from event statistics: note distribution,
 //! CC usage, velocity patterns, timing characteristics.
@@ -34,8 +34,8 @@ pub struct EventStats {
     pub gamepad_count: usize,
     pub unique_notes: HashMap<u8, usize>,
     pub unique_ccs: HashMap<u8, usize>,
-    /// Distinct CC *values* seen (value → hit count), across all CC events
-    /// (#1451). Needed to tell a relative encoder (values clustered on the
+    /// Distinct CC *values* seen (value → hit count), across all CC events.
+    /// Needed to tell a relative encoder (values clustered on the
     /// increment/decrement codes, e.g. 1/127 or 63/65) from an absolute fader
     /// (values spread across the 0–127 range) — `unique_ccs` hit-density alone
     /// can't.
@@ -63,7 +63,7 @@ impl EventStats {
         self.max_note = Some(self.max_note.map_or(note, |m| m.max(note)));
     }
 
-    /// Record a CC event with its value (#1451).
+    /// Record a CC event with its value.
     ///
     /// The value feeds relative-encoder detection in [`classify`]: a relative
     /// encoder emits a small set of increment/decrement codes, while an
@@ -99,7 +99,7 @@ impl EventStats {
         // CC dominance
         if self.cc_count as f64 / total as f64 > 0.7 {
             // A small, densely-hit CC set *could* be a handful of encoders —
-            // but only if the VALUES look relative (#1451). A single absolute
+            // but only if the VALUES look relative. A single absolute
             // fader moved >10 times has the same hit-density signature, so
             // requiring relative-value evidence stops it being misread as an
             // encoder. Relative encoders emit a small set of increment/
@@ -115,7 +115,7 @@ impl EventStats {
         }
 
         // Note dominance — only commit to a note-device category when notes are
-        // the MAJORITY of traffic (#1452). Previously any `note_count > 0` was
+        // the MAJORITY of traffic. Previously any `note_count > 0` was
         // enough, so a mixed stream (e.g. 40% notes / 60% CC, with CC below its
         // 0.7 bar) was forced into Pad/Keyboard. Requiring note majority keeps
         // genuinely mixed/ambiguous devices in `Unknown` — the enum's documented
@@ -135,8 +135,8 @@ impl EventStats {
         DeviceCategory::Unknown
     }
 
-    /// True when the recorded CC values look like relative-encoder traffic
-    /// (#1451): at least two distinct values, ALL confined to the canonical
+    /// True when the recorded CC values look like relative-encoder traffic:
+    /// at least two distinct values, ALL confined to the canonical
     /// increment/decrement bands. An absolute fader's spread of values fails
     /// this, so it is no longer misclassified as an encoder after enough
     /// repeated movement. The two-distinct-value floor also stops a fader held
@@ -283,7 +283,7 @@ mod tests {
         assert_eq!(stats.classify(), DeviceCategory::FaderController);
     }
 
-    /// #1451 regression. A single absolute fader moved >10 times has the same
+    /// Regression test. A single absolute fader moved >10 times has the same
     /// hit-density signature an encoder used to be detected by, but its values
     /// sweep the range. Without relative-value evidence it must NOT classify as
     /// an encoder.
@@ -302,7 +302,7 @@ mod tests {
         assert_eq!(stats.classify(), DeviceCategory::FaderController);
     }
 
-    /// Complement to #1451: a genuine relative encoder — values confined to the
+    /// Complement: a genuine relative encoder — values confined to the
     /// increment/decrement codes (here 1 / 127) on a densely-hit CC — still
     /// classifies as an encoder.
     #[test]
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(stats.classify(), DeviceCategory::Unknown);
     }
 
-    /// #1452: a stream with substantial but NON-dominant note traffic — 40 note
+    /// A stream with substantial but NON-dominant note traffic — 40 note
     /// events and 60 CC events spread across enough CC numbers that
     /// `cc_count / total` is not > 0.7 — is a mixed/ambiguous device. It must
     /// classify as `Unknown` (the enum's documented mixed category) rather than
@@ -375,7 +375,7 @@ mod tests {
         );
     }
 
-    /// #1452 complement: when notes ARE the majority (70% notes / 30% CC) the
+    /// Complement: when notes ARE the majority (70% notes / 30% CC) the
     /// device still classifies by note range — a pad controller with a few aux
     /// CC knobs stays `PadController`. Guards against over-correcting the
     /// dominance threshold into rejecting legitimate note devices.

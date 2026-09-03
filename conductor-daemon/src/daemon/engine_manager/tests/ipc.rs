@@ -92,12 +92,12 @@ async fn test_ipc_stop_response_format() {
 
 // =========================================================================
 // RollbackConfig / RollbackConfigForce handler tests
-// — ADR-034 §D1.2.1 / D4.B.4 (#1291)
+// — ADR-034 §D1.2.1 / D4.B.4
 // =========================================================================
 
 /// RollbackConfigForce without a `reason` arg must reject with
 /// MissingField — the IPC framer per KI-B3 enforces this, and
-/// the handler re-validates (Council R4 defence in depth).
+/// the handler re-validates (defence in depth).
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
 async fn test_rollback_config_force_missing_reason_returns_missing_field() {
@@ -130,7 +130,7 @@ async fn test_rollback_config_force_missing_reason_returns_missing_field() {
     assert!(err.message.contains("reason"), "got: {}", err.message);
 }
 
-/// #2384 (Council blocker): a `ResumeAudit` that returns `AlreadyHealthy` must
+/// A `ResumeAudit` that returns `AlreadyHealthy` must
 /// NOT punch the daemon out of `AuditDegraded`. In `cfg(test)` builds the
 /// EngineManager's audit gate is `Disabled` (the outbox wiring is skipped to
 /// avoid the shared-file race), so `resume_audit` yields `AlreadyHealthy` —

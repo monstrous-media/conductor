@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #2398 (epic #2395): config-load detection of MIDI feedback-loop topologies.
+//! Config-load detection of MIDI feedback-loop topologies.
 //!
 //! A user can configure a route `to` / `SendMidi` / `MidiForward` whose output
 //! target is also a port Conductor listens on as an input. The output then
@@ -158,7 +158,7 @@ pub(crate) fn detect_feedback_loops(config: &Config) -> Vec<ValidationFinding> {
     // Listened MIDI inputs: only `Matcher` endpoints actually bind input ports
     // (PortResolver reads `effective_matchers(Input)`; non-Matcher kinds yield
     // none). Under `Configured` only enabled endpoints bind; under `All` a
-    // declared port is opened even when disabled (#2406 review finding 1).
+    // declared port is opened even when disabled.
     let listened: Vec<ListenedInput> = config
         .endpoints
         .iter()
@@ -205,7 +205,7 @@ pub(crate) fn detect_feedback_loops(config: &Config) -> Vec<ValidationFinding> {
 
     // alias → output port names, for resolving route `to` / action targets that
     // reference an endpoint by alias. Only ENABLED output endpoints can actually
-    // send, so a route into a disabled output never loops (#2406 Council review).
+    // send, so a route into a disabled output never loops.
     // We also track ALL output aliases (incl. disabled) so a disabled alias
     // resolves to "no output" rather than being misread as a literal port name.
     let output_endpoints = || {
@@ -252,7 +252,7 @@ pub(crate) fn detect_feedback_loops(config: &Config) -> Vec<ValidationFinding> {
     // literal port name — so resolve it ONLY against enabled output endpoints.
     // An unknown alias is a config error caught by `validate_routes`; a
     // disabled or input-only alias simply can't send, so neither loops here
-    // (no literal fallback → no false positives, #2406 Council review).
+    // (no literal fallback → no false positives).
     for (idx, route) in config.routes.iter().enumerate() {
         if route.enabled
             && let Some(names) = output_by_alias.get(route.to.as_str())
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn routing_to_own_virtual_output_is_not_a_loop() {
-        // #2406 finding 3: Conductor's own virtual output ports are auto-excluded
+        // Conductor's own virtual output ports are auto-excluded
         // from the input scan (ADR-009 D21), so routing to one is NOT a loop —
         // even if an input matcher would nominally match the name.
         let c = cfg(
@@ -470,7 +470,7 @@ mod tests {
 
     #[test]
     fn ignore_ports_suppresses_the_warning() {
-        // #2406 finding 2: if the target is already in ignore_ports it isn't
+        // If the target is already in ignore_ports it isn't
         // listened, so there is no loop and no warning (it's the remediation).
         let mut c = with_global(
             cfg(
@@ -521,7 +521,7 @@ mod tests {
 
     #[test]
     fn disabled_input_still_loops_under_listen_all_but_not_configured() {
-        // #2406 finding 1: under listen_mode=All a disabled input endpoint's port
+        // Under listen_mode=All a disabled input endpoint's port
         // is still opened/listened, so the loop is real; under Configured it is not.
         let mk = |mode: ListenMode| {
             let mut c = with_global(
@@ -555,7 +555,7 @@ mod tests {
 
     #[test]
     fn route_to_input_only_alias_is_not_treated_as_literal_port() {
-        // #2406 Council review: route.to is strictly an endpoint alias (never a
+        // route.to is strictly an endpoint alias (never a
         // literal port name). An input-only alias can't send, so routing to it
         // must not self-match and false-warn (the old literal fallback bug).
         let c = cfg(
@@ -573,7 +573,7 @@ mod tests {
 
     #[test]
     fn route_to_disabled_output_endpoint_does_not_warn() {
-        // #2406 Council review: a disabled output endpoint can't actually send,
+        // A disabled output endpoint can't actually send,
         // so a route into it is not a loop even if its port matches an input.
         let c = cfg(
             vec![

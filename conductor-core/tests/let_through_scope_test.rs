@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-038 Slice 2 — `let_through` is winner-metadata threaded onto the
+//! ADR-038 — `let_through` is winner-metadata threaded onto the
 //! `ActionEnvelope`; it does NOT alter the match algorithm.
 //!
 //! A `let_through = true` mode mapping still wins via first-match-wins and does
@@ -9,7 +9,7 @@
 //! returns exactly that one winner, with `let_through`/`mapping_id` copied from
 //! the winning `CompiledRule`.
 //!
-//! Spec: docs/let-through/ADR-038-implementation-spec.md §4.2, §5 Slice 2.
+//! Spec: docs/let-through/ADR-038-implementation-spec.md §4.2, §5.
 
 use conductor_core::actions::Action;
 use conductor_core::events::{ProcessedEvent, VelocityLevel};
@@ -88,7 +88,7 @@ fn let_through_winner_does_not_fall_through_to_global() {
     );
     // The single mode mapping sits at authored index 0, so mapping_id must be
     // exactly Some(0) — asserting the value (not just is_some) catches off-by-one
-    // or wrong-source-list regressions (Copilot review on PR #1861).
+    // or wrong-source-list regressions.
     assert_eq!(
         envelope.mapping_id,
         Some(0),

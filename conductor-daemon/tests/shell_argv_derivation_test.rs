@@ -1,8 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Pure-function tests for [`derive_shell_argv`] (ADR-027 D3 §3.1,
-//! issue #1037).
+//! Pure-function tests for [`derive_shell_argv`] (ADR-027 D3 §3.1).
 //!
 //! Pins the argv-derivation logic the Shell executor uses before
 //! `Command::spawn`. Lightweight by design — no spawn, no async, no
@@ -109,7 +108,7 @@ fn empty_command_returns_none_for_both_forms() {
 
 #[test]
 fn legacy_form_returns_none_for_quote_only_inputs() {
-    // #1711 update: `parse_command_line` was rewritten to preserve
+    // `parse_command_line` was rewritten to preserve
     // empty quoted args (so mid-stream `foo "" bar` correctly yields
     // three tokens). Quote-only inputs now tokenise to a single empty
     // token instead of zero tokens — but the user contract for
@@ -127,7 +126,7 @@ fn legacy_form_returns_none_for_quote_only_inputs() {
 
 #[test]
 fn legacy_form_returns_none_for_unbalanced_quotes() {
-    // #1717: an unbalanced quote (parser exits mid-quoted-segment)
+    // An unbalanced quote (parser exits mid-quoted-segment)
     // means the user's intent is ambiguous — silently swallowing the
     // rest of the line as one argument is the wrong default. Treat
     // it the same as quote-only / empty input: "nothing runnable",
@@ -141,7 +140,7 @@ fn legacy_form_returns_none_for_unbalanced_quotes() {
 
 #[test]
 fn legacy_form_preserves_mid_stream_empty_quoted_args() {
-    // #1711: the actual reported bug — an intentional empty argument
+    // The actual reported bug — an intentional empty argument
     // between other tokens must reach the spawned process as a real
     // argv entry. Pre-fix, `parse_command_line` dropped `""` between
     // tokens, so `cmd "" foo` arrived as `argc==2` instead of 3.

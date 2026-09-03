@@ -31,8 +31,8 @@ impl EngineManager {
         create_success_response(&id, Some(payload))
     }
 
-    /// Return the canonical `LiveConfig` snapshot **including the config body**
-    /// (#1779 B2). Unlike [`Self::handle_get_config_snapshot`] (metadata only),
+    /// Return the canonical `LiveConfig` snapshot **including the config body**.
+    /// Unlike [`Self::handle_get_config_snapshot`] (metadata only),
     /// this carries the full `config` tree so the GUI's `get_config` reflects
     /// the daemon's in-memory authority — not a stale on-disk `config.toml` that
     /// a later save would clobber (ADR-043 anti-clobber defeat). The returned
@@ -72,9 +72,9 @@ impl EngineManager {
     }
 
     /// Structured diff of the in-memory live config vs the on-disk config — the
-    /// drift source (#2414, ADR-034 §D4.D). ReadOnly: reads `self.config_path`
+    /// drift source (ADR-034 §D4.D). ReadOnly: reads `self.config_path`
     /// and compares it to `live_config`'s in-memory tree. Returns
-    /// `{ differs, changed_sections, live, target }` so #2284's drift banner can
+    /// `{ differs, changed_sections, live, target }` so the drift banner can
     /// summarise which sections changed and the GUI can render the detail. A
     /// missing/unparseable on-disk file is surfaced as the normal not-found /
     /// parse error (no diff to compute).
@@ -94,7 +94,7 @@ impl EngineManager {
         // Read the on-disk config through the §D2.2 safe-walk rather than a plain
         // `read_to_string`: this handler RETURNS the file's parsed content to the
         // GUI, so it must not follow a symlink at `config_path` out of the config
-        // directory and leak arbitrary file content (Copilot #2435). The safe-walk
+        // directory and leak arbitrary file content. The safe-walk
         // opens the file beneath the config-directory allowlist root without
         // traversing any symlink and reads from the validated fd (no TOCTOU).
         // The root is `config_path`'s own directory; root derivation + open run
@@ -308,14 +308,14 @@ impl EngineManager {
 
         match mutate_result {
             Ok(outcome) => {
-                // #2051 (ADR-043 D2): rebuild the running runtime from the
-                // committed config. #2100 Phase 2: install the PREPAREd bundle
+                // ADR-043 D2: rebuild the running runtime from the
+                // committed config. ADR-044 Phase 2: install the PREPAREd bundle
                 // via the revision-equivalence guard (re-prepares from the
                 // committed snapshot only on a revision mismatch). The IPC
                 // dispatch backstop would also catch this, but applying inline
                 // makes the rebuild land before the Init response. APPLY is
                 // infallible (ADR-044) — it runs post-commit, so it never fails
-                // an already-committed config (Council #2168 R3).
+                // an already-committed config.
                 self.apply_committed_guarded(prepared, "init").await;
                 create_success_response(
                     &id,
@@ -328,7 +328,7 @@ impl EngineManager {
             Err(e) => {
                 // Map via mutate_error_to_ipc so CAS / stale-generation /
                 // restart-required errors keep their specific codes (was
-                // hardcoded ConfigValidationFailed — Council review),
+                // hardcoded ConfigValidationFailed),
                 // consistent with SaveConfig / RollbackConfig / ReloadFromDisk.
                 let (code, message) = mutate_error_to_ipc(&e);
                 IpcResponse {
@@ -345,7 +345,7 @@ impl EngineManager {
         }
     }
 
-    /// ADR-034 §D8 / #2380 — `conductorctl audit resume`: recover from the
+    /// ADR-034 §D8 — `conductorctl audit resume`: recover from the
     /// fail-closed audit-unavailable state. Delegates to
     /// `LiveConfig::resume_audit` (rotate-corrupt-aside + fresh self-audited
     /// chain); on success, if the daemon is in `AuditDegraded`, transitions it
@@ -389,7 +389,7 @@ impl EngineManager {
                 // punch the daemon back to `Running` if it happens to be in
                 // `AuditDegraded` for some other/racing reason — that would clear
                 // the degraded state without any recovery having occurred
-                // (Council #2384). Gate on `recovered`.
+                // Gate on `recovered`.
                 if recovered
                     && *self.state.read().await == LifecycleState::AuditDegraded
                     && let Err(e) = self.transition_state(LifecycleState::Running).await
@@ -462,7 +462,7 @@ impl EngineManager {
                 );
             }
         };
-        // #2417 (B2 completion, ADR-034 §D4 / ADR-043): optional content-hash
+        // ADR-034 §D4 / ADR-043: optional content-hash
         // guard. The `base_generation` CAS below only protects storage atomicity
         // (the GUI re-fetches a fresh generation), so it can't see a content
         // change that landed between the client's `GetConfigBody` read and this
@@ -474,7 +474,7 @@ impl EngineManager {
         // (malformed). Collapsing them via `.and_then(as_str)` would let a buggy
         // client silently disable the guard with `base_revision: null` (or a
         // number/object) and reintroduce the clobber — so a present non-string is
-        // a hard error, not a skip (Copilot #2418).
+        // a hard error, not a skip.
         if let Some(base_revision_val) = request.args.get("base_revision") {
             let Some(base_revision) = base_revision_val.as_str() else {
                 return ipc_err(
@@ -496,14 +496,14 @@ impl EngineManager {
             }
         }
 
-        // ADR-025 Phase 3.F (#886): cancel any pending old-config
+        // ADR-025 Phase 3.F: cancel any pending old-config
         // observation sleeper before the awaited compile + swap below.
         self.abort_pending_pc_observation_check();
 
         // ADR-044 Phase 2: PREPARE before committing — a GUI-supplied config
         // that can't build (bad listener ACL, mapping compile failure) is
         // rejected here without ever publishing it (atomic; closes the
-        // committed-but-stale window the pre-#2100 path had).
+        // committed-but-stale window the previous path had).
         let prepared = match self.prepare_runtime(&config).await {
             Ok(p) => p,
             Err(e) => {
@@ -516,8 +516,8 @@ impl EngineManager {
         };
 
         let prov = provenance_for(caller_ctx, conductor_core::config::Source::InMemoryEdit);
-        // #2554: no self-write suppression is armed here. The mutate writes only
-        // `live.toml`, which the §D9 watcher does NOT watch (post-#2551 it watches
+        // No self-write suppression is armed here. The mutate writes only
+        // `live.toml`, which the §D9 watcher does NOT watch (it watches
         // the user file `config.toml`) — so there is nothing to suppress, and a
         // stale arm would wrongly drop a genuine external `config.toml` edit within
         // its window. (The §D11 write-through that armed this was removed, Option C.)
@@ -533,29 +533,29 @@ impl EngineManager {
             .await
         {
             Ok(outcome) => {
-                // #2051 (ADR-043 D2): the mutate committed the new config to
+                // ADR-043 D2: the mutate committed the new config to
                 // LiveConfig, but the running daemon's mapping engine,
                 // connector registry, device_output_map and route engine are
                 // only rebuilt by the post-commit path — without this a
                 // GUI-created endpoint never reaches the routing graph (empty
                 // graph, idle status, LLM-blind) until a restart.
                 //
-                // #2100 Phase 2 (ADR-044): install the PREPAREd bundle via the
+                // ADR-044 Phase 2: install the PREPAREd bundle via the
                 // revision-equivalence guard. The mapping engine, connector
                 // registry, device_output_map, route engine, listeners, etc. are
                 // all rebuilt to match the committed config; the build already
                 // succeeded pre-commit (above), so APPLY is infallible save for
                 // the rare re-prepare path on a revision mismatch. This closes
-                // the pre-#2100 committed-but-stale window. The IPC dispatch
+                // the previous committed-but-stale window. The IPC dispatch
                 // backstop would also catch a forgotten apply, but applying
                 // inline makes the rebuild land before the SaveConfig response.
                 // APPLY is infallible (ADR-044) — it runs post-commit, so it
-                // never fails an already-committed config (Council #2168 R3).
+                // never fails an already-committed config.
                 self.apply_committed_guarded(prepared, "save").await;
-                // ADR-043 Option C (#2554): NO write-back to the profile/user file.
+                // ADR-043 Option C: NO write-back to the profile/user file.
                 // `live.toml` is the sole durable authority — the CAS commit above
-                // persists it and the GUI reads it via GetConfigBody (#2540/#2552).
-                // The #2260 virtual-port-delete guarantee holds via `live.toml`,
+                // persists it and the GUI reads it via GetConfigBody.
+                // The virtual-port-delete guarantee holds via `live.toml`,
                 // which the daemon resumes on boot. (Removed the §D11 write-through.)
                 create_success_response(
                     &id,
@@ -584,18 +584,18 @@ impl EngineManager {
 
     /// Write `config` to the daemon's `user_file_path` (`config.toml`) via
     /// `Config::save`, with the §D9 self-write suppression armed so the
-    /// ConfigWatcher — which watches that same user file (#2551) — doesn't
+    /// ConfigWatcher — which watches that same user file — doesn't
     /// surface our own write as external drift. Returns the failure message on error (and
     /// clears the suppression marker, since no `ConfigFileChanged` will arrive to
-    /// consume it — Copilot #2264). Used by the error-surfacing "Overwrite
-    /// user.toml" handler ([`handle_overwrite_config_file`], #2284). (The §D11
+    /// consume it). Used by the error-surfacing "Overwrite
+    /// user.toml" handler ([`handle_overwrite_config_file`]). (The §D11
     /// SaveConfig/plan-apply write-through that also used this was removed under
-    /// ADR-043 Option C, #2554.)
+    /// ADR-043 Option C.)
     async fn armed_profile_write(
         &self,
         config: &conductor_core::Config,
     ) -> std::result::Result<(), String> {
-        // #2553: write the operator-editable USER file (`config.toml`), NOT the
+        // Write the operator-editable USER file (`config.toml`), NOT the
         // `live.toml` authority (`config_path`). The Overwrite action means "my
         // live config wins — make the user file match it"; targeting the
         // authority left `config.toml` stale (the reported symptom).
@@ -631,16 +631,16 @@ impl EngineManager {
             // The write never reached the atomic rename, so no `ConfigFileChanged`
             // event will fire to consume the suppression we just armed. Clear it
             // now, else a genuine external edit arriving within the 1s window would
-            // be wrongly treated as our own write and dropped (Copilot #2264).
+            // be wrongly treated as our own write and dropped.
             *self.config_write_suppress.lock().await = None;
         }
         result
     }
 
     /// Overwrite the on-disk config file with the daemon's live config — the
-    /// "Overwrite user.toml" drift-banner action (#2284, ADR-034 §D4.D), i.e. "my
+    /// "Overwrite user.toml" drift-banner action (ADR-034 §D4.D), i.e. "my
     /// live config wins". Writes the live snapshot to `user_file_path`
-    /// (`config.toml`, #2553) through the §D9-suppressed [`armed_profile_write`]
+    /// (`config.toml`) through the §D9-suppressed [`armed_profile_write`]
     /// so the watcher doesn't re-surface it as drift. A dedicated op rather than `SaveConfig` with the live body, which
     /// is a semantic-identical no-op (same revision ⇒ no CAS bump ⇒ no
     /// write-through) and would leave the drifted file untouched.
@@ -649,7 +649,7 @@ impl EngineManager {
     /// against persisting an unbootstrapped config: the AwaitingConfig sentinel
     /// has no committed live config to write. The `allowed_during_awaiting_config`
     /// accept-list is spec-only scaffolding — its dispatch-level filter was removed
-    /// as dead code (#1323, AwaitingConfig is unreachable at runtime today), so it
+    /// as dead code (AwaitingConfig is unreachable at runtime today), so it
     /// does NOT gate this command; the reject-list test pins the spec for an
     /// eventual reinstatement, nothing more. Production boots to `state_generation
     /// >= 1`, so this guard only ever trips defensively.
@@ -867,7 +867,7 @@ impl EngineManager {
             .await
         {
             Ok(outcome) => {
-                // #2100 Phase 2 (ADR-044): install the PREPAREd bundle via the
+                // ADR-044 Phase 2: install the PREPAREd bundle via the
                 // revision-equivalence guard — rebuilds the mapping engine,
                 // registry, route engine, device map, listeners, etc. to match
                 // the committed config. Build already succeeded pre-commit, so
@@ -878,7 +878,7 @@ impl EngineManager {
                     "reload-from-disk"
                 };
                 // APPLY is infallible (ADR-044) — it runs post-commit, so it
-                // never fails an already-committed config (Council #2168 R3).
+                // never fails an already-committed config.
                 self.apply_committed_guarded(prepared, reason).await;
                 create_success_response(
                     &id,

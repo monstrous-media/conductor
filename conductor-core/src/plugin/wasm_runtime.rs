@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! WASM plugin runtime for sandboxed plugin execution (v2.5)
+//! WASM plugin runtime for sandboxed plugin execution
 //!
 //! This module provides a secure, isolated runtime for executing plugins compiled
 //! to WebAssembly. WASM plugins run in a sandboxed environment with:
@@ -86,8 +86,8 @@ use crate::plugin::{Capability, PluginMetadata, TriggerContext};
 ///
 /// Delegates entirely to
 /// [`crate::plugin_id::validate_plugin_id`] — the **single
-/// source of truth** for both character set AND length cap (PR
-/// #1029 round-3, 2026-05-02). Having two validators (or one
+/// source of truth** for both character set AND length cap.
+/// Having two validators (or one
 /// validator that only enforced part of the rules) created
 /// install/runtime divergence: an id accepted at install would
 /// then fail at runtime (or, for length, the reverse). Now both
@@ -125,14 +125,14 @@ pub(crate) fn plugin_data_subdir(
 /// subdirectory name. Returns `Ok(plugin_id.to_string())` for
 /// safe ids, `EngineError::PluginLoadFailed` otherwise.
 ///
-/// `plugin_id` is now non-optional on [`WasmConfig`] (PR #1029
-/// round-3, 2026-05-02): it was previously `Option<String>` with
-/// a file-stem fallback when None, but two plugins loaded from
-/// `/tmp/a/plugin.wasm` and `/opt/b/plugin.wasm` would resolve
-/// to the same `"plugin"` id and share a sandbox. Round-2
-/// removed the fallback at runtime; round-3 promotes the
-/// invariant to the type system so a `Default::default()` user
-/// can't construct an invalid config in the first place.
+/// `plugin_id` is now non-optional on [`WasmConfig`]: it was
+/// previously `Option<String>` with a file-stem fallback when
+/// None, but two plugins loaded from `/tmp/a/plugin.wasm` and
+/// `/opt/b/plugin.wasm` would resolve to the same `"plugin"` id
+/// and share a sandbox. The fallback was first removed at
+/// runtime, then the invariant was promoted to the type system
+/// so a `Default::default()` user can't construct an invalid
+/// config in the first place.
 ///
 /// `plugin_path` is retained in the error message so operators
 /// can identify which plugin failed when debugging
@@ -155,14 +155,14 @@ pub(crate) fn resolve_plugin_id(
 
 /// Configuration for WASM plugin runtime.
 ///
-/// `#[non_exhaustive]` (PR #1029 review, 2026-05-02): security-
+/// `#[non_exhaustive]`: security-
 /// relevant additions to this struct (like the D10c `plugin_id`
 /// field) shouldn't break downstream callers' struct literals.
 /// External crates must construct via [`WasmConfig::new`]
 /// (which requires the security-mandatory `plugin_id`) and
 /// chained setters; same-crate callers may use a struct literal
 /// directly. Note: `WasmConfig` has **no `Default` impl**
-/// (round-3 dropped it because every constructor needs to pick
+/// (dropped because every constructor needs to pick
 /// an explicit per-plugin id — see `plugin_id` field docs).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -203,7 +203,7 @@ pub struct WasmConfig {
     ///
     /// **Required** (no Default value, no fallback). The
     /// security guarantee is enforced at LOAD TIME, not at the
-    /// type level (PR #1029 round-4 review, 2026-05-02): the
+    /// type level: the
     /// field is `pub String`, so callers within or outside this
     /// crate can technically assign any value (including unsafe
     /// strings like `"../escape"`). The check that prevents
@@ -230,8 +230,8 @@ impl WasmConfig {
     /// Construct a `WasmConfig` for the given plugin id, with
     /// all other fields at their conservative defaults.
     ///
-    /// **Validates the plugin id at construction time** (PR
-    /// #1029 round-7, 2026-05-02). Pre-fix this was infallible
+    /// **Validates the plugin id at construction time.**
+    /// Pre-fix this was infallible
     /// and the security check happened at `WasmPlugin::load`,
     /// which let `WasmConfig::new("../escape")` succeed at
     /// construction and only fail at load time. Now the
@@ -359,7 +359,7 @@ pub struct WasmPlugin {
     /// ADR-027 D10c — sanitised plugin identifier used as the
     /// per-plugin filesystem subdirectory name. Resolved at load
     /// time from `config.plugin_id` (required field, no
-    /// fallback as of PR #1029 round-2 — same-filename plugins
+    /// fallback — same-filename plugins
     /// in different directories used to collide here). Always
     /// passes [`is_safe_plugin_id`] before reaching this field.
     plugin_id: String,
@@ -396,8 +396,8 @@ impl WasmPlugin {
                     // Allow any key (self-signed)
                     vec![] // Empty list means skip trust check in verify_plugin_signature
                 } else if let Some(custom_path) = &config.trusted_keys_path {
-                    // Caller supplied an explicit trust store — honour it
-                    // (#1447 / #1596). Previously the field was silently
+                    // Caller supplied an explicit trust store — honour it.
+                    // Previously the field was silently
                     // ignored and the default location was always used.
                     load_trusted_keys_from(custom_path)?
                 } else {
@@ -552,7 +552,7 @@ impl WasmPlugin {
         // ADR-027 D10c — validate the per-plugin id (required;
         // see WasmConfig.plugin_id docstring) before it's used as
         // a filesystem subdirectory name. There is no file-stem
-        // fallback (PR #1029 round-2 dropped it because two
+        // fallback (dropped because two
         // plugins with the same filename in different
         // directories would have collided into a shared sandbox).
         let plugin_id = resolve_plugin_id(&config.plugin_id, path)?;
@@ -588,7 +588,7 @@ impl WasmPlugin {
 
         // Enforce the same timeout `execute()` uses — `init()` is plugin-
         // controlled code and would otherwise hang plugin loading
-        // indefinitely on a spinning init (#1596 / #1445 follow-up).
+        // indefinitely on a spinning init.
         let init_timeout = self.config.max_execution_time;
         let packed = tokio::time::timeout(init_timeout, init_func.call_async(&mut store, ()))
             .await
@@ -619,7 +619,7 @@ impl WasmPlugin {
     /// This calls the `execute` export with the action name, positional
     /// `parameters`, and trigger context, enforcing timeout and resource
     /// limits. `parameters` are forwarded to the guest's
-    /// `ActionRequest.parameters` field (#1446) — pass an empty slice for
+    /// `ActionRequest.parameters` field — pass an empty slice for
     /// parameter-less actions.
     pub async fn execute(
         &self,
@@ -689,8 +689,7 @@ impl WasmPlugin {
 
     /// Update the capability set this plugin runs with.
     ///
-    /// PR #1029 round-8 review (2026-05-02): the round-7
-    /// change passed the manager's *granted* capability set
+    /// An earlier change passed the manager's *granted* capability set
     /// into `WasmConfig` at load time, which fixed
     /// "init() runs with full manifest set" but turned the
     /// capability list into a one-time snapshot. The
@@ -717,7 +716,7 @@ impl WasmPlugin {
         //
         // We deliberately do NOT call `inherit_stdio()` or `inherit_args()`:
         // a sandboxed plugin must not have ambient access to the daemon's
-        // stdin/stdout/stderr or process arguments (#1596 / #1445 follow-up).
+        // stdin/stdout/stderr or process arguments.
         // WasiCtxBuilder defaults to null stdio, which is what we want.
         let mut wasi_builder = WasiCtxBuilder::new();
 
@@ -764,7 +763,7 @@ impl WasmPlugin {
                 })?;
         }
 
-        // Capability::Network — opt-in to host network access (#1600).
+        // Capability::Network — opt-in to host network access.
         //
         // The previous comment here claimed network was "implicit in WASI",
         // but wasmtime-wasi's default is no host network (no inherited
@@ -850,7 +849,7 @@ impl WasmPlugin {
         // memory size and a metadata cap BEFORE allocating a host buffer.
         // The WASM memory limiter bounds only *guest* memory growth, so a
         // malicious len (e.g. u32::MAX) would otherwise force a multi-GB
-        // host allocation here (#1445).
+        // host allocation here.
         let (ptr, len) = validate_plugin_range(ptr, len, memory.data_size(&*store))?;
 
         let mut buffer = vec![0u8; len];
@@ -869,7 +868,7 @@ impl WasmPlugin {
 const MAX_PLUGIN_STRING_BYTES: usize = 1024 * 1024;
 
 /// Validate a plugin-supplied `(ptr, len)` range before the host allocates a
-/// buffer for it (#1445).
+/// buffer for it.
 ///
 /// `init()` returns a packed ptr/len fully controlled by the plugin. The WASM
 /// memory limiter bounds only *guest* memory, so without this check a plugin
@@ -907,7 +906,7 @@ fn validate_plugin_range(
 struct ActionRequest {
     pub action: String,
     pub context: TriggerContext,
-    /// Positional parameters for the action (#1446). Every bundled WASM
+    /// Positional parameters for the action. Every bundled WASM
     /// guest deserializes a `parameters: Vec<String>` field (OBS
     /// switch_scene → `["scene"]`, Spotify set_volume → `["50"]`, …) with
     /// `#[serde(default)]`. The host previously never serialized this field,
@@ -936,7 +935,7 @@ mod tests {
     #[test]
     fn validate_plugin_range_rejects_an_oversized_length() {
         // A malicious init() returning len = u32::MAX must be rejected
-        // before any host allocation (#1445).
+        // before any host allocation.
         let err = validate_plugin_range(0, u32::MAX, 65_536).unwrap_err();
         assert!(matches!(err, EngineError::PluginLoadFailed(_)), "{err:?}");
     }
@@ -967,7 +966,7 @@ mod tests {
 
     #[test]
     fn test_wasm_config_new_uses_default_field_values() {
-        // PR #1029 round-3: `Default` impl removed; `new(id)` is
+        // `Default` impl removed; `new(id)` is
         // the only constructor and seeds the conservative
         // defaults the old `Default` produced.
         let config = WasmConfig::new("test-plugin").expect("safe id");
@@ -979,7 +978,7 @@ mod tests {
 
     #[test]
     fn wasm_config_new_rejects_unsafe_plugin_id() {
-        // PR #1029 round-7: construction-time validation. An
+        // Construction-time validation. An
         // unsafe id is rejected immediately rather than waiting
         // for `WasmPlugin::load` to fail at runtime.
         for unsafe_id in ["..", "../escape", "/abs", "name with spaces", ""] {
@@ -1006,7 +1005,7 @@ mod tests {
         assert!(!limiter.memory_growing(0, 2 * 1024 * 1024, None).unwrap());
     }
 
-    // ─── #1557: NEGATIVE resource-limit enforcement ────────────────
+    // ─── NEGATIVE resource-limit enforcement ────────────────
     // The resource_limiting_test.rs integration suite only asserts that normal
     // plugins succeed within adequate limits — a regression that stopped
     // enforcing a limit would still pass it. These tests assert the ENFORCEMENT
@@ -1112,7 +1111,7 @@ mod tests {
     #[test]
     fn is_safe_plugin_id_accepts_normal_names() {
         // Character set is the same as
-        // plugin_registry::validate_plugin_id (PR #1029 round-2):
+        // plugin_registry::validate_plugin_id:
         // ASCII alphanumerics + `_` + `-`. NOT `.` — versioned
         // ids belong in the manifest's `version` field, not in
         // the plugin id used for filesystem scoping. This
@@ -1148,7 +1147,7 @@ mod tests {
             "plugin/with/slashes",
             "windows\\style",
             ".hidden",           // dotfile prefix (`.` not in allowlist)
-            "midi-looper-1.2.3", // PR #1029 round-2: `.` no longer allowed
+            "midi-looper-1.2.3", // `.` no longer allowed
             "",                  // empty
             "name with spaces",
             "name\twith\ttab",
@@ -1209,11 +1208,11 @@ mod tests {
 
     #[test]
     fn resolve_plugin_id_errors_when_unsafe() {
-        // Hostile manifest sets an unsafe plugin_id; round-2
-        // dropped the file-stem fallback (it collapsed two
+        // Hostile manifest sets an unsafe plugin_id; the file-stem
+        // fallback was dropped (it collapsed two
         // plugins with the same filename in different
-        // directories into a shared sandbox); round-3 promoted
-        // the invariant to the type system. Reaching this code
+        // directories into a shared sandbox) and
+        // the invariant was later promoted to the type system. Reaching this code
         // path means a caller bypassed the type's validation
         // somehow (set the field directly to an unsafe value);
         // we still defend in depth with a hard error.
@@ -1242,13 +1241,13 @@ mod tests {
 
     #[test]
     fn resolve_plugin_id_distinct_for_same_filename_different_paths() {
-        // PR #1029 review regression test: two plugins loaded
+        // Regression test: two plugins loaded
         // from `/tmp/a/plugin.wasm` and `/opt/b/plugin.wasm`
         // (same filename, different directories) MUST get
         // distinct sandbox subdirs — otherwise they'd share a
         // filesystem sandbox.
         //
-        // Round-3 (this PR): the type system now requires an
+        // The type system now requires an
         // explicit `plugin_id` on `WasmConfig`, eliminating any
         // possibility of path-stem-derived collisions.
         // resolve_plugin_id never sees the file path as a fallback
@@ -1263,7 +1262,7 @@ mod tests {
         );
     }
 
-    // ─── builder pattern + non_exhaustive (PR #1029 round-2/3) ────
+    // ─── builder pattern + non_exhaustive ────
 
     #[test]
     fn wasm_config_new_sets_plugin_id() {
@@ -1284,7 +1283,7 @@ mod tests {
         assert_eq!(config.max_execution_time, Duration::from_secs(2));
     }
 
-    /// #1446 regression. The host wire format MUST carry `parameters` so the
+    /// Regression test. The host wire format MUST carry `parameters` so the
     /// guest's `parameters: Vec<String>` field is populated. Pre-fix the host
     /// `ActionRequest` only serialized `action` + `context`, so every guest
     /// saw `parameters: []` and parameterized actions (OBS switch_scene,

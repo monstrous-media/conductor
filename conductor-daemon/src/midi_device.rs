@@ -219,7 +219,7 @@ pub struct MidiDeviceManager {
     /// Whether currently connected
     is_connected: Arc<Mutex<bool>>,
 
-    /// Device identity for multi-device tagging (v4.20.0 - ADR-009 Phase 2)
+    /// Device identity for multi-device tagging (ADR-009 Phase 2)
     device_id: Option<DeviceId>,
 
     /// SysEx probe coordinator for Universal Identity Request dispatch
@@ -263,7 +263,7 @@ impl MidiDeviceManager {
         }
     }
 
-    /// Set the device identity for multi-device tagging (v4.20.0 - ADR-009 Phase 2)
+    /// Set the device identity for multi-device tagging (ADR-009 Phase 2)
     pub fn set_device_id(&mut self, id: DeviceId) {
         self.device_id = Some(id);
     }
@@ -277,7 +277,7 @@ impl MidiDeviceManager {
         self.probe_coordinator = Some(coordinator);
     }
 
-    /// Get the device identity (v4.20.0 - ADR-009 Phase 2)
+    /// Get the device identity (ADR-009 Phase 2)
     pub fn device_id(&self) -> Option<&DeviceId> {
         self.device_id.as_ref()
     }
@@ -908,20 +908,20 @@ impl Drop for MidiDeviceManager {
     }
 }
 
-/// ADR-039 §4.1 (#1758) — the MIDI [`InputSource`].
+/// ADR-039 §4.1 — the MIDI [`InputSource`].
 ///
 /// Wraps a [`MidiDeviceManager`] (which keeps its existing push-based midir
 /// callback delivery) and tags it with the protocol + endpoint alias the
 /// unified pump needs, plus a live-ready [`InputSourceMetricsHandle`].
 ///
-/// In #1758 this type is defined and conformance-tested but is **not yet** the
+/// This type is defined and conformance-tested but is **not yet** the
 /// thing the daemon wires into the live event path — the manager is still wired
-/// directly (now over a `DeviceEvent<ProtocolEvent>` channel). #1760 adds
-/// `start(tx)` to [`InputSource`] and routes the manager's sends through this
+/// directly (now over a `DeviceEvent<ProtocolEvent>` channel). `start(tx)` was
+/// added to [`InputSource`] to route the manager's sends through this
 /// source's [`metrics_handle`](MidiInputSource::metrics_handle).
 ///
 /// The symbol path `conductor_daemon::midi_device::MidiInputSource` is what the
-/// ADR-039 lifecycle-coverage matrix (#1761) asserts resolves.
+/// ADR-039 lifecycle-coverage matrix asserts resolves.
 pub struct MidiInputSource {
     /// Endpoint alias — the route `from` key this source serves.
     alias: String,
@@ -931,7 +931,7 @@ pub struct MidiInputSource {
     device_id: DeviceId,
     /// The wrapped device manager (retains its existing delivery path).
     manager: MidiDeviceManager,
-    /// Live-ready observability counters (incremented by the #1760 push path).
+    /// Live-ready observability counters (incremented by the push path).
     metrics: InputSourceMetricsHandle,
     /// Intermediate `MidiEvent` receiver retained by [`connect_to_port`](Self::connect_to_port)
     /// so [`start`](InputSource::start) can pump it into the unified channel.
@@ -962,7 +962,7 @@ impl MidiInputSource {
 
     /// Connect the wrapped manager to `port_index`, retaining the intermediate
     /// `MidiEvent` receiver so [`start`](InputSource::start) can pump it into
-    /// the unified channel (#1760). Wraps the manager's existing midir-callback
+    /// the unified channel. Wraps the manager's existing midir-callback
     /// delivery — no behaviour change to how events are produced.
     pub fn connect_to_port(
         &mut self,
@@ -987,7 +987,7 @@ impl MidiInputSource {
         &mut self.manager
     }
 
-    /// Clone the metrics handle so the #1760 push path can increment it from
+    /// Clone the metrics handle so the push path can increment it from
     /// inside the midir callback without locking the hot path.
     pub fn metrics_handle(&self) -> InputSourceMetricsHandle {
         self.metrics.clone()
@@ -1080,7 +1080,7 @@ mod input_source_tests {
 
     #[tokio::test]
     async fn start_pumps_source_events_onto_the_unified_channel() {
-        // ADR-039 #1760: start(tx) wires the source's intermediate stream to the
+        // ADR-039: start(tx) wires the source's intermediate stream to the
         // pump via the §4.3 shed-load policy. Exercised hardware-free through the
         // test channel seam (no real midir port).
         use conductor_core::event_processor::MidiEvent;

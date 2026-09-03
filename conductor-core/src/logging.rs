@@ -65,8 +65,8 @@ pub fn log_dir_from_home(home: &Path) -> PathBuf {
         home.join("Library/Logs/Conductor")
     }
 
-    // Windows is P2 (#2277), but routing its logs to an XDG path would be wrong
-    // whenever it does land, and this is one line.
+    // Windows support is lower priority, but routing its logs to an XDG path
+    // would be wrong whenever it does land, and this is one line.
     #[cfg(target_os = "windows")]
     {
         home.join("AppData/Local/Conductor/Logs")
@@ -320,7 +320,7 @@ pub fn init_logging(config: &LoggingConfig) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-/// Build the rolling file appender, honoring `config.max_files` (#2152).
+/// Build the rolling file appender, honoring `config.max_files`.
 ///
 /// The previous code used `rolling::daily(&config.path, "conductor.log")`,
 /// which rotates daily but keeps **every** rotated file — so the configured
@@ -391,7 +391,7 @@ pub fn filter_from_str(filter_str: &str, default_level: &str) -> EnvFilter {
 mod tests {
     use super::*;
 
-    /// #2579: a released `.app` writes no logs anywhere, so a field bug from a
+    /// A released `.app` writes no logs anywhere, so a field bug from a
     /// non-technical tester arrives with zero diagnostics. Both binaries need a
     /// rotating log FILE, and they must not write to the same one — otherwise
     /// two processes interleave into a single stream and neither is readable.
@@ -427,7 +427,7 @@ mod tests {
         );
     }
 
-    /// #2579: the log directory must be somewhere a non-technical macOS user
+    /// The log directory must be somewhere a non-technical macOS user
     /// can actually be talked to — `~/Library/Logs/Conductor` is the platform
     /// convention (Console.app reads it; Finder ▸ Go ▸ Library gets you there).
     /// `~/.local/share/…` is a Linux convention that macOS Finder hides.
@@ -452,7 +452,7 @@ mod tests {
         );
     }
 
-    /// #2579 (Council, CRITICAL): the old fallback chain was
+    /// The old fallback chain was
     /// `try_from_default_env().or_else(|_| try_new(&filter_str))` — but when
     /// `RUST_LOG` is set and invalid, `filter_str` IS that same invalid string,
     /// so the fallback re-parsed the same bad input and failed again, taking the
@@ -475,7 +475,7 @@ mod tests {
         assert_eq!(filter_from_str("debug", "warn").to_string(), "debug");
     }
 
-    /// #2579 (Council, MAJOR): `RUST_LOG` > `DEBUG` > configured default. Pure,
+    /// `RUST_LOG` > `DEBUG` > configured default. Pure,
     /// so precedence is asserted without racing on process env.
     #[test]
     fn filter_precedence_is_rust_log_then_debug_then_default() {
@@ -484,7 +484,7 @@ mod tests {
         assert_eq!(resolve_filter_str(None, false, "warn"), "warn");
     }
 
-    /// #2579 (Council r3, MAJOR): a flag the user typed must outrank an env var
+    /// A flag the user typed must outrank an env var
     /// they exported once. The daemon folds `DEBUG` into its level BEFORE calling
     /// `resolve_filter_str` (where `--trace`/`--verbose` outrank it), so it passes
     /// `debug: false` — consulting DEBUG a second time would unconditionally
@@ -504,7 +504,7 @@ mod tests {
         assert_eq!(resolve_filter_str(None, true, "info"), "debug");
     }
 
-    /// #2579 (Council, MINOR): with no `HOME`, logs must not be scattered into
+    /// With no `HOME`, logs must not be scattered into
     /// whatever the daemon's working directory happens to be.
     #[test]
     fn log_dir_without_home_does_not_use_the_working_directory() {
@@ -515,7 +515,7 @@ mod tests {
         assert!(fallback.is_absolute());
     }
 
-    /// #2579 (Copilot): when the GUI spawns the daemon, the daemon's stdout is
+    /// When the GUI spawns the daemon, the daemon's stdout is
     /// redirected to `daemon-stdout.log` — which has NO rotation and NO
     /// retention. If the daemon kept its console layer in that situation, every
     /// trace line would be written twice: once to the rotating `daemon.<date>.log`
@@ -533,7 +533,7 @@ mod tests {
         assert!(!console_layer_enabled(false, Some("0")));
     }
 
-    /// #2579 (Copilot): the docs promise `DEBUG=1` turns on debug logging, but
+    /// The docs promise `DEBUG=1` turns on debug logging, but
     /// the GUI pinned its own target to `info` unconditionally, so the promise
     /// held for the daemon and silently failed for the app.
     #[test]
@@ -548,7 +548,7 @@ mod tests {
         );
     }
 
-    /// #2579: the troubleshooting docs have told users to run with `DEBUG=1`
+    /// The troubleshooting docs have told users to run with `DEBUG=1`
     /// for years, but the daemon only ever read `RUST_LOG`, so it was a silent
     /// no-op. Either the docs or the code had to change; the code did.
     #[test]
@@ -564,7 +564,7 @@ mod tests {
         assert!(!debug_env_enabled(Some("false")));
     }
 
-    /// #2579: retention is what stops an always-on daemon filling the disk.
+    /// Retention is what stops an always-on daemon filling the disk.
     /// `component_appender` must honour `max_files` the way `build_file_appender`
     /// already does — a zero must not panic.
     #[test]
@@ -573,7 +573,7 @@ mod tests {
         assert!(component_appender(dir.path(), "daemon", 0).is_ok());
     }
 
-    /// #2151: `init_logging` returns a `Result`, but it used
+    /// `init_logging` returns a `Result`, but it used
     /// `SubscriberInitExt::init()`, which PANICS when a global subscriber is
     /// already installed (e.g. a second call). A function that returns `Result`
     /// must surface that as an `Err`, not abort the process. Calling it twice
@@ -600,7 +600,7 @@ mod tests {
         );
     }
 
-    /// #2152: the rolling appender must honor `max_files` and prune old logs.
+    /// The rolling appender must honor `max_files` and prune old logs.
     /// The previous `rolling::daily(...)` kept every rotated file, so the
     /// retention setting was ignored and the log directory grew without bound.
     /// Seeding more than `max_files` old log files and building the appender
@@ -647,7 +647,7 @@ mod tests {
         );
     }
 
-    /// #2152 (Council): `max_files = 0` must not panic. tracing-appender's prune
+    /// `max_files = 0` must not panic. tracing-appender's prune
     /// computes `len - (max_files - 1)`, which underflows for 0; clamp to 1.
     #[test]
     fn file_appender_does_not_panic_on_zero_max_files() {

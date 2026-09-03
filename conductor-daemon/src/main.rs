@@ -97,18 +97,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Determine config path. Without an explicit `--config`, honour
     // the GUI's active-profile selection from `profiles.json` before
-    // falling back to `<config_dir>/config.toml` (#957).
+    // falling back to `<config_dir>/config.toml`.
     //
-    // Short-circuit on `--config` (#958 post-merge review): only
+    // Short-circuit on `--config`: only
     // consult `get_default_config_dir()` when no explicit path was
     // given. systemd / launchd often launch services with HOME and
     // XDG_CONFIG_HOME unset; an explicit `--config /etc/conductor.toml`
     // must not fail just because the OS-default lookup can't find
     // `$HOME`.
-    // #1318: an explicit `--config` is authoritative — the daemon ADOPTS it
+    // An explicit `--config` is authoritative — the daemon ADOPTS it
     // (overwrites the live config). Track whether the path came from `--config`
     // vs default discovery so adoption happens only in the explicit case.
-    // #2564: default discovery also restores the active-profile IDENTITY —
+    // Default discovery also restores the active-profile IDENTITY —
     // primary source is the daemon's own `active_profile.json` (state dir),
     // with a one-time migration from the GUI's `profiles.json`. Explicit
     // `--config` boots are ephemeral: no identity restore, no persist.
@@ -122,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     if explicit_config {
-        // #1318: an explicit --config is ADOPTED — it overwrites live.toml and
+        // An explicit --config is ADOPTED — it overwrites live.toml and
         // the daemon then boots from live.toml. Say so, so operator triage isn't
         // misled into thinking this path is the live runtime source.
         info!(
@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Verify config file exists.
     //
-    // #1323: the `AwaitingConfig` idle mode (stay up and accept bootstrap
+    // The `AwaitingConfig` idle mode (stay up and accept bootstrap
     // IPCs when no config is resolvable) was never wired, so a missing
     // config is a clean, descriptive exit rather than a recoverable idle
     // state. Distinguish the explicit-path case (operator typo) from the
@@ -233,7 +233,7 @@ fn setup_logging(
     } else if verbose
         || conductor_core::logging::debug_env_enabled(std::env::var("DEBUG").ok().as_deref())
     {
-        // #2579: DEBUG=1 has been documented for years but only ever read by the
+        // DEBUG=1 has been documented for years but only ever read by the
         // (uncalled) core logging module — a silent no-op until now.
         "debug".to_string()
     } else {
@@ -271,7 +271,7 @@ fn setup_logging(
     // Create a reload layer so the filter can be changed at runtime
     let (filter_layer, reload_handle) = reload::Layer::new(filter);
 
-    // #2579: only log to the console when a human is actually watching one. When
+    // Only log to the console when a human is actually watching one. When
     // the GUI spawns us, stdout is the unrotated `daemon-stdout.log` — keeping the
     // console layer there would duplicate every line into a file that grows
     // forever, alongside the rotating `daemon.<date>.log`. That file is for panics
@@ -292,7 +292,7 @@ fn setup_logging(
         None
     };
 
-    // #2579: also write to a rotating file. A released `.app` launches the
+    // Also write to a rotating file. A released `.app` launches the
     // daemon with no terminal attached, so console-only logging means a field
     // bug arrives with zero diagnostics. Console output stays as-is for anyone
     // running the binary by hand.
@@ -339,7 +339,7 @@ fn linux_config_dir(
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let config_home = match xdg_config_home {
         // XDG_CONFIG_HOME wins when set and non-empty — HOME is not consulted,
-        // so a service env with XDG set but HOME unset resolves fine (#1412).
+        // so a service env with XDG set but HOME unset resolves fine.
         Some(x) if !x.is_empty() => x.to_string(),
         // Unset or empty XDG_CONFIG_HOME falls back to $HOME/.config, which is
         // the only branch that actually requires HOME.
@@ -426,7 +426,7 @@ command = "pkill conductor"
 mod tests {
     use super::*;
 
-    // Regression for #1412: a service environment that sets XDG_CONFIG_HOME
+    // Regression: a service environment that sets XDG_CONFIG_HOME
     // but omits HOME must still resolve, using $XDG_CONFIG_HOME/conductor.
     #[test]
     fn linux_config_dir_prefers_xdg_when_home_unset() {

@@ -147,7 +147,7 @@ async fn test_velocity_context_propagation() {
     let action = conductor_core::actions::Action::Delay(1);
 
     // Execute action with context. Assert success rather than discarding the
-    // result, so a regression in the final executor stage is caught (#1504).
+    // result, so a regression in the final executor stage is caught.
     executor
         .execute(action, Some(context))
         .expect("Delay action with velocity context should execute successfully");
@@ -276,7 +276,7 @@ async fn test_end_to_end_pipeline() {
     // Final pipeline stage: execute the matched action (a deterministic
     // Delay(1), ~1 ms sleep). Assert success so the end-to-end test actually
     // verifies the executor stage instead of passing even when execution
-    // fails (#1504).
+    // fails.
     action_executor
         .execute(action.unwrap(), Some(context))
         .expect("matched Delay action should execute successfully end-to-end");

@@ -14,7 +14,7 @@
 //! `test_output_map_update`, `test_existing_raw_port_usage_unchanged`), because
 //! the resolving method `ActionExecutor::resolve_output_port` is private and
 //! not reachable from this integration crate. Not duplicated here to avoid
-//! widening production API surface for a redundant test (#1511).
+//! widening production API surface for a redundant test.
 
 use conductor_core::config::port_binding::DeviceDirection;
 use conductor_core::config::types::{ConnectorDirection, EndpointConfig, EndpointKind};

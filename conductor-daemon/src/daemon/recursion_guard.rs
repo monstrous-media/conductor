@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! MIDI recursion guard (ADR-015 D8) + cascade suppression (issue #555)
+//! MIDI recursion guard (ADR-015 D8) + cascade suppression
 //!
 //! Prevents SendMidi/MidiForward output from being re-ingested as input,
 //! which would cause infinite recursion (feedback loop). Two layers:
@@ -11,7 +11,7 @@
 //!    its fingerprint is recorded; incoming events that fingerprint-match
 //!    a recent send are suppressed. Catches exact-bytes echo only.
 //!
-//! 2. **Per-port blanket suppression** (issue #555, on by default): when
+//! 2. **Per-port blanket suppression** (on by default): when
 //!    `AdvancedSettings::allow_cascade = false` (the default), every
 //!    `SendMidi`/`MidiForward` completion opens a TTL window on the
 //!    *output port*; any subsequent MIDI input on that port within the
@@ -57,7 +57,7 @@ const FNV_OFFSET: u64 = 0xcbf29ce484222325;
 const FNV_PRIME: u64 = 0x100000001b3;
 
 /// MIDI recursion guard: ring buffer for exact-bytes echo detection plus
-/// per-port blanket suppression for cross-note cascade (issue #555).
+/// per-port blanket suppression for cross-note cascade.
 pub struct MidiRecursionGuard {
     /// Ring buffer of (fingerprint, source-device fingerprint, timestamp)
     /// triples (ADR-015 D8 — exact echo). `None` slots are unused (initial
@@ -83,11 +83,11 @@ pub struct MidiRecursionGuard {
     /// back on the very device that originated them — is intentionally NOT caught
     /// by this byte guard (it is indistinguishable from the source replaying its
     /// own notes). Such topologies rely on per-port blanket suppression
-    /// ([`Self::set_blanket_suppression`], issue #555) instead.
+    /// ([`Self::set_blanket_suppression`]) instead.
     entries: [Option<(u64, Option<u64>, Instant)>; RING_SIZE],
     /// Next write position
     write_pos: usize,
-    /// Per-port blanket-suppression "until" timestamps (issue #555).
+    /// Per-port blanket-suppression "until" timestamps.
     /// Inserted by `set_blanket_suppression`, checked by
     /// `is_blanket_suppressed`. Map size is bounded by the number of
     /// distinct active output ports, which is typically <10 in real
@@ -155,7 +155,7 @@ impl MidiRecursionGuard {
         false
     }
 
-    /// Set or extend the blanket-suppression window for a port (issue #555).
+    /// Set or extend the blanket-suppression window for a port.
     /// Called from action completion when `SendMidi`/`MidiForward` writes
     /// to `port`. While the window is active, every MIDI event on that
     /// port is suppressed by [`Self::is_blanket_suppressed`] regardless
@@ -176,8 +176,8 @@ impl MidiRecursionGuard {
         self.blanket_until.insert(port.to_string(), until);
     }
 
-    /// Check whether `port` is inside an active blanket-suppression window
-    /// (issue #555). Returns `false` for ports that never had a window set
+    /// Check whether `port` is inside an active blanket-suppression window.
+    /// Returns `false` for ports that never had a window set
     /// or whose window has expired. Lazily prunes the expired entry from
     /// the map on a `false` result so a port that goes silent doesn't
     /// permanently consume memory.
@@ -330,7 +330,7 @@ mod tests {
         assert!(guard.is_echo(note, None));
     }
 
-    // ── issue #555: per-port blanket suppression ──────────────────
+    // ── Per-port blanket suppression ──────────────────
 
     #[test]
     fn test_blanket_suppression_active_within_ttl() {

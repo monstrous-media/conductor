@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! CLI integration tests for conductor-capture (#1418).
+//! CLI integration tests for conductor-capture.
 //!
 //! conductor-capture is in early development: the session, storage, and
 //! upload paths are not implemented. These tests assert that action
@@ -118,7 +118,7 @@ fn export_fails_and_creates_no_file() {
 
 #[test]
 fn list_still_succeeds() {
-    // Read-only display commands are unaffected by #1418.
+    // Read-only display commands are unaffected.
     let out = run(&["list"], "");
     assert!(
         out.status.success(),

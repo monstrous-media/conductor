@@ -31,7 +31,7 @@ fn test_actions_module_accessible() {
     // Verify actions types are accessible via the old path. Type-only and
     // display-independent, so it runs on Linux too — the display-dependent
     // ActionExecutor construction is split into its own guarded test below, so
-    // this runtime accessibility check is no longer skipped on Linux CI (#1527).
+    // this runtime accessibility check is no longer skipped on Linux CI.
     let _: Option<Action> = None;
 }
 
@@ -44,8 +44,7 @@ fn test_action_executor_default_constructs() {
     // The one display-dependent check: ActionExecutor::default() must still
     // construct (constructor / runtime compatibility). Kept behind the Linux
     // ignore because Enigo::new() panics on a headless runner; the
-    // accessibility / import checks in this file now cover Linux at runtime
-    // (#1527).
+    // accessibility / import checks in this file now cover Linux at runtime.
     let _executor = ActionExecutor::default();
 }
 
@@ -74,7 +73,7 @@ fn test_root_level_imports_work() {
     // Root-level re-exports. Type-only checks that run on all platforms,
     // including Linux — previously skipped on Linux because the
     // ActionExecutor construction shared this test (now in
-    // `test_action_executor_default_constructs`) (#1527).
+    // `test_action_executor_default_constructs`).
     use conductor::{Config, MidiEvent, ProcessedEvent};
 
     let _: Option<Config> = None;

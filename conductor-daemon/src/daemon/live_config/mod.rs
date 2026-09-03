@@ -166,7 +166,7 @@ pub enum ConfigOp {
     /// CAS-checked rollback to `live.toml.known_good`. Loaded by
     /// the daemon at step 3; not transmitted in the op payload.
     ///
-    /// D4.B.4 (#1291) implements the file-side reader in
+    /// D4.B.4 implements the file-side reader in
     /// `compute_candidate`. Surfaces InvalidOp distinctly for
     /// "no known-good recorded yet", "io error on known_good",
     /// and "parse error on known_good" so the operator can
@@ -175,9 +175,9 @@ pub enum ConfigOp {
     /// Break-glass non-CAS rollback. Bypasses CAS at steps 2 AND 11
     /// (KI-A3 fix vs R6 which only fixed step 11). `reason` is
     /// required (non-empty, enforced at IPC framer per KI-B3 and
-    /// re-validated in `compute_candidate` per Council R4).
+    /// re-validated in `compute_candidate`).
     ///
-    /// D4.B.4 (#1291) implements the file-side reader. Same posture
+    /// D4.B.4 implements the file-side reader. Same posture
     /// as [`Self::Rollback`] for failure modes — empty reason still
     /// rejects before any read attempt.
     RollbackForce { reason: String },
@@ -247,7 +247,7 @@ pub enum MutateError {
     #[error("commit task panicked: {0}")]
     Internal(String),
 
-    /// #1320: `try_mutate_replace_whole`'s closure returned `Err(...)`.
+    /// `try_mutate_replace_whole`'s closure returned `Err(...)`.
     /// The candidate config is dropped — no persist, no publish, no
     /// `state_generation` bump. The string carries the closure's
     /// reason (typically the upstream error message, e.g. from
@@ -278,14 +278,14 @@ pub enum MutateError {
 // ────────────────────────────────────────────────────────────────────
 
 /// ADR-034 §D8 audit-outbox state — the SINGLE source of truth the commit
-/// path consults for the audit gate (#2380). Collapsing the prior split
+/// path consults for the audit gate. Collapsing the prior split
 /// `audit_outbox: Option<…>` + `audit_unavailable: bool` into one enum behind
 /// one mutex removes the split-brain risk and lets `resume_audit` heal it at
-/// runtime (Council #2380 refinement #2). Held as `Arc<Mutex<AuditState>>`
+/// runtime. Held as `Arc<Mutex<AuditState>>`
 /// so `clone_for_commit`'s detached task and `resume_audit` share it.
 pub(crate) enum AuditState {
     /// Audit recording not enabled (tests / non-audited deployments). No gate —
-    /// mutations proceed without recording. (`audit_outbox == None` pre-#2380.)
+    /// mutations proceed without recording.
     Disabled,
     /// Outbox open + recording. `commit_locked` enqueues here; the gate passes.
     Available(Arc<std::sync::Mutex<super::audit::AuditOutbox>>),
@@ -296,7 +296,7 @@ pub(crate) enum AuditState {
     Unavailable(String),
 }
 
-/// Outcome of [`LiveConfig::resume_audit`] (#2380).
+/// Outcome of [`LiveConfig::resume_audit`].
 #[derive(Debug)]
 pub enum ResumeOutcome {
     /// Audit was already healthy (`Available`) or never enabled (`Disabled`) —
@@ -346,7 +346,7 @@ pub struct LiveConfig {
     /// [`arm_commit_gate`](Self::arm_commit_gate), the spawned commit task
     /// blocks on this `Notify` before running `commit_locked`, so a test can
     /// deterministically cancel the caller's `mutate` future while the commit
-    /// is still pending instead of racing a tight timeout (#1522).
+    /// is still pending instead of racing a tight timeout.
     #[cfg(any(test, feature = "test-helpers"))]
     commit_gate: Arc<std::sync::Mutex<Option<Arc<tokio::sync::Notify>>>>,
 }
@@ -377,8 +377,8 @@ impl CanonicalSerialiser for DefaultCanonicalSerialiser {
 /// `NORMALIZER_VERSION` bump changes the digest, so the revision bumps on
 /// purpose.
 ///
-/// `pub(crate)` so the `ConfigDriftStatus` IPC handler (ADR-034 §D2 / D4.C,
-/// #1901) can derive an on-disk config's revision using the SAME normalizer
+/// `pub(crate)` so the `ConfigDriftStatus` IPC handler (ADR-034 §D2 / D4.C)
+/// can derive an on-disk config's revision using the SAME normalizer
 /// the live snapshot uses — comparing a `canonical::serialise` hash against a
 /// `revision_for` hash would spuriously report drift on every endpoint-bearing
 /// config.
@@ -465,7 +465,7 @@ impl LiveConfig {
     /// **The daemon BOOT must NOT use this** — a freshly-loaded `live.toml` is the
     /// *first published snapshot*, not a sentinel, and `handle_get_config_body`
     /// blanks the gen-0 sentinel. The boot uses [`Self::new_published`] so that
-    /// config is served at gen 1 (#2533: otherwise a cold-booted daemon's
+    /// config is served at gen 1 (otherwise a cold-booted daemon's
     /// `GetConfigBody` returns an empty body and the GUI falls back to stale
     /// `config.toml`).
     ///
@@ -477,7 +477,7 @@ impl LiveConfig {
         Self::new_with_paths_at(initial_config, paths, Arc::new(RealRuleCompiler::new()), 0)
     }
 
-    /// #2533: build a `LiveConfig` whose initial snapshot IS the first published
+    /// Build a `LiveConfig` whose initial snapshot IS the first published
     /// snapshot — `state_generation = 1` (ADR-034 KI-A2/R6-A8 "first published =
     /// 1"). Used by the daemon BOOT: a `live.toml` loaded at startup is already
     /// the canonical, persisted, `DaemonStartup`-audited config — it is the live
@@ -516,7 +516,7 @@ impl LiveConfig {
 
     /// Shared seed. `initial_generation` is `0` (uninitialised sentinel — `new` /
     /// `new_with_paths`) or `1` (first published snapshot — `new_published` /
-    /// `new_published_with_paths`, i.e. the daemon boot). #2533.
+    /// `new_published_with_paths`, i.e. the daemon boot).
     fn new_with_paths_at(
         initial_config: Config,
         paths: LivePaths,
@@ -610,10 +610,10 @@ impl LiveConfig {
                     AuditState::Available(Arc::new(std::sync::Mutex::new(outbox)));
             }
             Err(e) => {
-                // §D8 sub-slice C (#2296): audit recording was requested but the
+                // §D8 sub-slice C: audit recording was requested but the
                 // outbox could not be opened. Mark the daemon audit-unavailable so
                 // `commit_locked` refuses ConfigChange mutations fail-closed —
-                // rather than silently running un-audited (the pre-#2296 bug). The
+                // rather than silently running un-audited. The
                 // daemon also surfaces this as the `AuditDegraded` lifecycle state
                 // at startup (see `EngineManager::run`).
                 tracing::error!(
@@ -632,7 +632,7 @@ impl LiveConfig {
         self
     }
 
-    /// ADR-034 §D8 sub-slice C (#2296): `true` when audit recording was requested
+    /// ADR-034 §D8 sub-slice C: `true` when audit recording was requested
     /// (`with_audit_outbox`) but the outbox failed to open, so config mutations are
     /// refused fail-closed. The daemon reads this at startup to enter
     /// `AuditDegraded`. (`false` both when audit is healthy and when it was never
@@ -655,15 +655,15 @@ impl LiveConfig {
         )
     }
 
-    /// ADR-034 §D8 / #2380 — operator recovery from the fail-closed
+    /// ADR-034 §D8 — operator recovery from the fail-closed
     /// audit-unavailable state (`conductorctl audit resume`).
     ///
     /// Holds `mutate_lock` for the whole operation so it serialises with
     /// `commit_locked` (no commit can observe a half-healed gate, and the
-    /// rotation can't race an in-flight append — Council #2380 #3). Only acts on
+    /// rotation can't race an in-flight append). Only acts on
     /// `Unavailable`; `Available`/`Disabled` are a no-op `AlreadyHealthy`.
     ///
-    /// Recovery (operator-gated, never automatic — Council #2380 #1): reopen the
+    /// Recovery (operator-gated, never automatic): reopen the
     /// outbox; if it's still corrupt, rotate the file aside to
     /// `audit-outbox.log.corrupt-<ms>` (preserving it for forensics), fsync the
     /// parent dir so the rename survives power loss, open a FRESH chain, and
@@ -674,7 +674,7 @@ impl LiveConfig {
     /// failure the gate is left `Unavailable` and an error naming the rotated
     /// file is returned (fail-closed preserved).
     ///
-    /// KNOWN LIMITATION (Slice 1, #2380): a crash in the narrow window between the
+    /// KNOWN LIMITATION: a crash in the narrow window between the
     /// `rename` and the `ChainReset` write leaves the canonical path missing, so
     /// the next daemon boot auto-initialises a fresh empty chain WITHOUT an
     /// in-chain `ChainReset` attestation — the integrity break is then evidenced
@@ -685,7 +685,7 @@ impl LiveConfig {
     /// corrupt file via a hardlink) is deferred: this is an attended, operator-run
     /// recovery; normal-operation fail-closed protection is unaffected; and a
     /// missing / freshly-init'd chain on the next boot still trips downstream audit
-    /// monitoring (Council #2384 — 2/3 GO for Slice 1 with this documented gap).
+    /// monitoring.
     pub async fn resume_audit(&self, operator: String) -> Result<ResumeOutcome, MutateError> {
         let _guard = self.mutate_lock.lock().await;
 
@@ -830,8 +830,8 @@ impl LiveConfig {
     /// before running `commit_locked`. Returns the `Notify`; the test releases
     /// the commit by calling `notify_one()`. This lets a test deterministically
     /// drop the caller's `mutate` future while the commit is pending (forcing
-    /// the KI-A1 cancellation path) instead of racing a timeout (#1522). Gated
-    /// behind the `test-helpers` feature (#1608).
+    /// the KI-A1 cancellation path) instead of racing a timeout. Gated
+    /// behind the `test-helpers` feature.
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn arm_commit_gate(&self) -> Arc<tokio::sync::Notify> {
         let notify = Arc::new(tokio::sync::Notify::new());
@@ -843,7 +843,7 @@ impl LiveConfig {
     /// entry point retained for backward compat with the existing
     /// `live_config_mutate.rs` suite. Resolves paths from env.
     ///
-    /// **Test-only.** Gated behind the `test-helpers` feature (#1608)
+    /// **Test-only.** Gated behind the `test-helpers` feature
     /// so a downstream lib consumer can't reach for the
     /// inject-arbitrary-compiler seam by accident. CI and pre-push
     /// gates use `--all-features` which activates the gate; see
@@ -867,13 +867,13 @@ impl LiveConfig {
     /// corrupt LiveConfig if called from production code.**
     ///
     /// Replaces the current snapshot with a synthesised one. Used by
-    /// the overflow regression test (#1325) to inject
+    /// the overflow regression test to inject
     /// `state_generation = u64::MAX` so `mutate()` actually exercises
     /// the `checked_add` overflow path (KI-A4). Pre-fix, the
     /// integration test only asserted on the std-lib `checked_add`
     /// behaviour without driving `LiveConfig` at all.
     ///
-    /// Gated behind the `test-helpers` feature (#1608) — `cfg(test)`
+    /// Gated behind the `test-helpers` feature — `cfg(test)`
     /// alone doesn't reach integration tests in `tests/` since those
     /// link the crate as a normal lib. CI and pre-push gates use
     /// `--all-features` which activates the gate.
@@ -933,7 +933,7 @@ impl LiveConfig {
 
         // Step 3: compute candidate per op. `compute_candidate` is
         // async because the Rollback path reads from disk via
-        // `spawn_blocking` (#1607) — the await yields back to the
+        // `spawn_blocking` — the await yields back to the
         // runtime so a slow disk doesn't stall the executor.
         let candidate = self.compute_candidate(&op, &snapshot_before).await?;
 
@@ -941,7 +941,7 @@ impl LiveConfig {
         // bytes. `Config::load` calls `validate_for_loading` (rejecting
         // shell-chaining and other security-sensitive patterns); the live
         // path used to skip it, so a malicious or malformed config could be
-        // ReplaceWhole-d or Rollback-ed past the gate (#1475). MarkKnownGood
+        // ReplaceWhole-d or Rollback-ed past the gate. MarkKnownGood
         // doesn't change config bytes — its candidate is the current
         // snapshot, already validated — so it's exempt.
         if !matches!(op, ConfigOp::MarkKnownGood) {
@@ -969,7 +969,7 @@ impl LiveConfig {
         // MarkKnownGood doesn't change config bytes — `commit_locked`
         // sources publish_config/rules/revision from snapshot_now per
         // R5-C1, so the staged compile + canonical work would be
-        // discarded. Skip it for MarkKnownGood (Council R1 D4.A.3.1).
+        // discarded. Skip it for MarkKnownGood (D4.A.3.1).
         // For all other ops, run the full staging pipeline.
         let (compiled, canonical_bytes, new_revision) = if matches!(op, ConfigOp::MarkKnownGood) {
             // Defaults; commit_locked uses snapshot_now's values for
@@ -997,7 +997,7 @@ impl LiveConfig {
 
         // Step 8: persist-target planning — known_good_revision is
         // computed INSIDE commit_locked from snapshot_now (TOCTOU
-        // fix per Council R1: a concurrent MarkKnownGood between
+        // fix: a concurrent MarkKnownGood between
         // steps 1 and 11 would otherwise see the stale writer
         // publish with the pre-MarkKnownGood marker value, silently
         // clobbering it).
@@ -1021,12 +1021,12 @@ impl LiveConfig {
         // for cancellation safety; the previous pattern
         // (`tokio::spawn(...).await`) silently lost results on caller
         // cancellation because awaiting the JoinHandle is itself
-        // cancellable. Round-2 Council fix.
+        // cancellable.
         let live = self.clone_for_commit();
         let prov_for_audit = provenance;
         let (tx, rx) = oneshot::channel::<Result<MutationOutcome, MutateError>>();
         tokio::spawn(async move {
-            // #1522: test-only barrier — when armed, block the detached commit
+            // Test-only barrier — when armed, block the detached commit
             // before it runs/publishes so a test can deterministically cancel
             // the caller's `mutate` future while the commit is still pending.
             // No-op (and compiled out) without the `test-helpers` feature.
@@ -1065,7 +1065,7 @@ impl LiveConfig {
             // catches the panic, drops the closure, drops `tx`). The
             // panic trace is logged by tokio's default panic hook.
             // Note: caller-future cancellation does NOT reach here
-            // (that drops `rx`, not `tx`). Council R4–R5 fix.
+            // (that drops `rx`, not `tx`).
             Err(MutateError::Internal(
                 "commit task ended without producing a result — \
                  check daemon logs for a tokio panic trace"
@@ -1120,7 +1120,7 @@ impl LiveConfig {
         .await
     }
 
-    /// #1320 fallible variant of [`mutate_replace_whole`]: closure
+    /// Fallible variant of [`mutate_replace_whole`]: closure
     /// returns `Result<(), String>`. On `Err(msg)`, the candidate
     /// config is dropped and the helper returns
     /// [`MutateError::MutatorAborted`] — NO persist, NO publish, NO
@@ -1135,8 +1135,7 @@ impl LiveConfig {
     /// has no return signal — so the publish ran regardless. A
     /// failed apply would still advance `state_generation` and write
     /// `live.toml`, spuriously invalidating pending plans and
-    /// emitting an audit-log entry for a no-op mutation. Clawpatch
-    /// HIGH-severity finding (#1320).
+    /// emitting an audit-log entry for a no-op mutation.
     ///
     /// ## Contract
     ///
@@ -1198,7 +1197,7 @@ impl LiveConfig {
     /// derived from `snapshot_now` (loaded inside the lock), NOT
     /// from `snapshot_before` — concurrent MarkKnownGood between
     /// step 1 and step 11 must not be silently clobbered (TOCTOU
-    /// fix per Council R1).
+    /// fix).
     #[allow(clippy::too_many_arguments)]
     async fn commit_locked(
         &self,
@@ -1223,7 +1222,7 @@ impl LiveConfig {
         // and any state advance, so an (impossible-in-practice, `Provenance` is
         // plain data) serialization failure can never strand a half-applied
         // mutation. Computed unconditionally but only consumed when the outbox
-        // is enabled. (cloud-review.)
+        // is enabled.
         let provenance_json = if self.is_audit_available() {
             Some(serde_json::to_string(&provenance).map_err(|e| {
                 MutateError::Internal(format!("serialize provenance for audit outbox: {e}"))
@@ -1253,9 +1252,7 @@ impl LiveConfig {
         // `snapshot_now == snapshot_before` logically. But sourcing
         // from `snapshot_now` makes the invariant "MarkKnownGood
         // publishes a snapshot whose `revision` equals the marker"
-        // *structurally* true, not just CAS-implied. Council R2
-        // round-3 (Sonnet 4.6) flagged the latter as a latent
-        // correctness concern.
+        // *structurally* true, not just CAS-implied.
         let (publish_config, publish_rules, publish_revision, new_known_good) =
             match op_kind_for_known_good {
                 MarkKnownGoodHint::Mark => (
@@ -1270,7 +1267,7 @@ impl LiveConfig {
                     // The `Mark` arm above doesn't reference `compiled`,
                     // so the borrow checker accepts the move from this
                     // arm. CompiledRuleSet's per-rule compile cost is
-                    // load-bearing on the hot reconfigure path (#1610).
+                    // load-bearing on the hot reconfigure path.
                     Arc::new(compiled),
                     new_revision,
                     snapshot_now.known_good_revision,
@@ -1283,7 +1280,7 @@ impl LiveConfig {
         // ABORT the mutation before touching disk — audit-on-critical-path
         // (§D8.2): a ConfigChange that cannot be recorded must not proceed.
         // (The 8-failure → AuditDegraded escalation is sub-slice C.)
-        // §D8 sub-slice C (#2296) / #2380: consult the unified audit gate ONCE.
+        // §D8 sub-slice C: consult the unified audit gate ONCE.
         // `Unavailable` (outbox failed to open) → refuse the mutation fail-closed
         // BEFORE persist (audit-on-critical-path, §D8.2): nothing is published.
         // `Available` → clone the outbox Arc to enqueue against; `Disabled` → no
@@ -1291,7 +1288,7 @@ impl LiveConfig {
         // append await. Safe to release before the append: `commit_locked` holds
         // `mutate_lock` (above) for the whole window, and `resume_audit` (the only
         // writer of `audit_state`) also takes `mutate_lock`, so the state cannot
-        // change between here and the append (Council #2380 #3).
+        // change between here and the append.
         let recording_outbox: Option<Arc<std::sync::Mutex<super::audit::AuditOutbox>>> = {
             let state = self.audit_state.lock().unwrap_or_else(|p| p.into_inner());
             match &*state {
@@ -1341,7 +1338,7 @@ impl LiveConfig {
         // inside the lock — the staged `canonical_bytes` from outside
         // the lock would describe `snapshot_before`, NOT the
         // freshly-confirmed `snapshot_now`. Symmetry with
-        // `op_kind_for_known_good`'s TOCTOU fix (Council R1).
+        // `op_kind_for_known_good`'s TOCTOU fix.
         //
         // Failure surfaces as `MutateError::Internal` — we've already
         // passed CAS at step 11 and updated the in-memory snapshot
@@ -1431,7 +1428,7 @@ impl LiveConfig {
         // when CAS passes), so they're mathematically the same, but
         // sourcing from the published values makes the contract
         // structurally consistent: "the outcome describes what was
-        // published." Council R5 fix.
+        // published."
         Ok(MutationOutcome {
             applied_generation: next_generation,
             applied_revision: publish_revision,
@@ -1444,7 +1441,7 @@ impl LiveConfig {
     ///
     /// Async because the Rollback / RollbackForce branches read
     /// `live.toml.known_good` from disk via `tokio::task::spawn_blocking`
-    /// (#1607) — a slow or hung disk on that path used to stall the
+    /// — a slow or hung disk on that path used to stall the
     /// tokio worker thread because the prior implementation called
     /// `std::fs::read` synchronously from inside the surrounding async
     /// `mutate()`. The other op branches are pure compute and resolve
@@ -1465,27 +1462,26 @@ impl LiveConfig {
                 // Defense in depth: IPC framer enforces non-empty per
                 // KI-B3, but we re-validate in the daemon so a buggy
                 // or compromised IPC path can't bypass the contract.
-                // Council R4 fix per DeepSeek.
                 Err(MutateError::InvalidOp(
                     "RollbackForce.reason must be non-empty (defense in depth; IPC framer also enforces)".to_string(),
                 ))
             }
             ConfigOp::Rollback | ConfigOp::RollbackForce { .. } => {
-                // D4.B.4 (#1291): read `live.toml.known_good` from disk
+                // D4.B.4: read `live.toml.known_good` from disk
                 // and parse it as `Config`. The bytes are the source of
                 // truth for "what to roll back to" — the snapshot's
                 // `known_good_revision` is only the *content hash* of
                 // those bytes (audit-only), so we can't reconstruct the
                 // Config tree from the snapshot alone.
                 //
-                // Error posture (Council R1 from D4.A.2): InvalidOp
+                // Error posture (from D4.A.2): InvalidOp
                 // rather than a silent identity-mutation. Three failure
                 // modes surface distinctly so the operator can diagnose:
                 //   - file absent → "no known-good snapshot"
                 //   - file unreadable → "io error on known_good"
                 //   - file present-but-corrupt → "parse error on known_good"
                 //
-                // #1607: drive the read via `tokio::task::spawn_blocking`
+                // Drive the read via `tokio::task::spawn_blocking`
                 // so a slow/hung disk can't stall the executor. The
                 // closure owns the path clone; the `await` yields back
                 // to the runtime, so other tasks make progress while

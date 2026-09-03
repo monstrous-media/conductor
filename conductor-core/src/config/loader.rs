@@ -55,8 +55,6 @@ pub fn normalize_to_endpoints(
 /// field/variant names, honoring any `#[serde(rename)]`) — so a future internal
 /// Rust rename that preserves the wire name does NOT change the hash. The
 /// version is folded in so a deliberate lowering change bumps the digest.
-///
-/// (Defined here in Slice 4; wired into the live-config CAS path in Slice 9.)
 pub fn canonical_endpoint_digest(endpoints: &[EndpointConfig]) -> ConfigRevision {
     let mut sorted: Vec<&EndpointConfig> = endpoints.iter().collect();
     sorted.sort_by(|a, b| a.alias.cmp(&b.alias));
@@ -118,7 +116,7 @@ impl Config {
         Ok(())
     }
 
-    /// Reject the legacy I/O blocks that ADR-035 removed (#2124).
+    /// Reject the legacy I/O blocks that ADR-035 removed.
     ///
     /// The singular `[device]` and the plural `[[devices]]` / `[[bindings]]` /
     /// `[[connectors]]` blocks are no longer `Config` fields, and `Config` has
@@ -144,7 +142,7 @@ impl Config {
         // Legacy top-level I/O forms removed in ADR-035, matched by their BLOCK
         // shape: `[device]` is a table; the plural `[[devices]]` / `[[bindings]]`
         // / `[[connectors]]` are arrays-of-tables. We deliberately key off the
-        // value TYPE, not just the name (Copilot review): a scalar that merely
+        // value TYPE, not just the name: a scalar that merely
         // shares one of these names (e.g. `device = "x"`) is not a legacy I/O
         // block, so it falls through to the parser rather than being rejected
         // here with a block-shaped error message.
@@ -210,7 +208,7 @@ impl Config {
             // actionable message (serde would otherwise drop it silently).
             Self::check_removed_route_phase(&contents)?;
 
-            // #2124: reject the legacy `[device]` / `[[devices]]` /
+            // Reject the legacy `[device]` / `[[devices]]` /
             // `[[bindings]]` / `[[connectors]]` I/O blocks. They are no longer
             // Config fields and `Config` has no `deny_unknown_fields`, so the
             // parse below would silently drop them — surface the migration to
@@ -262,7 +260,7 @@ impl Config {
     /// removed-block checks `load()` applies before deserializing): reject the
     /// removed route `phase` field (ADR-036 Phase 3) and the legacy
     /// `[device]`/`[[devices]]`/`[[bindings]]`/`[[connectors]]` I/O blocks
-    /// (ADR-035 / #2124) with actionable migration errors.
+    /// (ADR-035) with actionable migration errors.
     ///
     /// Exposed so callers that parse config content directly (e.g. the GUI's
     /// additive template-merge, which can't go through `load()`'s path-based
@@ -361,7 +359,7 @@ impl Config {
             canonical_parent.join(filename)
         };
 
-        // Security (#1437): atomic write via an UNPREDICTABLE temp file opened
+        // Security: atomic write via an UNPREDICTABLE temp file opened
         // with O_EXCL (`create_new`). The previous code used a predictable
         // sibling `config.tmp` opened with `create(true).truncate(true)`, which
         // FOLLOWS and TRUNCATES a pre-existing symlink at that path — an
@@ -585,12 +583,12 @@ impl Config {
             global_mappings: vec![],
             logging: None,
             advanced_settings: Default::default(),
-            last_selected_mode: None, // v4.10.9: No default selected mode
+            last_selected_mode: None, // No default selected mode
             default_mode: None,
-            led: None,           // Issue #324: No LED config by default (backward compat)
-            event_console: None, // Issue #325: No event console config by default
-            per_app_modes: None, // ADR-040 D3: no per-app mode auto-switching by default
-            routes: vec![],      // ADR-031 P2: empty by default; populated via [[routes]]
+            led: None,                    // No LED config by default (backward compat)
+            event_console: None,          // No event console config by default
+            per_app_modes: None,          // ADR-040 D3: no per-app mode auto-switching by default
+            routes: vec![],               // ADR-031 P2: empty by default; populated via [[routes]]
             security: Default::default(), // ADR-027 §D10b: sandbox enforced, unsandboxed allowed
             mcp: super::types::McpConfig::default(),
             config_meta: Default::default(), // ADR-034 §D9: managed source, notify-only watcher
@@ -616,7 +614,7 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    /// RAII guard for safely changing working directory in tests (v4.10.12).
+    /// RAII guard for safely changing working directory in tests.
     /// Automatically restores original directory on drop (even on panic).
     /// This prevents test pollution when tests run sequentially.
     ///
@@ -1190,7 +1188,7 @@ mod tests {
             std::env::temp_dir().join(format!("conductor_rel_test_{}", std::process::id()));
         std::fs::create_dir_all(&temp_subdir).unwrap();
 
-        // v4.10.12: Use RAII guard to ensure directory restoration even on panic
+        // Use RAII guard to ensure directory restoration even on panic
         let _guard = WorkingDirGuard::new(&temp_subdir).unwrap();
 
         let config = Config::default_config();
@@ -1244,7 +1242,7 @@ mod tests {
         let _ = std::fs::remove_file(test_file);
     }
 
-    /// #1437: `Config::save` used a PREDICTABLE sibling temp path
+    /// `Config::save` used a PREDICTABLE sibling temp path
     /// (`<target>.tmp`) opened with `create(true).truncate(true)`, which follows
     /// and truncates a pre-existing symlink there. An attacker who can write to
     /// the (allowed) directory could plant `config.tmp -> victim` and have the

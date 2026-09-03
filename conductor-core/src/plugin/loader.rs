@@ -196,7 +196,7 @@ impl PluginLoader {
     /// semantic version comparison (major version must match).
     fn is_version_compatible(&self, _plugin_version: &str) -> bool {
         // TODO: Implement semantic version comparison
-        // For v2.3.0, accept all versions (development mode)
+        // For now, accept all versions (development mode)
         true
     }
 

@@ -17,7 +17,7 @@
 //!    to the legacy config path; if nothing resolves there either, the
 //!    daemon exits with a descriptive error. (The
 //!    `LifecycleState::AwaitingConfig` idle mode this outcome was named
-//!    for was never wired and is reserved — see #1323.)
+//!    for was never wired and is reserved.)
 //!
 //! Audit-side recording of which source was loaded happens at the
 //! caller (it has access to the `LiveConfig` + `AuditLogger`); this
@@ -53,9 +53,7 @@ pub enum StartupLoadOutcome {
         /// `live.toml` was present-but-invalid — the caller
         /// warn-logs the rejection alongside the "recovered from
         /// known-good" message so operators can diagnose the
-        /// corruption without grepping for two separate log lines
-        /// (Council #1298 round 2 fix: prior shape silently dropped
-        /// the diagnostic on the successful-recovery path).
+        /// corruption without grepping for two separate log lines.
         ///
         /// Empty for the `Live` happy path (no prior rejections).
         prior_rejections: Vec<LoadRejection>,
@@ -63,13 +61,13 @@ pub enum StartupLoadOutcome {
     /// Neither file is present or parses. The caller falls through to the
     /// legacy config path; an unresolvable config ultimately exits with a
     /// descriptive error (the `LifecycleState::AwaitingConfig` idle mode
-    /// this is named for is reserved/unwired — ADR-034 §D4.2, #1323).
+    /// this is named for is reserved/unwired — ADR-034 §D4.2).
     AwaitingConfig {
         /// Diagnostic explaining why each PRESENT-BUT-INVALID source
         /// was rejected. **Absent files are deliberately silent** —
         /// `LoadRejectionReason::NotPresent` is the common
         /// fresh-install signal and would noise up operator logs
-        /// if recorded. Council #1298 round 3 clarification: empty
+        /// if recorded. Empty
         /// `Vec` therefore means "both files genuinely absent
         /// (fresh install)"; a populated entry means "this specific
         /// file was present but unreadable/unparseable, and here's
@@ -140,7 +138,7 @@ pub fn try_load_chain(paths: &LivePaths) -> StartupLoadOutcome {
             // can warn-log "loaded known-good because live.toml
             // was rejected for X" — a single source of truth for
             // the operator-facing diagnostic, instead of dropping
-            // it on the floor (Council #1298 round 2).
+            // it on the floor.
             return StartupLoadOutcome::Loaded {
                 config: Box::new(config),
                 loaded_from: LoadedFrom::KnownGoodRecovery {
@@ -167,7 +165,7 @@ pub fn try_load_chain(paths: &LivePaths) -> StartupLoadOutcome {
 /// (present-but-bad needs operator attention) or stay silent
 /// (not-present is normal for fresh installs).
 ///
-/// Council #1298 round 1 fix: the prior implementation used
+/// The prior implementation used
 /// `path.exists()` then `fs::read()` — a TOCTOU race where a file
 /// deleted between the check and the read got misclassified as
 /// `ReadFailed` instead of `NotPresent`, polluting the rejection
@@ -186,7 +184,7 @@ fn try_load_one(path: &std::path::Path) -> Result<Config, LoadRejectionReason> {
         .map_err(|e| LoadRejectionReason::ParseFailed(format!("invalid utf-8: {e}")))?;
     let config: Config =
         toml::from_str(text).map_err(|e| LoadRejectionReason::ParseFailed(e.to_string()))?;
-    // Apply the same security-sensitive checks `Config::load` runs (#1475).
+    // Apply the same security-sensitive checks `Config::load` runs.
     // A persisted live.toml / known-good snapshot that fails the legacy
     // validator (e.g. shell-action chaining) must not be admitted into
     // the live-config startup chain.
@@ -269,7 +267,7 @@ name = "{mode_name}"
 
     #[test]
     fn live_toml_rejected_when_validation_fails() {
-        // #1475: a persisted config with shell-action chaining (or any
+        // A persisted config with shell-action chaining (or any
         // other validate_for_loading-rejected pattern) must be rejected
         // by the live-config startup chain, mirroring Config::load.
         // Before the fix, try_load_one only parsed and the security
@@ -309,7 +307,7 @@ action = { type = "Shell", command = "echo ok; rm -rf /tmp/x" }
         // chain falls through to known_good AND records the
         // rejection so the caller can warn-log it.
         //
-        // Council #1298 round 2 pin: `prior_rejections` MUST carry
+        // `prior_rejections` MUST carry
         // the live.toml ParseFailed rejection through to the
         // Loaded(KnownGoodRecovery) outcome — without it the
         // operator can't diagnose WHY recovery happened.
@@ -344,7 +342,7 @@ action = { type = "Shell", command = "echo ok; rm -rf /tmp/x" }
 
     #[test]
     fn known_good_recovery_when_live_absent_has_empty_prior_rejections() {
-        // Council #1298 round 3 test-gap fix: prior_rejections is
+        // prior_rejections is
         // ONLY populated when live.toml was present-but-invalid,
         // not when it was genuinely absent (NotPresent is silent).
         // The recovery-from-absent-live case must have an empty
@@ -375,7 +373,7 @@ action = { type = "Shell", command = "echo ok; rm -rf /tmp/x" }
     fn live_toml_happy_path_has_empty_prior_rejections() {
         // Inverse pin: when live.toml loads directly, prior_rejections
         // is empty — no "rejections from past attempts" leaking into
-        // the happy path. (Council #1298 round 2.)
+        // the happy path.
         let (_dir, paths) = fresh_paths();
         write_valid_config(&paths.live, "happy");
         match try_load_chain(&paths) {

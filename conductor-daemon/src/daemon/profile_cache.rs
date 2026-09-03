@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Profile cache for fast profile switching (Issue #355 — R770: <50ms target).
+//! Profile cache for fast profile switching (<50ms target).
 //!
 //! Pre-parses and validates profile configs so that profile switching avoids
 //! filesystem I/O and re-validation on the hot path. Configs are cached after
@@ -279,7 +279,7 @@ impl ProfileCache {
 
         // Run schema validation.
         //
-        // #891: validation warnings here flood startup logs. The bootstrap
+        // Validation warnings here flood startup logs. The bootstrap
         // re-validates every cached profile (one INFO line per profile may
         // already be `loaded=22`); raising each profile's per-mapping warning
         // to `warn!` produces 22 × N lines of duplicate noise. The active

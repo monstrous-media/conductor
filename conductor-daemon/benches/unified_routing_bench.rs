@@ -8,13 +8,13 @@
 )]
 
 //! Unified routing passthrough-latency benchmark + CI gate
-//! (ADR-036 / ADR-037 Slice 9, #1667; thresholds from ADR-036 D7).
+//! (ADR-036 / ADR-037 Slice 9; thresholds from ADR-036 D7).
 //!
 //! Measures the per-event cost of the dispatch hot path for a single
 //! passthrough route: the 4-sub-bucket rule-engine matcher
 //! (`CompiledRuleSet::match_event`, conductor-core) followed by the
 //! post-mapping `RouteEngine::route_destinations` (conductor-daemon).
-//! Per Council R2 §9 this is "dispatch-only" — it excludes async action
+//! This is "dispatch-only" — it excludes async action
 //! execution and real port I/O.
 //!
 //! Custom harness (`harness = false`): runs [`N_EVENTS`] timed
@@ -121,7 +121,7 @@ fn build_pipeline() -> Pipeline {
 fn run_once(p: &Pipeline) {
     let matched = p.rule_set.match_event(black_box(&p.event), 0, Some("pads"));
     black_box(&matched);
-    // ADR-039 #1759: measure the byte-core (the production hot path). The
+    // ADR-039: measure the byte-core (the production hot path). The
     // `route_destinations(&ProtocolEvent)` shim delegates here for Input; the
     // hot path calls this directly with already-extracted bytes, so this is
     // the apples-to-apples comparison against pre-refactor main (where this

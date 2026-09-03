@@ -15,7 +15,7 @@
 //! `action_executor::midi` unit tests (`test_send_midi_note_on_encoding` …
 //! `test_send_midi_aftertouch_encoding`, `test_send_midi_in_sequence`,
 //! `test_send_midi_with_repeat`, `test_send_midi_error_returns_dispatch_error`),
-//! so it is intentionally not duplicated here (#1525).
+//! so it is intentionally not duplicated here.
 
 use conductor_core::{Action, ActionConfig, Config, MidiMessageParams, MidiMessageType};
 
@@ -451,7 +451,7 @@ actions = [
                 _ => panic!("Expected SendMidi action"),
             }
 
-            // #1525: also LOWER the sequence into `Action` — the step the
+            // Also LOWER the sequence into `Action` — the step the
             // single-action conversion tests perform but this one previously
             // omitted, stopping at the parsed ActionConfig. Assert the lowered
             // sequence preserves SendMidi → Delay → SendMidi in order.

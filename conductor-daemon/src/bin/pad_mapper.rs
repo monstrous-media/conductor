@@ -25,7 +25,7 @@ struct PadData {
     hid_pad_index: Option<u8>,
 }
 
-/// Scan a single HID report for a pressed pad (#1423).
+/// Scan a single HID report for a pressed pad.
 ///
 /// Operates ONLY on the bytes the device actually returned for THIS report
 /// (`report = &buffer[..size]`). The previous loop checked
@@ -52,7 +52,7 @@ fn detect_pad_from_report(report: &[u8]) -> Option<(u8, u16)> {
     None
 }
 
-/// MIDI client/connection name this tool registers. #2136: derived from the
+/// MIDI client/connection name this tool registers. Derived from the
 /// Cargo bin target via `CARGO_BIN_NAME` (which is `pad_mapper`, underscored)
 /// rather than a hardcoded hyphenated `"pad-mapper"`, so the advertised name
 /// can never drift from the actual executable name.
@@ -154,8 +154,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                     &buffer[0..size.min(16)]
                 );
 
-                // Parse only the bytes this report actually returned
-                // (#1423) — never the stale tail of the reused buffer.
+                // Parse only the bytes this report actually returned —
+                // never the stale tail of the reused buffer.
                 if let Some((pad_idx, value)) = detect_pad_from_report(&buffer[..size]) {
                     eprintln!(
                         "  -> Detected pad index: 0x{:02X} (value={})",
@@ -264,7 +264,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 mod tests {
     use super::*;
 
-    /// #2136: the advertised MIDI client name must equal the underscored Cargo
+    /// The advertised MIDI client name must equal the underscored Cargo
     /// bin target (`pad_mapper`), not a hyphenated alias. Using
     /// `env!("CARGO_BIN_NAME")` ties them together; this guards against a future
     /// re-hardcoding (e.g. back to `"pad-mapper"`) or a bin rename to a
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn detect_pad_ignores_stale_bytes_beyond_report_len() {
-        // #1423: a 256-byte reused buffer with a stale "pad pressed" pair
+        // A 256-byte reused buffer with a stale "pad pressed" pair
         // (value > 512) at offset 20/21, but the CURRENT report is only 4
         // bytes. The parser must not see the stale tail.
         let mut buffer = [0u8; 256];

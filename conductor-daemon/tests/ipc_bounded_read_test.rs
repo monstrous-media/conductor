@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Regression tests for the IPC bounded-read helper (#1313).
+//! Regression tests for the IPC bounded-read helper.
 //!
 //! The bug: `BufReader::read_line(&mut String)` buffers until a newline
 //! or EOF before returning. A client that sends `MAX_REQUEST_SIZE + N`
@@ -71,7 +71,7 @@ async fn partial_line_eof_returns_line_with_partial_bytes() {
     }
 }
 
-/// THE REGRESSION TEST for #1313. Feed `max_bytes + 1` bytes WITHOUT
+/// THE REGRESSION TEST. Feed `max_bytes + 1` bytes WITHOUT
 /// a newline. The helper MUST return `Overflow` and the buffer MUST
 /// NOT grow past `max_bytes + 1` (the +1 is the byte that triggered
 /// the cap-check).
@@ -101,7 +101,7 @@ async fn over_limit_no_newline_returns_overflow_with_bounded_buffer() {
     );
 }
 
-/// THE STREAMING REGRESSION TEST for #1313 / #1495. The finite-`Cursor` test
+/// THE STREAMING REGRESSION TEST. The finite-`Cursor` test
 /// above can't actually prove the helper stops *before* EOF: a `Cursor` hits
 /// EOF immediately, so a buggy "read to EOF, then truncate and report
 /// Overflow" implementation would pass it. Here the writer streams `MAX + 1`
@@ -176,7 +176,7 @@ async fn exactly_at_limit_with_newline_returns_line() {
     }
 }
 
-/// Council R1 fix: on Overflow, the helper MUST truncate `buf` back
+/// On Overflow, the helper MUST truncate `buf` back
 /// to its length at call time (no garbage bytes left behind). A
 /// caller that mistakenly re-uses `buf` after Overflow without
 /// clearing should NOT see leaked overflow bytes mixed into the

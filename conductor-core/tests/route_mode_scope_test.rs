@@ -1,16 +1,16 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-036 Slice 1 — `RouteConfig` gains `modes` and `phase`.
+//! ADR-036 — `RouteConfig` gains `modes` and `phase`.
 //!
 //! These fields are the schema-layer half of the dual-mechanism collapse
 //! (`Trigger::Raw` + bare routes → routes-with-`modes`-and-`phase`). The
-//! semantics — auto-lowering, validation, dispatch — land in later slices.
-//! This slice only proves that the schema deserializes, defaults correctly,
+//! semantics — auto-lowering, validation, dispatch — land separately.
+//! This only proves that the schema deserializes, defaults correctly,
 //! and round-trips through serde.
 //!
 //! Spec reference: `docs/routing-unification/ADR-036-037-implementation-spec.md`
-//! §§ 4.1, 5 (Slice 1). Closes #1659.
+//! §§ 4.1, 5.
 
 use conductor_core::Config;
 use conductor_core::config::types::RouteConfig;

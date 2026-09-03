@@ -57,8 +57,7 @@ pub async fn persist_atomically(target: &Path, canonical_bytes: &[u8]) -> io::Re
         // Unix (it uses `O_CREAT|O_EXCL|O_RDWR` with mode 0o600), but
         // setting it explicitly here is defensive against future
         // tempfile-crate default changes and documents the contract
-        // at the persist boundary (Council #1293 round 2 spec
-        // compliance fix). No-op on Windows where permissions are ACL
+        // at the persist boundary. No-op on Windows where permissions are ACL
         // based.
         #[cfg(unix)]
         {
@@ -86,8 +85,7 @@ pub async fn persist_atomically(target: &Path, canonical_bytes: &[u8]) -> io::Re
         // whether to look for a panic backtrace (panic) or a
         // task-shutdown event (cancellation). `is_panic()` /
         // `is_cancelled()` cover all variants per the tokio
-        // docs (Council #1293 round 1 fix — prior code collapsed
-        // both into a flat string and lost the diagnostic).
+        // docs.
         let kind = if join_err.is_panic() {
             "panicked"
         } else if join_err.is_cancelled() {

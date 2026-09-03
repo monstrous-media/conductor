@@ -1,61 +1,15 @@
-# Dependabot — keeps dependencies and pinned action SHAs current.
-#
-# Why this exists: the workflows SHA-pin `dtolnay/rust-toolchain` (and
-# other actions) by commit. A pin with no update mechanism silently
-# rots — Dependabot reads the `# stable` / `# beta` trailing comment,
-# tracks the upstream branch, and opens a reviewable PR when it moves.
-#
-# This also supersedes the old `.github/workflows/dependencies.yml`
-# cron (removed): Dependabot's `cargo` ecosystem does the same job with
-# per-crate PRs, security-advisory awareness, and grouping that a blunt
-# weekly `cargo update` could not.
-#
-# Grouping policy: minor + patch bumps are batched into one PR per
-# ecosystem per week to keep review load low. Major bumps stay as
-# individual PRs — they need deliberate review. Dependencies with a
-# known-bad newer version are frozen with an `ignore` block rather
-# than left to grouping (see vitest under the npm ecosystem).
+# Keep the dependency graph and CI actions patched. Grouped weekly PRs to
+# keep the noise manageable; security updates arrive regardless of schedule.
 version: 2
 updates:
-  # ── GitHub Actions — keeps SHA pins current ──────────────────────
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-    commit-message:
-      prefix: "ci"
-    groups:
-      actions:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
-
-  # ── Rust workspace — supersedes the removed dependencies.yml cron ─
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore(deps)"
     groups:
-      cargo-minor-patch:
+      minor-and-patch:
         update-types: ["minor", "patch"]
-
-  # ── GUI frontend (Svelte / Vite / vitest) ────────────────────────
-  - package-ecosystem: npm
-    directory: /conductor-gui/ui
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
       interval: weekly
-    commit-message:
-      prefix: "chore(deps)"
-    groups:
-      npm-minor-patch:
-        update-types: ["minor", "patch"]
-    ignore:
-      # vitest is constrained to `^4.0.18` in package.json — newer
-      # builds carry a Svelte parser bug that breaks the component
-      # test suite. Freeze the dependency entirely (not even
-      # minor/patch) so Dependabot never widens the floor into the
-      # grouped PR. Revisit by bumping deliberately once the upstream
-      # parser regression is resolved.
-      - dependency-name: "vitest"

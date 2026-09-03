@@ -22,7 +22,7 @@ use std::process::Command;
 /// Returns true only when `help` exposes `flag` as a standalone option token
 /// (e.g. `--check`), not as a substring of prose or of a longer flag.
 ///
-/// #1534: the previous inline checks were of the form
+/// The previous inline checks were of the form
 /// `stdout.contains("--check") || stdout.contains("check")` — and likewise
 /// for the open-input-monitoring flag, which also accepted the prose phrase
 /// "Open System Settings". In each case the loose disjunct subsumed the
@@ -31,7 +31,7 @@ use std::process::Command;
 /// your permissions", "Open System Settings") would still pass.
 ///
 /// A plain `contains(flag)` is not enough either: `contains("--check")` also
-/// matches a longer flag like `--checklist` (Council + Copilot review). clap
+/// matches a longer flag like `--checklist` (Copilot review). clap
 /// renders each option on its own line as `      --check    <description>`
 /// (and `--flag=VALUE` in usage forms), so we split on whitespace plus
 /// `=` / `,` and compare WHOLE tokens. That pins the real CLI surface and
@@ -103,7 +103,7 @@ fn permissions_help_describes_check_and_open_flags() {
 
 #[test]
 fn flag_matcher_rejects_prose_only_and_accepts_the_real_flag() {
-    // #1534 regression guard. These cases pin exactly the gap the old
+    // Regression guard. These cases pin exactly the gap the old
     // assertions let through, for BOTH flags:
     //
     //   - prose that mentions a flag's keyword but exposes no `--flag` token
@@ -137,7 +137,7 @@ fn flag_matcher_rejects_prose_only_and_accepts_the_real_flag() {
 
     // A LONGER flag that merely has `--check` as a prefix must NOT satisfy
     // the `--check` contract — the matcher compares whole tokens, not
-    // substrings (Council + Copilot review: `contains("--check")` would have
+    // substrings (Copilot review: `contains("--check")` would have
     // wrongly matched `--checklist`).
     let longer_flag_help = "Options:\n      --checklist    Print a checklist and exit\n";
     assert!(
@@ -195,11 +195,11 @@ fn permissions_check_exits_cleanly_on_current_platform() {
         stderr,
     );
 
-    // PR #997 round-13 review: hard-coded paths in human output misled users
+    // Hard-coded paths in human output misled users
     // on non-default installs; the daemon path next to conductorctl should be
     // resolved at runtime (`resolve_sibling_daemon_path` → `<dir>/conductor`).
     //
-    // #1535: the old assertion accepted EITHER "resolved from this" OR
+    // The old assertion accepted EITHER "resolved from this" OR
     // "typical install path" — but the GUI-app line ALWAYS prints "typical
     // install path", so the OR was always satisfied even if daemon resolution
     // always fell back (the exact regression this test guards). Make it

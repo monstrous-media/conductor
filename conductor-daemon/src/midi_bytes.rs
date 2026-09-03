@@ -11,14 +11,14 @@
 //! Extracted from `engine_manager.rs` so the small surface (one
 //! function + tests) can be reviewed in full by tooling that has
 //! input-size limits — the original engine_manager.rs is ~7400 lines
-//! and Council-style review tools truncate that. (#1119 follow-up.)
+//! and such tools would truncate that.
 
 use conductor_core::events::InputEvent;
 
 /// Extract raw MIDI bytes from an InputEvent for MidiForward.
 ///
 /// Reconstructs standard MIDI bytes from the InputEvent. The source
-/// channel (added to InputEvent variants by PR #434, the MIDI channel
+/// channel (added to InputEvent variants by the MIDI channel
 /// pipeline) is preserved in the status-byte low nibble. `channel:
 /// None` (gamepad or synthetic events) defaults to channel 0.
 ///
@@ -28,7 +28,7 @@ use conductor_core::events::InputEvent;
 /// `"MidiForward requires raw MIDI bytes in trigger context"` rather
 /// than emitting garbage.
 ///
-/// History (#1119): pre-fix this function discarded `channel` via `..`
+/// History: previously this function discarded `channel` via `..`
 /// and hardcoded the status byte to 0, silently breaking MidiForward
 /// to any receiver configured to ignore channel 1.
 pub(crate) fn extract_raw_midi(event: &InputEvent) -> Option<Vec<u8>> {
@@ -37,8 +37,7 @@ pub(crate) fn extract_raw_midi(event: &InputEvent) -> Option<Vec<u8>> {
     // masks on both inputs (`status_high & 0xF0` keeps only the high
     // nibble; `ch & 0x0F` clamps channel to 4 bits) make the bit-or
     // pattern correct even if a caller passes a malformed status
-    // byte or an out-of-range channel value. Council follow-up on
-    // PR #1124.
+    // byte or an out-of-range channel value.
     let with_ch = |status_high: u8, ch: Option<u8>| (status_high & 0xF0) | (ch.unwrap_or(0) & 0x0F);
 
     match event {
@@ -91,12 +90,12 @@ mod tests {
         Instant::now()
     }
 
-    // ── Channel preservation per InputEvent variant (#1119) ──
+    // ── Channel preservation per InputEvent variant ──
     //
-    // Pre-fix the function dropped channel from every variant via `..`
+    // Previously the function dropped channel from every variant via `..`
     // and hardcoded the status nibble to 0 (channel 1 on the wire).
     // ADR-009 Gap 2's stale comment claimed "InputEvent strips channel
-    // info" — that was true once, but PR #434 (MIDI channel pipeline)
+    // info" — that was true once, but the MIDI channel pipeline
     // added `channel: Option<u8>` to every InputEvent variant. These
     // tests pin the post-fix behaviour: channel-N source produces
     // channel-N status byte; channel: None defaults to 0.
@@ -226,8 +225,8 @@ mod tests {
     fn extract_raw_midi_pitch_bend_byte_order_lsb_first() {
         // Pin the MIDI wire-format byte order for PitchBend: status,
         // then LSB (low 7 bits), then MSB (high 7 bits of the 14-bit
-        // value). Council follow-up on PR #1124 — the prior tests
-        // didn't assert byte positions explicitly, only the status.
+        // value) — the prior tests didn't assert byte positions
+        // explicitly, only the status.
         // Use 0x2123 (decimal 8483) so LSB and MSB have different
         // values that wouldn't pass a swapped check.
         // 0x2123 = 0b010_0001_0010_0011
@@ -251,8 +250,7 @@ mod tests {
         // to pass 0-15. Defensive: even if someone passes an
         // out-of-range value (16+), the `& 0x0F` mask in `with_ch`
         // clamps to 4 bits — never produces a garbled status byte
-        // with bits leaking into the high nibble. Council follow-up
-        // on PR #1124.
+        // with bits leaking into the high nibble.
         let ev = InputEvent::PadPressed {
             pad: 60,
             velocity: 100,
@@ -281,9 +279,9 @@ mod tests {
         // function intentionally returns None so MidiForward errors out
         // with the explicit "MidiForward requires raw MIDI bytes in
         // trigger context" instead of silently emitting garbage.
-        // (Copilot review on PR #1124 — pin on every channel value to
-        // make the intent unambiguous and catch a future contributor
-        // who tries to "fix" None by reconstructing CC bytes.)
+        // (Pin on every channel value to make the intent unambiguous
+        // and catch a future contributor who tries to "fix" None by
+        // reconstructing CC bytes.)
         for ch in [None, Some(0u8), Some(15u8)] {
             let ev = InputEvent::EncoderTurned {
                 encoder: 1,

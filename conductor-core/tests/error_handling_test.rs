@@ -94,7 +94,7 @@ fn test_config_load_missing_file_creates_defaults() {
     // error — load creates a default config, saves it to the path, and returns
     // `Ok(default_config())`. The previous test accepted both Ok and Err, so it
     // enforced nothing: a regression that started erroring (or silently dropped
-    // defaults) would still pass (#1526).
+    // defaults) would still pass.
     //
     // Use an isolated temp dir (an allowed save location) so the created file is
     // cleaned up and the test doesn't pollute the working directory.
@@ -124,7 +124,7 @@ fn test_config_load_missing_file_creates_defaults() {
 
     // ...and load must have PERSISTED that default to disk. Verify the file's
     // *contents* (not just its existence) by reading it back, parsing it, and
-    // confirming it canonicalises to the same default (#1526, Council/Copilot).
+    // confirming it canonicalises to the same default.
     assert!(path.exists(), "load must create the config file on disk");
     let on_disk = std::fs::read_to_string(&path).expect("read the persisted config file");
     let reparsed: Config =

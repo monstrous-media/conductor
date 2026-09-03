@@ -89,13 +89,13 @@ async fn handle_menu_action(action: MenuAction, menu_bar: &mut MenuBar) {
             tracing::info!("Quit requested");
             menu_bar.update_status("Conductor: Stopping...");
 
-            // Quit is a *best-effort* daemon shutdown (#1428): Stop is sent,
+            // Quit is a *best-effort* daemon shutdown: Stop is sent,
             // but whether or not the daemon acknowledges it, the tray process
             // MUST exit. The pre-fix code only exited inside the Ok arm, so a
             // Quit issued while the daemon was already down/crashed logged an
             // error and kept the tray running — leaving the user no in-menu
             // way to dismiss the icon. `send_ipc_command` is itself bounded by
-            // IPC_TIMEOUT (#1429), so a *hung* (as opposed to merely down)
+            // IPC_TIMEOUT, so a *hung* (as opposed to merely down)
             // daemon surfaces as an Err here too rather than wedging the await
             // and starving the unconditional exit below.
             let plan = plan_quit(send_ipc_command(IpcCommand::Stop).await);
@@ -112,8 +112,8 @@ async fn handle_menu_action(action: MenuAction, menu_bar: &mut MenuBar) {
                     menu_bar.update_status(status);
                 }
             }
-            // Unconditional, outside the match: this is the whole point of
-            // #1428. Both QuitAction variants fall through to here, so the
+            // Unconditional, outside the match: this is intentional.
+            // Both QuitAction variants fall through to here, so the
             // tray always exits — whether or not the daemon acknowledged Stop.
             std::process::exit(0);
         }
@@ -121,7 +121,7 @@ async fn handle_menu_action(action: MenuAction, menu_bar: &mut MenuBar) {
 }
 
 /// How the menubar should wind down after attempting a best-effort daemon
-/// Stop in response to a Quit menu action (#1428).
+/// Stop in response to a Quit menu action.
 ///
 /// Both variants ultimately exit the process — the distinction is only
 /// whether the daemon acknowledged the Stop (and so deserves a brief drain
@@ -131,11 +131,11 @@ enum QuitAction {
     /// Daemon acknowledged Stop; give it `drain` to wind down, then exit.
     DrainThenExit { status: String, drain: Duration },
     /// Stop failed (daemon unreachable/crashed); surface the error and exit
-    /// immediately. Pre-#1428 this path did NOT exit, stranding the tray.
+    /// immediately. Previously this path did NOT exit, stranding the tray.
     ExitImmediately { status: String },
 }
 
-/// Decide the menubar's Quit wind-down from the daemon Stop response (#1428).
+/// Decide the menubar's Quit wind-down from the daemon Stop response.
 ///
 /// Pure and synchronous so the best-effort-exit contract is unit-testable
 /// without IPC or calling `std::process::exit` (the caller owns the actual
@@ -158,7 +158,7 @@ async fn update_status(menu_bar: &mut MenuBar) {
     match send_ipc_command(IpcCommand::Status).await {
         Ok(response) => {
             // Parse the status response
-            // #2122: derive the icon from the exact parsed state; unexpected
+            // Derive the icon from the exact parsed state; unexpected
             // payloads map to Error, never the healthy Running icon.
             let status = extract_status(&response);
             menu_bar.update_status(&status.text);
@@ -172,7 +172,7 @@ async fn update_status(menu_bar: &mut MenuBar) {
     }
 }
 
-/// UI-appropriate upper bound on a whole IPC round-trip (#1429). The tray
+/// UI-appropriate upper bound on a whole IPC round-trip. The tray
 /// runs user actions (Reload/Quit) and the periodic status refresh
 /// sequentially on a single async task; an IPC peer that accepts the
 /// connection but never replies would otherwise wedge that task and make the
@@ -180,7 +180,7 @@ async fn update_status(menu_bar: &mut MenuBar) {
 /// a stalled daemon surfaces as a normal "not responding" failure.
 const IPC_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// Bound an IPC round-trip future with `timeout` (#1429). A future that never
+/// Bound an IPC round-trip future with `timeout`. A future that never
 /// resolves yields a "not responding" `Err` instead of blocking the caller
 /// forever. The timeout is a parameter (not hardcoded to `IPC_TIMEOUT`) so the
 /// behaviour is unit-testable without waiting the production deadline.
@@ -197,7 +197,7 @@ where
     }
 }
 
-/// Send an IPC command to the daemon, bounded by [`IPC_TIMEOUT`] (#1429).
+/// Send an IPC command to the daemon, bounded by [`IPC_TIMEOUT`].
 async fn send_ipc_command(command: IpcCommand) -> Result<String, String> {
     with_ipc_timeout(IPC_TIMEOUT, send_ipc_command_inner(command)).await
 }
@@ -238,8 +238,7 @@ async fn send_ipc_command_inner(command: IpcCommand) -> Result<String, String> {
 ///
 /// The icon is derived from the EXACT daemon `lifecycle_state` (see
 /// [`icon_for_state`]), not by substring-matching the display text — so a
-/// state like "NotRunning" can never accidentally light the healthy icon
-/// (#2122, Council review).
+/// state like "NotRunning" can never accidentally light the healthy icon.
 struct MenuStatus {
     text: String,
     icon: IconState,
@@ -249,7 +248,7 @@ struct MenuStatus {
 ///
 /// Always succeeds: a response that isn't valid JSON, or that lacks the
 /// expected `daemon` object, is an UNEXPECTED payload — reported as an
-/// explicit unknown/error state, never as a healthy "Running" daemon (#2122).
+/// explicit unknown/error state, never as a healthy "Running" daemon.
 /// Previously this fell through to "Conductor: Running" and lit the green
 /// icon for any malformed/unexpected (but received) payload.
 fn extract_status(response: &str) -> MenuStatus {
@@ -279,7 +278,7 @@ fn extract_status(response: &str) -> MenuStatus {
     }
 }
 
-/// Map an EXACT daemon `lifecycle_state` string to a tray [`IconState`] (#2122).
+/// Map an EXACT daemon `lifecycle_state` string to a tray [`IconState`].
 ///
 /// The invariant that matters: ONLY the exact state `"Running"` shows the
 /// healthy green icon. Stopped/Stopping map to the stopped icon; everything
@@ -314,7 +313,7 @@ fn format_duration(seconds: f64) -> String {
 mod tests {
     use super::*;
 
-    /// #2122: a malformed (non-JSON) status response must NOT be reported as a
+    /// A malformed (non-JSON) status response must NOT be reported as a
     /// running daemon. Pre-fix, `extract_status` fell through to
     /// "Conductor: Running", lighting the healthy green tray icon.
     #[test]
@@ -332,7 +331,7 @@ mod tests {
         );
     }
 
-    /// #2122: a well-formed JSON response that lacks the expected `daemon`
+    /// A well-formed JSON response that lacks the expected `daemon`
     /// object is an unexpected shape — also must not read as running.
     #[test]
     fn unexpected_status_shape_is_not_reported_as_running() {
@@ -363,7 +362,7 @@ mod tests {
         assert_eq!(status.icon, IconState::Error);
     }
 
-    /// #2122 (Council): exact-state matching — a state that merely CONTAINS
+    /// Exact-state matching — a state that merely CONTAINS
     /// "Running" as a substring (e.g. "NotRunning") must NOT light the healthy
     /// icon. This is what the old `contains("Running")` check got wrong.
     #[test]
@@ -378,7 +377,7 @@ mod tests {
         assert_eq!(icon_for_state("SomeNewState"), IconState::Error);
     }
 
-    /// THE regression test for #1428. When the Stop request fails (daemon
+    /// Regression test: when the Stop request fails (daemon
     /// already stopped, crashed, or socket unavailable), Quit must map to
     /// `ExitImmediately` — the variant the caller turns into an unconditional
     /// `process::exit(0)`. Pre-fix, a failed Stop only updated the status text
@@ -422,7 +421,7 @@ mod tests {
         }
     }
 
-    /// THE regression test for #1429. An IPC round-trip whose future never
+    /// Regression test: an IPC round-trip whose future never
     /// resolves (peer accepted the connection but never replies) must NOT
     /// block the single menu event loop forever — `with_ipc_timeout` has to
     /// return a "not responding" `Err` once the deadline elapses, and do so

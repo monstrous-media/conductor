@@ -19,7 +19,7 @@
 //!   the actual prev, or the next legitimate row's `prev_hash`
 //!   no longer matches the forged row's `entry_hash`.
 //!
-//! PR #1031 round-4 review (2026-05-02): the "WITHOUT also
+//! The "WITHOUT also
 //! fixing up" qualifier is load-bearing. An attacker with
 //! write access to the SQLite file can also READ it, compute
 //! the legitimate hash for any modified row, and rebuild the
@@ -29,7 +29,7 @@
 //! Stronger guarantees (signed entries, periodic external
 //! anchoring) are tracked under D15.
 //!
-//! Closes Finding F-10 (audit log tamperability). Caveats:
+//! Addresses audit log tamperability. Caveats:
 //!
 //! - This protects against tamper *detection*, not *prevention*.
 //!   An attacker with write access to the SQLite file can still
@@ -81,14 +81,14 @@ pub enum ChainBreak {
     /// fatal once v2 is the established baseline.
     MissingHash { entry_id: String },
     /// A row's `execution_time_ms` column is negative — likely
-    /// corruption or tamper (PR #1031 review, 2026-05-02). Pre-
+    /// corruption or tamper. Pre-
     /// fix this would silently wrap to a huge `Duration`; now
     /// it's surfaced as an integrity failure so the operator
     /// triaging the audit log knows the row is suspect.
     NegativeExecutionTime { entry_id: String, ms: i64 },
     /// `verify_chain` failed for a reason unrelated to chain
     /// integrity — DB lock poisoning, prepared-statement error,
-    /// row-decode failure (PR #1031 review, 2026-05-02). Pre-
+    /// row-decode failure. Pre-
     /// fix these were lossy-mapped to `MissingHash`, which
     /// confused triage. `details` is a human-readable
     /// description; the verifier doesn't mint a structured
@@ -154,11 +154,11 @@ impl std::error::Error for ChainBreak {}
 
 /// All-zeros 64-char hex sentinel used as the "previous hash"
 /// for the very first audit entry in a fresh database — there's
-/// no prior entry to chain from. (PR #1031 review fix: the
+/// no prior entry to chain from. The
 /// previous comment described this as "lowercase-hex sha256 of
 /// an empty input", which is wrong — sha256("") is `e3b0...`,
 /// not all-zeros. This constant is a deliberately-chosen
-/// sentinel, not a hash of anything.)
+/// sentinel, not a hash of anything.
 ///
 /// Concrete constant (rather than `String::new()` or similar)
 /// so a table-scrub attack that resets the first row's
@@ -171,7 +171,7 @@ pub const GENESIS_PREV_HASH: &str =
 /// SQLite. Both `insert_entry` and `verify_chain` hash THIS
 /// view of the row, never the in-memory [`AuditEntry`] struct.
 ///
-/// PR #1031 review (2026-05-02): the previous version hashed
+/// The previous version hashed
 /// `&AuditEntry` directly. That created undetectable tamper
 /// surface because Rust→DB→Rust round-trips are LOSSY:
 ///
@@ -216,7 +216,7 @@ pub(crate) struct CanonicalRow<'a> {
     pub created_at: i64,
     /// Persisted as the raw `provenance` TEXT (the serialized
     /// `Provenance { initiator, source, peer }` JSON), exactly as
-    /// written to / read from the v3 column (#2120). Including it
+    /// written to / read from the v3 column. Including it
     /// makes provenance tamper-evident — modifying the column now
     /// breaks `verify_chain`.
     ///
@@ -243,7 +243,7 @@ pub(crate) struct CanonicalRow<'a> {
 /// than a silent corruption; (2) the canonical byte stream is
 /// a debuggable artifact during chain-integrity investigations.
 ///
-/// PR #1031 review: `panic!` on serde failure rather than
+/// `panic!` on serde failure rather than
 /// silently producing empty bytes. CanonicalRow is a fixed,
 /// finite-size shape with no failable serializations
 /// (primitives + Option<&str>); the only way `to_vec` can fail
@@ -281,7 +281,7 @@ pub fn compute_entry_hash(prev_hash: &str, content: &[u8]) -> String {
 /// matches its stored `entry_hash` AND its `prev_hash` matches
 /// the supplied `expected_prev`.
 ///
-/// PR #1031 review (2026-05-02): the previous version took
+/// The previous version took
 /// `&AuditEntry` (an in-memory parsed struct) which created
 /// undetectable tamper surface from lossy decoding (see
 /// [`CanonicalRow`] docs). This now takes a [`CanonicalRow`]
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn canonical_bytes_distinguish_event_type_string_mutation() {
-        // PR #1031 review (2026-05-02): the previous
+        // The previous
         // `canonical_entry_bytes` took a parsed `AuditEventType`,
         // and unknown strings parsed to `ToolStart`. An attacker
         // could rewrite `event_type` from `"tool_start"` to

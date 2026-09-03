@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Compiles a Config into an immutable CompiledRuleSet.
-//! (v4.21.0 - ADR-009 Phase 3, decisions D16/D17)
+//! (ADR-009 Phase 3, decisions D16/D17)
 //!
 //! Called during startup and config reload (off hot path).
 //! The resulting CompiledRuleSet is swapped into an ArcSwap for lock-free reads.
@@ -62,10 +62,10 @@ pub fn compile(config: &Config, version: u64) -> CompiledRuleSet {
     // ADR-040 D2: global mappings are the all-modes case → `ModeScope::All`.
     let global = partition_mappings(&config.global_mappings, &ModeScope::All);
 
-    // Build channel scopes from the unified endpoints (#751, #2046 — ADR-035).
+    // Build channel scopes from the unified endpoints (ADR-035).
     // Channel scoping is a MIDI-input concept, so restrict to endpoints whose
     // effective protocol is MIDI (the validator already treats `channels` on a
-    // non-MIDI endpoint as a warning — Copilot review on #2048). Only endpoints
+    // non-MIDI endpoint as a warning). Only endpoints
     // with non-empty channels are included; a missing key = all channels
     // (is_channel_in_scope() treats a missing key as "no restriction").
     use crate::config::types::ConnectorProtocol;
@@ -89,7 +89,7 @@ pub fn compile(config: &Config, version: u64) -> CompiledRuleSet {
 fn compile_mode(mode: &crate::config::Mode) -> ModeRuleSet {
     // ADR-040 D2: a mode block's mappings are scoped to that one mode. Build
     // the shared mode list ONCE; `partition_mappings` refcount-bumps it onto
-    // each rule rather than deep-cloning (Copilot review on #2269).
+    // each rule rather than deep-cloning.
     let scope = ModeScope::Named(Arc::from(vec![mode.name.clone()]));
     let p = partition_mappings(&mode.mappings, &scope);
     ModeRuleSet {

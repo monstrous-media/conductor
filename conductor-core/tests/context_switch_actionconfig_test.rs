@@ -4,7 +4,7 @@
 //! ADR-025 Phase 2.D — PcContextSwitch / CcContextSwitch `ActionConfig`
 //! variants.
 //!
-//! This PR is the config-surface-only slice:
+//! This is the config-surface-only slice:
 //!   (a) both variants deserialize from TOML,
 //!   (b) both survive a JSON round-trip (used by MCP + chat persistence),
 //!   (c) nested inner actions parse correctly,
@@ -13,7 +13,7 @@
 //! Parse-time LOWERING to nested `Conditional` chains / `ContextSwitchTable`
 //! is task #24. Runtime dispatch is task #25. Validation (overlapping CC
 //! ranges, unknown device, etc.) is task #26. Those are intentionally
-//! out of scope here — this PR is the typed surface only.
+//! out of scope here — this is the typed surface only.
 
 use conductor_core::config::types::{ActionConfig, CcRange, Config};
 use indexmap::IndexMap;
@@ -428,7 +428,7 @@ fn pc_context_switch_json_roundtrip() {
 }
 
 // ────────────────────────────────────────────────────────────────
-// PR #849 review: reject out-of-range PC keys at the parse boundary
+// Reject out-of-range PC keys at the parse boundary
 // ────────────────────────────────────────────────────────────────
 
 #[test]
@@ -541,7 +541,7 @@ command = "echo max"
 }
 
 // ────────────────────────────────────────────────────────────────
-// PR #849 review round 2: validator field-level bounds
+// Validator field-level bounds
 // ────────────────────────────────────────────────────────────────
 
 use conductor_core::config::types::{
@@ -869,7 +869,7 @@ fn cc_context_switch_json_roundtrip() {
 }
 
 // ────────────────────────────────────────────────────────────────
-// #1438: reject normalized-duplicate PC keys (`1` vs `01`)
+// Reject normalized-duplicate PC keys (`1` vs `01`)
 // ────────────────────────────────────────────────────────────────
 
 #[test]

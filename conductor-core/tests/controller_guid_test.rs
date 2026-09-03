@@ -88,7 +88,7 @@ fn controller_guid_serializes_as_hex_string_and_round_trips() {
 fn controller_guid_rejects_non_ascii_value_without_panicking() {
     // A 32-BYTE value containing a multi-byte UTF-8 char would pass a naive
     // byte-length check, then panic when sliced on a non-char boundary. Must
-    // deserialize-error instead of panicking (Council review).
+    // deserialize-error instead of panicking.
     let value = format!("€{}", "a".repeat(29)); // 3 + 29 = 32 bytes, 30 chars
     assert_eq!(value.len(), 32);
     let json = format!(r#"{{"type":"ControllerGuid","value":"{value}"}}"#);

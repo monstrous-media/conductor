@@ -57,7 +57,7 @@ color = "blue"
                     note
                 ),
                 1 => format!(
-                    // #2134: canonical Trigger::VelocityRange fields (soft_max /
+                    // Canonical Trigger::VelocityRange fields (soft_max /
                     // medium_max). The old `velocity_ranges = [{level, action_index}]`
                     // shape matched no enum field, so serde silently dropped it and
                     // the bench exercised a defaulted trigger instead of a real one.

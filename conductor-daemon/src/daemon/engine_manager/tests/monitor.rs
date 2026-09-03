@@ -301,14 +301,14 @@ fn test_vecdeque_capacity_vs_len_understanding() {
 }
 
 // =========================================================================
-// State Reporting Tests (LLM Council Feedback v4.13.3)
+// State Reporting Tests
 // =========================================================================
 
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // Enigo requires display server
 async fn test_daemon_state_input_mode_none_when_no_input_manager() {
     // When input_manager is None, input_mode should be None (not "MidiOnly")
-    // This is a semantic correctness issue identified by LLM Council
+    // — a semantic correctness requirement
     let config = create_test_config();
     let (cmd_tx, cmd_rx) = mpsc::channel(10);
     let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
@@ -338,7 +338,7 @@ async fn test_daemon_state_input_mode_none_when_no_input_manager() {
 #[cfg_attr(target_os = "linux", ignore)] // Enigo requires display server
 async fn test_empty_modes_does_not_panic() {
     // When config has no modes, get_engine_info should not panic
-    // (LLM Council feedback v4.13.3: verify .get() safety)
+    // (verify .get() safety)
     let mut config = create_test_config();
     config.modes.clear(); // Empty modes array
 
@@ -363,7 +363,7 @@ async fn test_empty_modes_does_not_panic() {
 }
 
 // =========================================================================
-// Path Conversion Helper Tests (LLM Council Feedback v4.14.0)
+// Path Conversion Helper Tests
 // =========================================================================
 
 #[test]
@@ -442,12 +442,12 @@ fn test_reload_config_with_valid_path() {
     assert_eq!(result.unwrap(), "/some/valid/utf8/config.toml");
 }
 
-/// #1070: a successful `reload_config()` must broadcast a
+/// A successful `reload_config()` must broadcast a
 /// `config_reloaded` MonitorEvent. That event is the daemon→GUI
 /// signal the file-watcher reload path was missing — without it the
 /// GUI only learns about a config edit on its next 3s poll. The
 /// channel and the pattern (a new `event_type` on the existing
-/// `MonitorEvent` broadcast) are the same ones #943 used for
+/// `MonitorEvent` broadcast) are the same ones used for
 /// `ambiguous_port_detected`.
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)] // MIDI port enumeration panics on headless Linux CI
@@ -519,7 +519,7 @@ color = "blue"
     assert_eq!(payload["duration_ms"], metrics.duration_ms);
 }
 
-/// #2410: `push_monitor_event` stamps a strictly-monotonic, gap-free emission
+/// `push_monitor_event` stamps a strictly-monotonic, gap-free emission
 /// sequence onto every event regardless of type. This gives the GUI a total
 /// order to sort the two Tauri channels (`midi-events` + `mapping-fired`) by —
 /// `mapping_fired` is pushed from a different run-loop select arm than its raw
@@ -560,9 +560,8 @@ async fn test_monitor_event_seq_is_monotonic_across_types() {
     );
 }
 
-/// v4.14.0: Test that Status handler uses String (not &str) for input_mode
+/// Test that Status handler uses String (not &str) for input_mode
 /// This ensures consistency with get_daemon_state() return type
-/// (LLM Council feedback v4.13.3)
 #[test]
 fn test_status_handler_uses_string_not_str() {
     // This test verifies the type consistency at compile time
@@ -578,8 +577,8 @@ fn test_status_handler_uses_string_not_str() {
     let _moved: String = mode;
 }
 
-/// v4.14.0: Test that lock ordering documentation exists on EngineManager
-/// This is a documentation verification test (LLM Council feedback v4.13.3)
+/// Test that lock ordering documentation exists on EngineManager
+/// This is a documentation verification test
 #[test]
 fn test_lock_ordering_documented() {
     // This test exists to ensure the documentation is maintained.
@@ -611,7 +610,7 @@ fn test_lock_ordering_documented() {
     );
 }
 
-// Phase 2 Tests: Config-Persisted Mode Changes (Issue #321)
+// Config-Persisted Mode Changes
 // Note: These tests focus on the business logic since full EngineManager
 // creation requires system permissions for input device access.
 
@@ -804,7 +803,7 @@ fn test_startup_fallback_invalid_last_selected_uses_default() {
 #[cfg_attr(target_os = "linux", ignore)] // EngineManager::new needs Enigo (display server)
 async fn capture_pattern_events_chord_uses_configured_window_not_hardcoded_100() {
     use conductor_core::event_processor::ProcessedEvent;
-    // #2486: outside MIDI Learn, the chord pattern event (the Events-panel
+    // Outside MIDI Learn, the chord pattern event (the Events-panel
     // "NoteChord … Nms window" pill) must carry the configured normal chord
     // window (`chord_timeout_ms`), not the old hardcoded 100ms that matched
     // neither the normal (50) nor the Learn window.
@@ -848,7 +847,7 @@ async fn capture_pattern_events_chord_uses_configured_window_not_hardcoded_100()
 async fn capture_pattern_events_chord_uses_learn_window_during_learn() {
     use conductor_core::event_processor::ProcessedEvent;
     use std::sync::atomic::Ordering;
-    // #2486 (Copilot review on PR #2488): while MIDI Learn is active, the chord
+    // While MIDI Learn is active, the chord
     // pill must show the Learn window (`chord_learn_timeout_ms`), distinct from
     // the normal `chord_timeout_ms` — guards the `active_chord_window_ms` Learn
     // branch in `monitor_capture`.
@@ -894,8 +893,8 @@ async fn reload_reapplies_hold_and_double_tap_to_existing_processors() {
     use conductor_core::identity::DeviceId;
     use std::io::Write;
     use tempfile::NamedTempFile;
-    // #2490: a runtime config change to hold_threshold_ms / double_tap_timeout_ms
-    // must reach an ALREADY-created processor on reload — before this the daemon
+    // A runtime config change to hold_threshold_ms / double_tap_timeout_ms
+    // must reach an ALREADY-created processor on reload — previously the daemon
     // never applied them (the "Long Press Threshold" slider was decorative).
     let mut temp = NamedTempFile::new().unwrap();
     writeln!(temp, "[[modes]]\nname = \"Default\"\ncolor = \"blue\"").unwrap();

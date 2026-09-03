@@ -24,7 +24,7 @@ use midi_simulator::{EncoderDirection, Gesture, MidiSimulator};
 
 // Helper to skip wall-clock-sensitive assertions on CI. Loaded/virtualized
 // runners (not just macOS) stall the scheduler enough to blow strict timing
-// bounds with no product regression, so skip on ANY CI, not macOS alone (#1539).
+// bounds with no product regression, so skip on ANY CI, not macOS alone.
 fn should_skip_timing_test() -> bool {
     std::env::var("CI").is_ok()
 }
@@ -36,7 +36,7 @@ use conductor::event_processor::{
     EncoderDirection as MidiDirection, EventProcessor, MidiEvent, ProcessedEvent, VelocityLevel,
 };
 
-// #1540: the REAL mapping boundary, so workflow tests assert the action the
+// The REAL mapping boundary, so workflow tests assert the action the
 // production engine produces rather than one the test injects into the mock.
 use conductor_core::actions::{Action, KeyCode, ModifierKey};
 use conductor_core::config::Config;
@@ -327,7 +327,7 @@ fn test_e2e_simple_pad_press_to_keystroke() {
     });
     assert_eq!(velocity_level, Some(VelocityLevel::Hard));
 
-    // #1540: resolve the action through the REAL mapping engine instead of
+    // Resolve the action through the REAL mapping engine instead of
     // injecting the expected action into the mock. A broken mapping engine now
     // fails this test.
     use conductor_core::actions::{KeyCode, ModifierKey};
@@ -369,7 +369,7 @@ fn test_e2e_timing_latency() {
 
     // The pipeline above is the real coverage (it runs everywhere, catching
     // panics/regressions). The sub-millisecond bound is a perf smoke check that
-    // flakes on loaded/debug CI, so only enforce it off-CI (#1539).
+    // flakes on loaded/debug CI, so only enforce it off-CI.
     if !should_skip_timing_test() {
         assert!(
             latency < Duration::from_millis(1),
@@ -704,7 +704,7 @@ fn test_e2e_mode_switch_via_encoder() {
 
 #[test]
 fn test_e2e_mode_specific_mapping() {
-    // #1540: the SAME note must resolve to DIFFERENT actions per mode through
+    // The SAME note must resolve to DIFFERENT actions per mode through
     // the real mapping engine — previously the test injected both actions by
     // hand, so a broken mode-specific lookup would not fail it.
     let engine = engine_from_toml(
@@ -748,7 +748,7 @@ action = { type = "Shell", command = "git status" }
 
 #[test]
 fn test_e2e_global_mapping_works_in_all_modes() {
-    // #1540: a global mapping must resolve in EVERY mode through the real
+    // A global mapping must resolve in EVERY mode through the real
     // engine — previously the test injected the action itself, so a broken
     // global-mapping fallback would not fail it.
     let engine = engine_from_toml(
@@ -1077,7 +1077,7 @@ fn test_e2e_throughput_100_events() {
 
     // Processing the 100 note presses (200 MIDI messages: note-on + note-off)
     // above is the real coverage. The 10ms wall-clock bound is a perf smoke
-    // check that flakes on loaded/debug CI, so only enforce it off-CI (#1539).
+    // check that flakes on loaded/debug CI, so only enforce it off-CI.
     if !should_skip_timing_test() {
         assert!(
             duration < Duration::from_millis(10),

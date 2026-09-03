@@ -1,13 +1,13 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Unified Input Management (v3.0, multi-device v4.20.0)
+//! Unified Input Management
 //!
 //! This module provides a unified interface for managing both MIDI and gamepad input devices.
 //! It combines MidiDeviceManager and GamepadDeviceManager into a single manager that outputs
 //! a unified stream of InputEvents, with multi-device support via DeviceEvent tagging.
 //!
-//! # Multi-Device Architecture (v4.20.0 - ADR-009 Phase 2)
+//! # Multi-Device Architecture (ADR-009 Phase 2)
 //!
 //! In multi-device mode, the InputManager opens all MIDI ports simultaneously and tags each
 //! event with a `DeviceId` via the `DeviceEvent<ProtocolEvent>` channel type. Events flow through
@@ -19,7 +19,7 @@
 //! ┌──────────────────────────────────────────────────┐
 //! │  InputManager                                    │
 //! │  ┌────────────────────────────────────────────┐  │
-//! │  │  Multi-Device MIDI (v4.20.0)               │  │
+//! │  │  Multi-Device MIDI                         │  │
 //! │  │  - HashMap<DeviceId, MidiDeviceManager>    │  │
 //! │  │  - Device mute/unmute                      │  │
 //! │  │  - Port filtering (ignore_ports, max)      │  │
@@ -39,9 +39,9 @@
 //! └──────────────────────────────────────────────────┘
 //! ```
 //!
-//! ## Module layout (#1684)
+//! ## Module layout
 //!
-//! The manager grew past the LLM Council `verify` size ceiling, so the
+//! The manager grew past the per-file size ceiling enforced in review, so the
 //! cohesive subsystems live in submodules; `mod.rs` keeps the
 //! `InputManager` struct, its constructors/setters/accessors, and the
 //! pure `filter_ports` helper:
@@ -74,16 +74,16 @@ mod listen;
 mod rekey;
 mod rescan;
 
-/// Input device selection mode (v3.0)
-// Re-export InputMode from conductor-core (v3.0)
+/// Input device selection mode
+// Re-export InputMode from conductor-core
 pub use conductor_core::InputMode;
 
-/// Unified input device manager (v3.0, multi-device v4.20.0)
+/// Unified input device manager
 ///
 /// Manages connections to MIDI and/or gamepad devices, providing a unified
 /// stream of DeviceEvent<ProtocolEvent> for processing by the event engine.
 ///
-/// # Multi-Device Mode (v4.20.0)
+/// # Multi-Device Mode
 ///
 /// When `listen_to_all_ports()` is called, the manager opens all available MIDI ports
 /// (filtered by `ignore_ports` and capped at `max_midi_ports`), resolves port→device
@@ -97,11 +97,11 @@ pub struct InputManager {
     /// Legacy single MIDI device manager (used by connect())
     pub(super) midi_manager: Option<MidiDeviceManager>,
 
-    /// Multi-device MIDI managers (v4.20.0 - ADR-009 Phase 2)
+    /// Multi-device MIDI managers (ADR-009 Phase 2)
     /// Populated by listen_to_all_ports()
     pub(super) midi_managers: HashMap<DeviceId, MidiDeviceManager>,
 
-    /// ADR-039 §4.3 (#1760): per-device source observability counters,
+    /// ADR-039 §4.3: per-device source observability counters,
     /// incremented by each MIDI converter's [`spawn_input_pump`] push task
     /// (`events_in` / `dropped`). Keyed by the same `DeviceId` as
     /// `midi_managers`; an entry is dropped alongside its manager in
@@ -110,26 +110,26 @@ pub struct InputManager {
     /// [`spawn_input_pump`]: crate::input_source::spawn_input_pump
     pub(super) midi_source_metrics: HashMap<DeviceId, InputSourceMetricsHandle>,
 
-    /// ADR-039 §4.3 (#1760): gamepad source observability counters,
+    /// ADR-039 §4.3: gamepad source observability counters,
     /// incremented by the gamepad converter's push task. `None` until a
     /// gamepad connects.
     pub(super) gamepad_source_metrics: Option<InputSourceMetricsHandle>,
 
-    /// Muted device IDs (v4.20.0 - ADR-009 Phase 2, D8)
+    /// Muted device IDs (ADR-009 Phase 2, D8)
     pub(super) muted_devices: HashSet<DeviceId>,
 
-    /// Device IDs bound to a configured `[[devices]]` identity (v4.26.0 - ADR-009 D19)
+    /// Device IDs bound to a configured `[[devices]]` identity (ADR-009 D19)
     pub(super) configured_devices: HashSet<DeviceId>,
 
-    /// HID input source (optional). ADR-039-B #1762 (step 4c): the live gamepad
-    /// path is now expressed through the [`HidInputSource`] substrate (#1758)
+    /// HID input source (optional). ADR-039-B (step 4c): the live gamepad
+    /// path is now expressed through the [`HidInputSource`] substrate
     /// rather than a bare [`HidDeviceManager`], so every `InputSource` line has
     /// a live consumer. Wraps the same manager and push-based gilrs delivery —
     /// behaviour is preserved; `connect_gamepad_multi_device` drives it via
     /// `connect` + `start(tx)`.
     pub(super) gamepad_manager: Option<HidInputSource>,
 
-    /// ADR-039-B #1762 (step 4c): alias the live gamepad's events are tagged
+    /// ADR-039-B (step 4c): alias the live gamepad's events are tagged
     /// with — resolved from the config's `[[endpoints]]` Input/Hid declaration
     /// (`resolve_hid_input_alias`) at `listen_to_all_ports` time. `None` until
     /// resolved, in which case the gamepad falls back to the historical
@@ -149,11 +149,11 @@ pub struct InputManager {
     /// Whether multi-device mode is active
     pub(super) multi_device_active: bool,
 
-    /// Port names to auto-exclude from input scanning (v4.26.0 - ADR-009 D21)
+    /// Port names to auto-exclude from input scanning (ADR-009 D21)
     /// Populated with virtual output port names to prevent feedback loops
     pub(super) exclude_port_names: Vec<String>,
 
-    /// MIDI Learn active flag — shared with EngineManager (v4.26.0 - ADR-009 D11)
+    /// MIDI Learn active flag — shared with EngineManager (ADR-009 D11)
     /// When true, Ambiguous ports are opened temporarily for device discovery
     pub(super) midi_learn_active: Option<Arc<AtomicBool>>,
 
@@ -164,7 +164,7 @@ pub struct InputManager {
     pub(super) probe_coordinator:
         Option<Arc<conductor_core::device_intelligence::probe::ProbeCoordinator>>,
 
-    /// #943: Daemon → GUI event channel for surfacing
+    /// Daemon → GUI event channel for surfacing
     /// `BindingResult::Ambiguous` (and other resolver-side conditions)
     /// beyond the existing `tracing::warn!`. `None` in tests; set by
     /// `EngineManager::new` after construction. `broadcast::Sender::send`
@@ -203,7 +203,7 @@ impl InputManager {
         };
 
         let gamepad_manager = if mode == InputMode::GamepadOnly || mode == InputMode::Both {
-            // ADR-039-B #1762 (step 4c): wrap the manager as the HID
+            // ADR-039-B (step 4c): wrap the manager as the HID
             // `InputSource`. The pumped event tag (`DeviceId`) defaults to
             // "gamepad" (backward compatible) and is updated via
             // `set_device_id` in `connect_gamepad_multi_device` when the
@@ -235,7 +235,7 @@ impl InputManager {
         }
     }
 
-    /// ADR-039 §4.1/§4.3 (#1760): snapshot every connected input source's
+    /// ADR-039 §4.1/§4.3: snapshot every connected input source's
     /// baseline observability counters (`events_in`, `dropped`, `errors`,
     /// `last_activity`). The MIDI/HID converter push tasks increment these via
     /// the shared shed-load [`enqueue`] policy, so this is the live view of how
@@ -263,19 +263,19 @@ impl InputManager {
         out
     }
 
-    /// Set the MIDI Learn active flag for Ambiguous port handling (v4.26.0 - ADR-009 D11).
+    /// Set the MIDI Learn active flag for Ambiguous port handling (ADR-009 D11).
     pub fn set_midi_learn_flag(&mut self, flag: Arc<AtomicBool>) {
         self.midi_learn_active = Some(flag);
     }
 
-    /// #943: Wire the daemon's event broadcast channel so resolver-side
+    /// Wire the daemon's event broadcast channel so resolver-side
     /// surface conditions (Ambiguous ports, etc.) can be raised to the
     /// GUI / MCP / CLI surfaces beyond the `tracing::warn!` log line.
     pub fn set_event_broadcast_tx(&mut self, tx: broadcast::Sender<MonitorEvent>) {
         self.event_broadcast_tx = Some(tx);
     }
 
-    /// #943: emit a `MonitorEvent` over the broadcast channel (no-op if
+    /// Emit a `MonitorEvent` over the broadcast channel (no-op if
     /// the channel is unset). Failures (no subscribers, lagging) are
     /// intentionally swallowed — the `tracing::warn!` companion at the
     /// call site is the durable record; this channel exists to push the
@@ -286,7 +286,7 @@ impl InputManager {
         }
     }
 
-    /// #943: dedicated helper for `BindingResult::Ambiguous` so both
+    /// Dedicated helper for `BindingResult::Ambiguous` so both
     /// resolver call sites (initialize_multi_device + rescan_ports)
     /// share a single payload shape. The event_type string
     /// `"ambiguous_port_detected"` is what GUI / MCP / CLI consumers
@@ -341,7 +341,7 @@ impl InputManager {
         }
     }
 
-    /// Set port names to auto-exclude from input scanning (v4.26.0 - ADR-009 D21).
+    /// Set port names to auto-exclude from input scanning (ADR-009 D21).
     ///
     /// Used to exclude Conductor's own virtual output ports from input,
     /// preventing feedback loops.
@@ -420,7 +420,7 @@ impl InputManager {
 
         self.multi_device_active = false;
 
-        // ADR-039 #1760 (PR #2177 review): the source-metrics handles track live
+        // ADR-039: the source-metrics handles track live
         // converter push tasks; clear them alongside the managers so
         // `input_source_metrics()` doesn't report stale counters for devices that
         // are no longer connected. (The hot-plug single-device removal path
@@ -464,10 +464,10 @@ impl InputManager {
     }
 }
 
-// v4.10.9: Removed convert_midi_to_input() - now uses From<MidiEvent> for InputEvent
+// Removed convert_midi_to_input() - now uses From<MidiEvent> for InputEvent
 // from conductor-core/src/events.rs (single source of truth, preserves original timestamps)
 
-/// Filter ports by ignore list and max cap (v4.20.0 - ADR-009 Phase 2)
+/// Filter ports by ignore list and max cap (ADR-009 Phase 2)
 ///
 /// Pure function for testability. Used by `listen_to_all_ports`.
 pub fn filter_ports(
@@ -491,7 +491,7 @@ pub fn filter_ports(
     }
 }
 
-/// Whether MIDI input-port enumeration is worth running for `mode` (#2393).
+/// Whether MIDI input-port enumeration is worth running for `mode`.
 ///
 /// `InputMode` gates which *input* protocols are active (MIDI *output* —
 /// SendMidi, virtual ports — is unaffected and still works in GamepadOnly). In
@@ -506,7 +506,7 @@ pub(crate) fn midi_enumeration_enabled(mode: InputMode) -> bool {
     mode != InputMode::GamepadOnly
 }
 
-/// Build the input-scan ignore list (#2054 / #2216).
+/// Build the input-scan ignore list.
 ///
 /// Combines, in order: the user's `ignore_ports`, any externally-set
 /// `exclude_port_names`, and Conductor's own enabled `MidiVirtualPort`
@@ -571,7 +571,7 @@ mod tests {
 
     #[test]
     fn midi_enumeration_enabled_skips_gamepad_only() {
-        // #2393: in GamepadOnly mode `rescan_ports` discards any enumerated MIDI
+        // In GamepadOnly mode `rescan_ports` discards any enumerated MIDI
         // ports, so the off-loop hot-plug task and the reload path must skip the
         // CoreMIDI/ALSA enumeration (cosmetic/efficiency — avoids wasted scans
         // and spurious MIDI warnings on no-MIDI hosts). MIDI must still
@@ -662,7 +662,7 @@ mod tests {
         assert!(manager.get_midi_manager_mut().is_some());
     }
 
-    // Multi-device tests (v4.20.0)
+    // Multi-device tests
 
     #[test]
     fn test_filter_ports_ignore() {
@@ -714,8 +714,8 @@ mod tests {
     fn build_input_ignore_excludes_config_virtual_ports() {
         use conductor_core::config::types::{ConnectorDirection, EndpointConfig, EndpointKind};
         // A MidiVirtualPort OUTPUT endpoint: Conductor creates "Virtual Test Port"
-        // as an OS port (#2063); it must NOT be re-scanned as an input, else it's
-        // re-discovered as an orphaned unbound input (#2054 / #2216).
+        // as an OS port; it must NOT be re-scanned as an input, else it's
+        // re-discovered as an orphaned unbound input.
         let endpoints = vec![EndpointConfig {
             alias: "virtual-test-out".to_string(),
             direction: ConnectorDirection::Output,
@@ -797,7 +797,7 @@ mod tests {
 
     #[test]
     fn gamepad_metrics_key_defaults_to_gamepad_without_hid_endpoint() {
-        // ADR-039-B #1762 (step 4c): with no HID input endpoint declared, the
+        // ADR-039-B (step 4c): with no HID input endpoint declared, the
         // gamepad source's metrics key matches the historical "gamepad" event
         // tag (backward compatible).
         let mut manager = InputManager::new(None, false, InputMode::Both);
@@ -813,7 +813,7 @@ mod tests {
 
     #[test]
     fn gamepad_metrics_key_uses_configured_hid_input_alias() {
-        // ADR-039-B #1762 (step 4c): the gamepad source's metrics key must match
+        // ADR-039-B (step 4c): the gamepad source's metrics key must match
         // the configured `[[endpoints]]` Input/Hid alias used to tag its events
         // (`set_device_id` in `connect_gamepad_multi_device`) — otherwise
         // `input_source_metrics()` misattributes the source (e.g. events route
@@ -866,7 +866,7 @@ mod tests {
         );
     }
 
-    // ── #943: Ambiguous-port event emission ──────────────────────────
+    // ── Ambiguous-port event emission ──────────────────────────
     //
     // The resolver's `BindingResult::Ambiguous` arm now emits a
     // `MonitorEvent` of type "ambiguous_port_detected" via the broadcast

@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1314: the packaged systemd unit must include the state directory
+//! The packaged systemd unit must include the state directory
 //! that `StateManager::get_state_dir()` writes — otherwise a
 //! hardened systemd launch (`ProtectHome=read-only`) blocks the
 //! daemon's first write to `~/.conductor` and startup fails.
@@ -30,7 +30,7 @@ fn systemd_unit_path() -> PathBuf {
 /// repeated `ReadWritePaths=` directives — each entry is additive
 /// (the kernel sees the union).
 ///
-/// Council R3 — tolerate the systemd grammar variants likely to
+/// Tolerate the systemd grammar variants likely to
 /// appear in future revisions of our own file:
 ///
 /// - Whitespace around `=`: `ReadWritePaths = ...` is equivalent
@@ -76,7 +76,7 @@ fn read_write_paths_from_unit() -> Vec<String> {
     paths
 }
 
-/// THE regression test for #1314. The Linux `get_state_dir()`
+/// THE regression test. The Linux `get_state_dir()`
 /// returns `~/.conductor` (see state.rs:204-209). The systemd unit
 /// MUST grant write access to that path, otherwise daemon startup
 /// fails under `ProtectHome=read-only`.
@@ -108,7 +108,7 @@ fn systemd_read_write_paths_includes_dot_conductor_state_dir() {
 #[test]
 fn systemd_read_write_paths_preserves_xdg_state_path() {
     let paths = read_write_paths_from_unit();
-    // Council R2: mirror the empty-vector guard from the sibling
+    // Mirror the empty-vector guard from the sibling
     // test above. A malformed unit with no ReadWritePaths at all
     // would fail the existence assertion with a less actionable
     // message; this guard surfaces the parse failure explicitly.

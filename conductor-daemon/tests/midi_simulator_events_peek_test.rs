@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! #1434: the interactive `midi_simulator`'s `events` command is documented as a
+//! The interactive `midi_simulator`'s `events` command is documented as a
 //! read-only display (with a separate `clear` for draining), but it used to call
 //! the draining `get_events()` — so the FIRST `events` consumed the queue and a
 //! second `events` showed nothing. This black-box test verifies `events` is now

@@ -9,7 +9,7 @@
 
 //! Integration tests for IPC request-size security controls.
 //!
-//! #1517: previously these tests only compared locally-constructed string
+//! Previously these tests only compared locally-constructed string
 //! lengths against a *duplicated* `MAX_REQUEST_SIZE` literal — they never sent
 //! anything through the server's reader, so a removed / inverted / off-by-one
 //! size check would not fail them, and they would keep passing if the real

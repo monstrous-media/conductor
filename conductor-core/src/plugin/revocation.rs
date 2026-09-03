@@ -4,8 +4,8 @@
 //! ADR-027 **D9** — plugin signing-key **revocation list (CRL)** store.
 //!
 //! Rotation chains ([`crate::plugin::key_rotation`]) cover routine key
-//! *updates*; they do **not** answer immediate *compromise*. The Council R1
-//! review flagged a fast-revocation mechanism as a critical missing control: a
+//! *updates*; they do **not** answer immediate *compromise*. A fast-revocation
+//! mechanism is a critical missing control without this module: a
 //! key known to be compromised must be refused at load **regardless** of how it
 //! sits in a chain (root, interior, or head) and regardless of whether a
 //! rotation manifest is even present.
@@ -201,7 +201,7 @@ pub fn add_revoked_fingerprint_to(
     // brick loading. Refuse rather than persist a file we know the loader rejects
     // — this is what makes the function's "the store never contains an entry the
     // loader would later reject" contract hold across writes, not just for the
-    // newly-added entry. (#1894 — Copilot review)
+    // newly-added entry.
     for entry in &file.revoked {
         parse_fingerprint(&entry.fingerprint)?;
     }
@@ -388,7 +388,7 @@ mod tests {
         // the loader hard-fails on it (fail-closed), so re-writing the file while
         // appending a *valid* revocation would leave a CRL that bricks all plugin
         // loading. The writer must refuse rather than persist a file it knows the
-        // loader will reject. (#1894 — Copilot review)
+        // loader will reject.
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("revoked_keys.toml");
         std::fs::write(&path, "[[revoked]]\nfingerprint = \"not-hex-zz\"\n").unwrap();

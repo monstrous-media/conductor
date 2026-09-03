@@ -115,10 +115,10 @@ to = "b"
 
 #[test]
 fn distinct_transforms_on_same_source_dest_do_not_warn_as_duplicate() {
-    // Copilot review on PR #1161 finding #2: my slice-3 commit message
-    // said "different transforms on same source/dest is legitimate
-    // fan-out" — but the implementation EXCLUDED transform from the
-    // shape check, which inverted the logic and made differently-
+    // A prior commit message described this as "different transforms on
+    // same source/dest is legitimate fan-out" — but the implementation
+    // EXCLUDED transform from the shape check, which inverted the logic
+    // and made differently-
     // transformed routes (which SHOULD be allowed as fan-out) emit
     // a false duplicate warning.
     //

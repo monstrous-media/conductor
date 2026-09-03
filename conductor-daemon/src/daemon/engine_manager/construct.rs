@@ -1,8 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! `EngineManager::new` constructor, extracted from `engine_manager::mod`
-//! (refactor #2073).
+//! `EngineManager::new` constructor, extracted from `engine_manager::mod`.
 
 use super::*;
 
@@ -34,7 +33,7 @@ impl EngineManager {
         // today (Phase 1B § 3.5 deferred — the hot path stays on the
         // lock-free `device_output_map`); reconsider this choice if
         // that ever changes.
-        // ADR-035 Slice 6: build the registry from the unified endpoint set
+        // ADR-035: build the registry from the unified endpoint set
         // (authored `[[endpoints]]` + lowered legacy bindings/connectors).
         // `Config::load` already ran `normalize_to_endpoints` and hard-failed on
         // any alias collision, so this re-normalization is guaranteed to
@@ -48,7 +47,7 @@ impl EngineManager {
         // Constructed here (ahead of ActionExecutor) so the executor can
         // capture a reference for Phase 2 state conditions.
         let control_state = Arc::new(PhysicalControlStateStore::default());
-        // #2396 / ADR-015 D2 (revised) + ADR-021 D4: the read-mostly dispatch
+        // ADR-015 D2 (revised) + ADR-021 D4: the read-mostly dispatch
         // config (OSC output endpoints + ADR-042 D17 allow-map) is shared
         // lock-free with the dispatch-thread executor via a single ArcSwap.
         // Created BEFORE both executors and at its fail-safe default (empty maps
@@ -82,11 +81,11 @@ impl EngineManager {
         }
 
         // D4.A.3.3.A: lock-free rule set is owned by `LiveConfig` —
-        // the first compile fires inside `LiveConfig::new_published()` below (#2533)
+        // the first compile fires inside `LiveConfig::new_published()` below
         // (RealRuleCompiler). Engine-local rule_set field retired.
 
         // ADR-031 § 4.4 / Phase 2B: compile route engine (intended as
-        // stage-9 of the post-#1118 8-stage matcher; hot-path invocation
+        // stage-9 of the 8-stage matcher; hot-path invocation
         // after rule_set misses is wired in Phase 2C). ArcSwap matches
         // the rule_set pattern; rebuilt in `reload_config()` alongside it.
         let initial_route_engine = crate::route_engine::RouteEngine::compile(&config.routes);
@@ -95,7 +94,7 @@ impl EngineManager {
         // filters, both deferred until cross-protocol routing lands).
         initial_route_engine.log_exclusions();
         let route_engine = Arc::new(ArcSwap::from_pointee(initial_route_engine));
-        // ADR-036 §8 / Slice 9: shared dispatch-trace ring buffer.
+        // ADR-036 §8: shared dispatch-trace ring buffer.
         // Capacity is configurable via `advanced_settings.trace_buffer_size`
         // (spec §10 Open Item #3); validation bounds it to [1, 1_000_000].
         let dispatch_trace = Arc::new(
@@ -104,21 +103,21 @@ impl EngineManager {
             ),
         );
 
-        // Unified input event channel (v4.20.0 multi-device, #885 consolidated):
+        // Unified input event channel:
         // every connected device emits `DeviceEvent<ProtocolEvent>` here (ADR-039
-        // #1758 — MIDI/HID wrap as `ProtocolEvent::Input`), including legacy
+        // — MIDI/HID wrap as `ProtocolEvent::Input`), including legacy
         // single-device configs. Buffer size 1000 handles high-frequency MIDI
         // devices (~1000 events/sec) without dropping events during config
         // reload (<10ms) or IPC processing.
         let (device_event_tx, device_event_rx) = mpsc::channel::<DeviceEvent<ProtocolEvent>>(1000);
 
-        // Per-device EventProcessors (v4.20.0 - ADR-009 Phase 2)
+        // Per-device EventProcessors (ADR-009 Phase 2)
         let event_processors: Arc<DashMap<DeviceId, EventProcessor>> = Arc::new(DashMap::new());
 
         // Per-device event stats for fingerprinting (ADR-022 D7)
         let event_stats: Arc<DashMap<String, EventStats>> = Arc::new(DashMap::new());
 
-        // Initialize current mode using proper fallback chain (Phase 3 of Issue #321)
+        // Initialize current mode using proper fallback chain
         let initial_mode_index = resolve_startup_mode(&config);
         let initial_mode_name = config
             .modes
@@ -137,13 +136,13 @@ impl EngineManager {
             config.modes.len()
         );
 
-        // Create MIDI Learn state (v4.2) - shared with ToolExecutor
+        // Create MIDI Learn state — shared with ToolExecutor
         // Ring buffer with MIDI_LEARN_MAX_EVENTS capacity - oldest events dropped when full
         let midi_learn_active = Arc::new(AtomicBool::new(false));
         let midi_learn_events =
             Arc::new(Mutex::new(VecDeque::with_capacity(MIDI_LEARN_MAX_EVENTS)));
 
-        // Event monitor state (Issue #326) — disabled by default, zero cost
+        // Event monitor state — disabled by default, zero cost
         // Buffer size configurable via [event_console] config (R925)
         let ec_ref = config.event_console.as_ref();
         let monitor_buffer_size =
@@ -167,11 +166,11 @@ impl EngineManager {
         let event_monitor_buffer = Arc::new(std::sync::Mutex::new(VecDeque::with_capacity(
             monitor_buffer_size,
         )));
-        // Push-based event broadcast channel (#394) — capacity 256
+        // Push-based event broadcast channel — capacity 256
         // Lagged subscribers skip missed events rather than blocking the hot path
         let (event_broadcast_tx, _) = broadcast::channel::<MonitorEvent>(256);
 
-        // Create shared state Arcs FIRST so both ToolExecutor and Self share them (#107)
+        // Create shared state Arcs FIRST so both ToolExecutor and Self share them
         let state = Arc::new(RwLock::new(LifecycleState::Init));
         let device_status = Arc::new(RwLock::new(DeviceStatus::default()));
         let statistics = Arc::new(RwLock::new(DaemonStatistics::default()));
@@ -180,7 +179,7 @@ impl EngineManager {
 
         // Create tool executor for LLM integration (ADR-007 Phase 2)
         // Pass MIDI Learn state to enable conductor_start/stop_midi_learn tools
-        // Pass daemon state refs to enable live status reporting (#107)
+        // Pass daemon state refs to enable live status reporting
         //
         // NOTE: Config sync design (intentional for TOCTOU protection):
         // The ToolExecutor receives its own config Arc (initially None) rather than
@@ -190,7 +189,7 @@ impl EngineManager {
         // - Plans compute their base_config_hash against this snapshot
         // - If config changes between plan creation and apply, hash mismatch fails apply
         // See: ApplyPlan and ExecuteMcpTool handlers below for sync points
-        // Per-device rate limiter (v4.26.0 - ADR-009 D9)
+        // Per-device rate limiter (ADR-009 D9)
         let device_rate_limiter =
             DeviceRateLimiter::new(config.advanced_settings.max_events_per_sec);
 
@@ -209,7 +208,7 @@ impl EngineManager {
         // message describes the override only — probing may still be
         // suppressed by `sysex_identity_probing = false`,
         // `probe_on_connect = false`, missing paired output, or rate
-        // limit (#976 review).
+        // limit.
         for alias in config.endpoints_with_no_probe_sysex_override() {
             warn!(
                 device = %alias,
@@ -224,7 +223,7 @@ impl EngineManager {
         // D4.A.3.3.A: sole config Arc (the legacy `Arc<RwLock<Config>>`
         // mirror retired).
         let live_config = {
-            // #2533: the boot-loaded config IS the first published snapshot →
+            // The boot-loaded config IS the first published snapshot →
             // `new_published` seeds it at state_generation = 1 (ADR-034 KI-A2/R6-A8),
             // NOT the gen-0 sentinel that `handle_get_config_body` blanks. Without
             // this a cold-booted daemon serves an empty `GetConfigBody` and the GUI
@@ -232,14 +231,14 @@ impl EngineManager {
             let lc = crate::daemon::live_config::LiveConfig::new_published(config)
                 .map_err(|e| DaemonError::Ipc(format!("live_config init: {e}")))?;
             // ADR-034 §D8: record config mutations to the durable audit outbox.
-            // Now fail-closed (#2296 sub-slice C): an open failure makes the daemon
+            // Now fail-closed: an open failure makes the daemon
             // refuse config mutations (`AuditUnavailable`).
             //
             // Skipped in IN-CRATE unit-test builds (`cfg(test)`): `LiveConfig::new`
             // resolves the outbox from `$XDG_STATE_HOME` (a single shared file), so
             // the many parallel `EngineManager::new` unit tests would race on it —
             // interleaved appends corrupt the hash chain, the next open fails, and
-            // since #2296 that now (correctly) refuses mutations, breaking tests
+            // now (correctly) refuses mutations, breaking tests
             // unrelated to auditing. Production and the isolated integration tests
             // in `tests/live_config_persist.rs` (which build their own per-`TempDir`
             // outbox via `new_with_paths().with_audit_outbox()`) keep full audit
@@ -248,7 +247,7 @@ impl EngineManager {
             let lc = lc.with_audit_outbox();
             Arc::new(lc)
         };
-        // #2071 (ADR-043 D2/Q2): seed the reconcile guard with the initial
+        // ADR-043 D2/Q2: seed the reconcile guard with the initial
         // snapshot's content revision. The constructor above already builds
         // the runtime (mapping engine, route engine, connector registry) to
         // match this config, so the first `reconcile_runtime_to_live` only
@@ -284,7 +283,7 @@ impl EngineManager {
             route_engine: Arc::clone(&route_engine),
             dispatch_trace: Arc::clone(&dispatch_trace),
         };
-        // Issue #1038: wire the disk-backed AuditLogger into the
+        // Wire the disk-backed AuditLogger into the
         // ToolExecutor BEFORE the Arc-wrap so `set_audit_logger`
         // (which takes `&mut self`) can still reach it. Pre-fix
         // D13b/D13c had complete code paths but no production
@@ -302,14 +301,14 @@ impl EngineManager {
             midi_learn_events.clone(),
             tool_state_refs,
         );
-        // ADR-027 D13a (#1167): build the audit logger once and
+        // ADR-027 D13a: build the audit logger once and
         // share the `Arc` — the ToolExecutor writes to it, and
         // EngineManager keeps a clone so the IPC layer can serve
         // `QueryAudit` and `SubscribeAudit` off the same instance
         // (one broadcast channel, one SQLite handle).
         #[cfg(feature = "audit-db")]
         let audit_logger = crate::daemon::audit::default_audit_logger();
-        // ADR-045 D5 (#2493): sink selection. `audit-db` compositions use the
+        // ADR-045 D5: sink selection. `audit-db` compositions use the
         // SQLite sink; without it — or when SQLite init failed — fall back to
         // the always-compiled JSONL sink so audit stays composition-
         // independent. `None` only when BOTH are unavailable (the D5
@@ -335,18 +334,18 @@ impl EngineManager {
 
         Ok(Self {
             live_config,
-            // #2553: defaults to the authority path (the single-file `new()`
+            // Defaults to the authority path (the single-file `new()`
             // case). `service.rs` overrides via `set_user_file_path` when the
             // authority (`live.toml`) and user file (`config.toml`) differ.
             user_file_path: config_path.clone(),
-            // #2564: no identity persistence until service.rs wires the state dir.
+            // No identity persistence until service.rs wires the state dir.
             active_profile_persist_dir: None,
             config_path,
             route_engine,
             dispatch_trace,
             mapping_engine: Arc::new(RwLock::new(mapping_engine)),
             action_executor: Arc::new(Mutex::new(action_executor)),
-            // ADR-025 Phase 2 (fix #844): the ActionDispatcher spawns a
+            // ADR-025 Phase 2: the ActionDispatcher spawns a
             // dedicated thread that owns its own ActionExecutor. Must
             // thread the control-state store through `spawn_with_state`
             // so Conditional actions evaluated on this (the production
@@ -354,7 +353,7 @@ impl EngineManager {
             // `NoteHeld` from live state. Without this the dispatcher's
             // executor has `control_state = None` and every state
             // condition silently returns `false`.
-            // #2396: spawn_with_config injects the SHARED config ArcSwap + the
+            // spawn_with_config injects the SHARED config ArcSwap + the
             // virtual-port watch receiver so the dispatch-thread executor reads
             // config EngineManager actually updates (OscForward endpoints, D17
             // allow-map) and creates virtual ports on-thread.
@@ -389,7 +388,7 @@ impl EngineManager {
             background_tasks_spawned: AtomicBool::new(false),
             shutdown_tx,
             network_listeners: Vec::new(),
-            // ADR-042 B-early (#1899): platform keychain gate; `None` if no home
+            // ADR-042 B-early: platform keychain gate; `None` if no home
             // dir (→ non-loopback binds fail-closed). Tests inject via
             // `set_network_bind_gate`.
             #[cfg(unix)]
@@ -424,7 +423,7 @@ impl EngineManager {
             audit_sink,
             device_rate_limiter,
             active_profile,
-            ui_mode: Arc::new(RwLock::new(None)), // ADR-032 P4 (#1089)
+            ui_mode: Arc::new(RwLock::new(None)), // ADR-032 P4
             watcher_retarget_tx: None,
             app_detector: None,
             config_write_suppress: Arc::new(tokio::sync::Mutex::new(None)),

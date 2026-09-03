@@ -302,8 +302,7 @@ fn d13b_chain_detects_content_tamper() {
     // recomputation from canonical bytes mismatches the
     // stored value → HashMismatch.
     //
-    // PR #1031 review (2026-05-02): the previous comment said
-    // an attacker "can't recompute a valid entry_hash" — that
+    // An attacker "can't recompute a valid entry_hash" is a claim that
     // overstates the threat model. A pure unkeyed hash chain
     // does NOT prevent a privileged DB writer from updating a
     // row AND recomputing prev_hash/entry_hash for that row
@@ -346,7 +345,7 @@ fn d13b_chain_detects_content_tamper() {
 
 #[test]
 fn d13b_chain_detects_provenance_tamper() {
-    // #2120 (clawpatch #2103): the v3 `provenance` column records who
+    // The v3 `provenance` column records who
     // initiated a mutation. Pre-fix it was EXCLUDED from the hash chain, so a
     // privileged attacker could rewrite an entry's provenance — forging "this
     // config change came from the CLI" onto an LLM-initiated change, say —
@@ -413,7 +412,7 @@ fn d13b_chain_detects_provenance_tamper() {
 
 #[test]
 fn d13b_chain_unaffected_for_entries_without_provenance() {
-    // Backward-compat guard for the #2120 fix: entries with NO provenance
+    // Backward-compat guard: entries with NO provenance
     // (the common case, and every v2-era row) must hash byte-identically to
     // before — `skip_serializing_if` omits the field, so the canonical bytes
     // are unchanged and the chain still verifies.
@@ -473,8 +472,7 @@ fn d13b_chain_detects_deletion_breaking_link() {
 
 #[test]
 fn d13b_cleanup_re_roots_chain_so_verify_still_passes() {
-    // PR #1031 round-2 review (2026-05-02): retention
-    // `cleanup()` deletes old rows; pre-fix this left the
+    // Retention `cleanup()` deletes old rows; pre-fix this left the
     // first surviving row's `prev_hash` pointing at a
     // now-missing previous-row's `entry_hash`, so
     // `verify_chain` returned BrokenLink — indistinguishable
@@ -555,7 +553,7 @@ fn insert_legacy_v1_row(logger: &AuditLogger, id: &str, tool: &str, created_at_m
 
 #[test]
 fn d13b_chain_verify_skips_leading_legacy_v1_rows() {
-    // PR #1031 round-5 review (2026-05-02): the migration
+    // The migration
     // doc says legacy v1 rows "stay NULL" and v2 entries
     // "form a chain rooted at the v1→v2 boundary". Pre-fix
     // verify_chain() errored on the very first NULL-hashed
@@ -605,7 +603,7 @@ fn d13b_chain_verify_skips_leading_legacy_v1_rows() {
 
 #[test]
 fn d13b_cleanup_preserves_legacy_null_rows() {
-    // PR #1031 round-5 review (2026-05-02): pre-fix cleanup()
+    // Pre-fix cleanup()
     // rebuilt the chain over ALL surviving rows including
     // legacy v1 rows, which silently backfilled their NULL
     // hash columns and contradicted the migration design
@@ -692,7 +690,7 @@ fn d13b_cleanup_preserves_legacy_null_rows() {
 
 #[test]
 fn d13b_migration_idempotent_via_pragma() {
-    // PR #1031 round-6 review (2026-05-02): `run_idempotent_alter`
+    // `run_idempotent_alter`
     // now uses `PRAGMA table_info` to check column existence
     // before running the ALTER, instead of matching on the
     // SQLite error message "duplicate column name". This test
@@ -948,12 +946,12 @@ fn d13c_redaction_can_be_disabled_for_debug_audit() {
 
 #[test]
 fn d13c_secret_results_are_redacted_before_persisting() {
-    // PR #1032 review (2026-05-02): the original integration
+    // The original integration
     // tests covered redact_arguments but not redact_results.
     // Companion: log a tool call whose RESULT carries a
     // secret-shaped key, verify it's redacted before
     // persisting. Also exercises the new `Authorization`
-    // pattern from the same review.
+    // pattern.
     let logger = AuditLogger::in_memory().unwrap();
     let secret_result = serde_json::json!({
         "status": "ok",
@@ -1031,7 +1029,7 @@ fn d13c_redact_results_can_be_disabled_independently() {
 
 #[test]
 fn d13c_oversize_result_redacts_before_truncating() {
-    // PR #1032 review (2026-05-02): pre-fix `with_result`
+    // Pre-fix `with_result`
     // truncated by raw byte slice, which broke JSON validity
     // and caused the redactor's parse step to fail; the
     // redactor then returned the truncated string unchanged,
@@ -1107,7 +1105,7 @@ fn insert_v2_shape_row(logger: &AuditLogger, id: &str, tool: &str, created_at_ms
 
 #[test]
 fn d4a3_3b2_v2_shape_rows_load_with_none_provenance() {
-    // Spec acceptance (#1282): existing v2 DB rows (with NULL
+    // Spec acceptance: existing v2 DB rows (with NULL
     // provenance) MUST load via `query()` without error and
     // surface as `provenance = None`. Confirms the v2→v3 read path
     // is backwards-compatible — the explicit non-spec contract for
@@ -1251,7 +1249,7 @@ fn d4a3_3b2_mixed_provenance_rows_verify_chain() {
 }
 
 // ============================================================
-// ADR-045 D5 (#2493) — dual-sink redaction parity.
+// ADR-045 D5 — dual-sink redaction parity.
 //
 // The ADR-042 D6 / ADR-027 D13c redaction corpus must hold for BOTH
 // sinks. The per-sink suites cover each in depth (this file for SQLite;

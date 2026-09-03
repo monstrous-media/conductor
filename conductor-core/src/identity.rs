@@ -118,7 +118,7 @@ pub enum DeviceMatcher {
     PlatformId { value: String },
     /// Match by macOS CoreMIDI unique ID.
     CoreMidiUniqueId { value: i32 },
-    /// Match by SysEx Identity Reply data (ADR-022 D6, #752).
+    /// Match by SysEx Identity Reply data (ADR-022 D6).
     /// Requires probing the device; matches against stored identity metadata.
     SysExIdentity {
         manufacturer_id: Vec<u8>,
@@ -159,7 +159,7 @@ mod guid_hex {
         let s = String::deserialize(d)?;
         // Require ASCII *before* slicing by byte index: a 32-byte string with a
         // multi-byte UTF-8 char would pass a bare `len() == 32` check yet panic
-        // when `&s[i*2..i*2+2]` splits a codepoint (Council review). For ASCII,
+        // when `&s[i*2..i*2+2]` splits a codepoint. For ASCII,
         // byte length == char count and every 2-byte slice is on a boundary.
         if !s.is_ascii() || s.len() != 32 {
             return Err(serde::de::Error::custom(format!(
@@ -263,7 +263,7 @@ impl DeviceMatcher {
         }
     }
 
-    /// Test whether this matcher matches a port with optional SysEx Identity data (#752).
+    /// Test whether this matcher matches a port with optional SysEx Identity data.
     ///
     /// For `SysExIdentity` matchers, compares manufacturer_id, family, and model
     /// against the provided identity. Returns false if identity is absent.

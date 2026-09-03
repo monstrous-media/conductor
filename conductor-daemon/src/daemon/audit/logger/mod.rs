@@ -25,8 +25,8 @@ use tracing::{debug, error, info};
 
 mod query;
 
-/// Capacity of the live audit-event broadcast ring (ADR-027 D13a,
-/// #1167). The SQLite log is the durable store; this channel is a
+/// Capacity of the live audit-event broadcast ring (ADR-027 D13a).
+/// The SQLite log is the durable store; this channel is a
 /// best-effort live tail for `conductorctl audit tail -f` /
 /// `audit denied`. A consumer that falls behind by more than this
 /// many events gets an explicit `Lagged(n)` rather than a silent
@@ -80,7 +80,7 @@ impl Default for AuditLoggerConfig {
 pub struct AuditLogger {
     conn: Arc<Mutex<Connection>>,
     config: AuditLoggerConfig,
-    /// Live audit-event broadcast (ADR-027 D13a, #1167). Every
+    /// Live audit-event broadcast (ADR-027 D13a). Every
     /// persisted entry is published here AFTER the SQLite write
     /// succeeds — durable-first, so a subscriber never sees an
     /// event that isn't also in the persistent log.
@@ -89,7 +89,7 @@ pub struct AuditLogger {
 
 /// Run an `ALTER TABLE ADD COLUMN` migration step idempotently,
 /// using `PRAGMA table_info` to check column existence first.
-/// PR #1031 round-4 review (2026-05-02): the previous
+/// The previous
 /// implementation matched on the SQLite error message
 /// "duplicate column name", which is not a stable API. Using
 /// `PRAGMA table_info` is the idiomatic, version-stable way to
@@ -117,8 +117,8 @@ fn run_idempotent_alter(conn: &Connection, column: &str, sql: &str) -> SqliteRes
 /// `CanonicalRow` form.
 ///
 /// This is used by schema migrations when canonical bytes change
-/// (for example when provenance was brought under the hash chain in
-/// #2120). Legacy v1 rows remain untouched because they keep
+/// (for example when provenance was brought under the hash chain).
+/// Legacy v1 rows remain untouched because they keep
 /// `entry_hash = NULL`.
 fn rebuild_hashed_chain_segment(conn: &Connection) -> SqliteResult<usize> {
     let mut stmt = conn.prepare(
@@ -223,7 +223,7 @@ impl AuditLogger {
             // existing v1 DBs (columns absent, ALTER adds them).
             // Any PRAGMA or ALTER error (DB locked, corrupt, etc.)
             // surfaces so the migration doesn't bump schema_version
-            // while leaving columns missing (PR #1031 round-4/6).
+            // while leaving columns missing.
             if current_version < 2 {
                 run_idempotent_alter(&conn, "prev_hash", MIGRATE_V1_TO_V2_ADD_PREV_HASH)?;
                 run_idempotent_alter(&conn, "entry_hash", MIGRATE_V1_TO_V2_ADD_ENTRY_HASH)?;
@@ -235,7 +235,7 @@ impl AuditLogger {
             if current_version < 3 {
                 run_idempotent_alter(&conn, "provenance", MIGRATE_V2_TO_V3_ADD_PROVENANCE)?;
             }
-            // #2120 follow-up: once provenance became part of
+            // Once provenance became part of
             // `CanonicalRow`, older v3 rows that already carry
             // non-NULL provenance needed a one-time re-hash to keep
             // `verify_chain()` green after upgrade.
@@ -283,8 +283,8 @@ impl AuditLogger {
         })
     }
 
-    /// Subscribe to the live audit-event stream (ADR-027 D13a,
-    /// #1167). Each persisted entry is broadcast here after the
+    /// Subscribe to the live audit-event stream (ADR-027 D13a).
+    /// Each persisted entry is broadcast here after the
     /// SQLite write succeeds. A receiver that falls behind
     /// [`AUDIT_BROADCAST_CAPACITY`] events gets an explicit
     /// `RecvError::Lagged(n)` — the persistent log
@@ -326,8 +326,8 @@ impl AuditLogger {
     /// arguments. Used for `NetworkListenerActivity` (accepted packets),
     /// `NetworkListenerBindFailed`, `NetworkActionClassBlocked`, and the other
     /// `Network*` variants. `ip` is the packet source for activity/block events
-    /// and the bind host for bind-failed / orphaned events (Copilot review on
-    /// #1953 — hence the neutral name rather than `sender`).
+    /// and the bind host for bind-failed / orphaned events (the neutral name
+    /// is used rather than `sender`).
     ///
     /// Edge **rejections** (off-ACL / rate-limited packets) are deliberately
     /// NOT persisted through here — they emit dedup'd `tracing` only (spec §A.5,
@@ -601,7 +601,7 @@ impl AuditLogger {
 
     /// Insert an entry into the database
     fn insert_entry(&self, entry: &AuditEntry) {
-        // PR #1032 review (2026-05-03): pre-compute every value
+        // Pre-compute every value
         // that doesn't need DB access BEFORE acquiring the SQLite
         // mutex. Redaction parses + walks JSON (potentially
         // multi-KB payloads) and was previously running while
@@ -633,7 +633,7 @@ impl AuditLogger {
         } else {
             entry.arguments.clone()
         };
-        // PR #1032 review (2026-05-02): redact, THEN truncate.
+        // Redact, THEN truncate.
         // Pre-fix `with_result` truncated by raw-byte slicing,
         // which (a) could split a UTF-8 character and (b)
         // routinely produced invalid JSON — the redactor's
@@ -674,17 +674,14 @@ impl AuditLogger {
         // opens one AuditLogger per daemon process, so this
         // doesn't bite. If multi-process audit writing ever
         // ships, switch this code path to wrap the read+insert
-        // in a SQLite `BEGIN IMMEDIATE` transaction (PR #1031
-        // round-4 review, 2026-05-02 — corrected an earlier
-        // comment that wrongly attributed the race to
-        // same-process concurrent writers).
+        // in a SQLite `BEGIN IMMEDIATE` transaction.
         // Use SQLite's auto-incrementing `rowid` (strictly
         // monotonic on insert order) rather than `created_at`
         // (millisecond resolution, ties on rapid inserts) or
         // the row's `id` (random UUID, no temporal ordering).
         // This must agree with `verify_chain`'s ORDER BY rowid
         // ASC so the inserter and verifier see the same chain.
-        // PR #1031 round-2 review (2026-05-02): treat ONLY
+        // Treat ONLY
         // `QueryReturnedNoRows` as the genesis case. Any other
         // error here (DB locked, schema mismatch, corruption)
         // would otherwise have caused a fresh-genesis insert
@@ -714,7 +711,7 @@ impl AuditLogger {
             }
         };
 
-        // PR #1031 review (2026-05-02): hash the persisted-form
+        // Hash the persisted-form
         // bytes (the raw values bound to the SQL params), NOT
         // the in-memory `&AuditEntry`. The verifier reads the
         // same persisted-form values from SQLite, so both sides
@@ -725,7 +722,7 @@ impl AuditLogger {
         // ADR-034 §D4.A.3.3.B.2: serialise the optional `Provenance`
         // to JSON for storage in the v3 column. NULL when the entry
         // carries no provenance (e.g. ReadOnly tool calls). Computed
-        // BEFORE the canonical row so it feeds the hash chain (#2120):
+        // BEFORE the canonical row so it feeds the hash chain:
         // the SAME serialized string is both stored AND hashed, so the
         // verifier (which reads the stored column) recomputes an
         // identical hash, and any tamper of the column is detectable.
@@ -786,7 +783,7 @@ impl AuditLogger {
                 entry.risk_tier.as_str()
             );
 
-            // ADR-027 D13a (#1167) — publish to the live stream
+            // ADR-027 D13a — publish to the live stream
             // ONLY after the durable SQLite write succeeds, so a
             // `conductorctl audit tail` subscriber never observes
             // an event that isn't also in the persistent log.
@@ -820,10 +817,9 @@ impl AuditLogger {
     /// `entry_hash`, and the first row's `prev_hash` is
     /// [`GENESIS_PREV_HASH`]. Returns `Err(ChainBreak)`
     /// describing the first detected integrity failure or DB
-    /// error (PR #1031 round-2 separates the two: the verifier
-    /// returns `ChainBreak::DbError` for non-integrity issues
-    /// like lock-poisoning so triage can distinguish "log was
-    /// tampered" from "couldn't read it").
+    /// error (the verifier returns `ChainBreak::DbError` for
+    /// non-integrity issues like lock-poisoning so triage can
+    /// distinguish "log was tampered" from "couldn't read it").
     ///
     /// **Tamper-evidence, not tamper-prevention.** An attacker
     /// with write access to the SQLite file can still mutate
@@ -850,8 +846,8 @@ impl AuditLogger {
                 details: format!("prepare verify_chain stmt: {e}"),
             })?;
 
-        // Read raw column values — no lossy enum/JSON parsing
-        // (PR #1031 review, 2026-05-02). Strings stay as the
+        // Read raw column values — no lossy enum/JSON parsing.
+        // Strings stay as the
         // exact bytes that were written; ms stays as the i64
         // that was written. Both insert and verify build the
         // hash from this same byte-shape.
@@ -886,7 +882,7 @@ impl AuditLogger {
                 details: format!("decode audit row: {e}"),
             })?;
             let entry_id = row.id.clone();
-            // PR #1031 round-5 review (2026-05-02): legacy v1
+            // Legacy v1
             // rows (pre-D13b) carry NULL in BOTH hash columns —
             // `schema.rs` documents that they "stay NULL" and
             // that the v2 segment forms a chain "rooted at the
@@ -953,7 +949,7 @@ impl AuditLogger {
     /// Clean up old entries
     /// Delete audit entries older than `max_age_days`.
     ///
-    /// **D13b interaction (PR #1031 review, 2026-05-02):**
+    /// **D13b interaction:**
     /// retention deletion fundamentally conflicts with an
     /// append-only hash chain — any DELETE leaves the new
     /// first-row's `prev_hash` pointing at a now-missing
@@ -991,7 +987,7 @@ impl AuditLogger {
         let cutoff = chrono::Utc::now().timestamp_millis()
             - (self.config.max_age_days as i64 * 24 * 60 * 60 * 1000);
 
-        // PR #1031 round-4 review (2026-05-02): wrap DELETE +
+        // Wrap DELETE +
         // chain-rebuild in a single SQLite transaction so the
         // audit_log is updated atomically. Pre-fix the DELETE
         // committed immediately and the per-row UPDATEs each
@@ -1024,7 +1020,7 @@ impl AuditLogger {
             // chain link breaks. So we walk the full surviving
             // v2 table and rebuild forward.
             //
-            // PR #1031 round-5 review (2026-05-02): scope the
+            // Scope the
             // rebuild to rows where `entry_hash IS NOT NULL`.
             // Legacy v1 rows (pre-D13b) sit at the head of the
             // table with both hash columns NULL; the migration
@@ -1071,7 +1067,7 @@ impl AuditLogger {
 /// Holds the persisted bytes verbatim (strings as stored,
 /// JSON as a blob, ms as the i64 the column holds) so the
 /// canonical-hash bytes are byte-identical to what was hashed
-/// at insert time. PR #1031 review (2026-05-02): replaced the
+/// at insert time. Replaced the
 /// old `AuditChainRow` which decoded to in-memory enums and
 /// `Option<UserContext>` — that decoding was lossy and let
 /// some tampering go undetected.
@@ -1129,7 +1125,7 @@ mod tests {
 
     #[test]
     fn truncate_for_storage_respects_hard_cap() {
-        // PR #1032 round-3 review (2026-05-02): pre-fix
+        // Pre-fix
         // truncated input at RESULT_MAX_BYTES then APPENDED
         // the marker, so the stored string overflowed the cap
         // by `marker.len()`. Now budget reserves marker space
@@ -1209,7 +1205,7 @@ mod tests {
         assert_eq!(entries[0].error_message, Some("Mode not found".to_string()));
     }
 
-    // ── ADR-034 §D8.3 — pending-at-crash audit emission (#1902) ──────────
+    // ── ADR-034 §D8.3 — pending-at-crash audit emission ──────────
 
     #[test]
     fn log_config_mutation_pending_at_crash_persists_id_and_revision() {
@@ -1300,7 +1296,7 @@ mod tests {
         // default `log_readonly: true`) with an in-memory SQLite path,
         // so the test actually validates the behaviour its name claims.
         //
-        // Copilot review on PR #1176 caught that the previous version
+        // The previous version
         // built a `log_readonly: false` config but never passed it to
         // a logger — it asserted on a separate `in_memory()` instance
         // and so only proved "in-memory logs everything".

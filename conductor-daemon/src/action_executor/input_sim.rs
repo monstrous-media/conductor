@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Keyboard / mouse input simulation via enigo (#1684 split from
+//! Keyboard / mouse input simulation via enigo (split from
 //! `action_executor.rs`). Houses the domain→enigo conversion helpers
 //! (`to_enigo_key`, `to_enigo_modifier`, `to_enigo_button`), the lazy
 //! Enigo accessor (`get_enigo`), and the keystroke executor
@@ -148,7 +148,7 @@ impl ActionExecutor {
         // happen BEFORE Enigo is initialised so a denied first-
         // use doesn't trigger the macOS Accessibility prompt.
         if let Err(policy_err) = self.keystroke_policy.check(&keys, &modifiers) {
-            // PR #1030 review (2026-05-02): pre-fix this logged
+            // Pre-fix this logged
             // `?keys` (the full KeyCode vector). For a long
             // `Action::Keystroke` sequence — say, a macro that
             // types an API token character-by-character via

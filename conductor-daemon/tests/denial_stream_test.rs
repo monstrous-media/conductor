@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! ADR-027 D13a — audit denial observability (#1167).
+//! ADR-027 D13a — audit denial observability.
 //!
 //! Implementation-spec test-matrix case 1J:
 //!   - Denial event emitted on the live stream when a tool is denied.
@@ -15,7 +15,7 @@
 //! the IPC + conductorctl surface is thin glue on top and is covered
 //! by the daemon's own dispatch tests.
 
-// ADR-045 D1 (#2492): exercises the SQLite audit logger; only exists in audit-db builds.
+// ADR-045 D1: exercises the SQLite audit logger; only exists in audit-db builds.
 #![cfg(feature = "audit-db")]
 
 use conductor_daemon::daemon::audit::{
@@ -29,8 +29,7 @@ use tokio::sync::broadcast::error::RecvError;
 /// regress. The audit broadcast is bounded and synchronous-on-send,
 /// so a healthy logger delivers events well within 100ms even on
 /// slow CI runners — 2 s is comfortably generous for the
-/// pass-path while still failing fast on a real hang (Council
-/// review on PR #1210).
+/// pass-path while still failing fast on a real hang.
 const RECV_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// `AUDIT_BROADCAST_CAPACITY` (1024) ×4. The slow-consumer test
@@ -39,8 +38,7 @@ const RECV_TIMEOUT: Duration = Duration::from_secs(2);
 /// brittle against a 1-or-2-slot capacity tweak. The cap itself
 /// is private to the logger module — encoding the multiplier
 /// rather than the absolute number keeps the test loosely
-/// coupled to the implementation detail (Council review on
-/// PR #1210).
+/// coupled to the implementation detail.
 const FLOOD_PAST_CAPACITY: u32 = 4096;
 
 /// A denial logged after a subscription is live MUST reach the
@@ -144,8 +142,7 @@ async fn slow_consumer_sees_lagged_but_log_stays_durable() {
                 // dropped. The logger is held in scope for the
                 // duration of this test, so Closed here would
                 // indicate the broadcast channel internal-state
-                // regression that we DO want to catch (Council
-                // review on PR #1210).
+                // regression that we DO want to catch.
                 panic!("broadcast channel closed unexpectedly — logger still in scope",);
             }
         }
@@ -162,7 +159,7 @@ async fn slow_consumer_sees_lagged_but_log_stays_durable() {
     // Filter by event_type (NOT errors_only) — this test's contract
     // is denial-durability, and `errors_only=true` would also catch
     // ToolError / plan-related errors if they ever leak into this
-    // test's logger (Council review on PR #1210).
+    // test's logger.
     let denied = logger
         .query(&AuditQuery {
             event_type: Some(AuditEventType::ToolDenied),
@@ -250,7 +247,7 @@ async fn denied_only_query_excludes_non_denial_events() {
     // Unfiltered → exactly the three events we logged (one denial,
     // one start, one complete). Strict `== 3` rather than `>= 3` so
     // the test fails fast if the test scaffolding starts injecting
-    // extra audit rows (Council review on PR #1210).
+    // extra audit rows.
     let all = logger
         .query(&AuditQuery {
             limit: Some(100),

@@ -1,10 +1,10 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-// ADR-035 Slice 1 — `[[endpoints]]` schema: hand-written strict `Deserialize`
+// ADR-035 — `[[endpoints]]` schema: hand-written strict `Deserialize`
 // for `EndpointConfig` (wrapper) over the `EndpointKind` payload enum.
 //
-// Acceptance (issue #1738): parse each `type`; defaults; round-trip; a field
+// Acceptance: parse each `type`; defaults; round-trip; a field
 // typo (`prot =`) errors instead of being silently dropped; a stray field on
 // `MidiVirtualPort` errors; `direction` is required.
 
@@ -236,7 +236,7 @@ fn round_trips_through_serialize() {
 
 #[test]
 fn explicit_non_defaults_survive_round_trip() {
-    // Council review (Slice 1): pin that non-default common fields are both
+    // Pin that non-default common fields are both
     // parsed AND survive serialize → reparse (the derived flatten Serialize
     // and the manual Deserialize must agree on every field, not just the tag).
     let src = r#"
@@ -346,8 +346,8 @@ fn effective_matchers_falls_back_to_symmetric() {
 
 #[test]
 fn empty_matcher_fails_invariant() {
-    // All three matcher lists empty → invariant violated (Slice 5 turns this
-    // into a load error; here we assert the predicate the validator will use).
+    // All three matcher lists empty → invariant violated. The validator turns
+    // this into a load error; here we assert the predicate the validator uses.
     let ep = parse(
         r#"
         alias = "empty"
@@ -390,7 +390,7 @@ fn config_endpoints_array_parses() {
     assert_eq!(cfg.endpoints[1].alias, "dmx");
 }
 
-// ── #2064: JSON `null` for optional fields → `None` (GUI save_config path) ──
+// ── JSON `null` for optional fields → `None` (GUI save_config path) ──
 //
 // The GUI's `save_config` round-trips config through serde_json. TOML has no
 // null, so the hand-written deserializer must tolerate a JSON `null` for an
@@ -459,7 +459,7 @@ fn json_unknown_field_still_errors() {
 
 #[test]
 fn json_null_unknown_field_still_errors() {
-    // Council #2179: a `null` value must NOT let an unknown/typo'd key slip
+    // A `null` value must NOT let an unknown/typo'd key slip
     // through. `prot: null` is still an unknown field, exactly like `prot: "x"`.
     let err = parse_json(serde_json::json!({
         "alias": "daw",

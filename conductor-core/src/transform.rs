@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! MIDI transform pipeline (v4.25.0 - ADR-009 Gap 2)
+//! MIDI transform pipeline (ADR-009 Gap 2)
 //!
 //! Provides real-time MIDI message transformation for the `MidiForward` action.
 //! Transforms are applied to raw MIDI bytes before forwarding to an output port.
@@ -88,7 +88,7 @@ mod lut_serde {
     }
 }
 
-/// Typed MIDI message for structured parsing and transformation (v4.26.0 - ADR-009 Gap I)
+/// Typed MIDI message for structured parsing and transformation (ADR-009 Gap I)
 ///
 /// Provides a type-safe representation of standard MIDI channel messages.
 /// Used internally by `MidiTransform::apply()` to avoid inline status byte parsing.

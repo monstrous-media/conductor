@@ -70,7 +70,7 @@ pub enum InputEvent {
         value: u8,
         /// MIDI channel (0-indexed, None for non-MIDI sources)
         channel: Option<u8>,
-        /// Raw analog value from HID input, before MIDI quantisation (#599).
+        /// Raw analog value from HID input, before MIDI quantisation.
         /// `GamepadAnalogStick` (encoders 128-131): -1.0 to +1.0 (center 0.0).
         /// `GamepadTrigger` (encoders 132-133): 0.0 to 1.0 (released 0.0).
         /// `None` for MIDI encoders.
@@ -181,7 +181,7 @@ impl InputEvent {
 ///
 /// - NoteOn → PadPressed (note → pad)
 /// - NoteOff → PadReleased (note → pad)
-/// - ControlChange → ControlChange (cc → control) (v4.10.9: no longer auto-converts to EncoderTurned)
+/// - ControlChange → ControlChange (cc → control; no longer auto-converts to EncoderTurned)
 /// - PolyPressure → PolyPressure (note → pad, pressure preserved)
 /// - Aftertouch → Aftertouch (pressure preserved)
 /// - PitchBend → PitchBend (value preserved)
@@ -209,7 +209,7 @@ impl From<MidiEvent> for InputEvent {
                 channel: Some(channel),
                 time,
             },
-            // v4.10.9: CC events stay as ControlChange, not EncoderTurned
+            // CC events stay as ControlChange, not EncoderTurned
             // The EventProcessor will generate EncoderTurned for actual encoder rotation
             MidiEvent::ControlChange {
                 cc,
@@ -265,7 +265,7 @@ impl From<MidiEvent> for InputEvent {
 }
 
 // ============================================================================
-// ADR-039 Cross-Protocol Parity — shared substrate (charter, ticket #1758)
+// ADR-039 Cross-Protocol Parity — shared substrate (charter)
 // ============================================================================
 //
 // `ProtocolEvent` is the protocol-tagged wrapper the unified event pump carries.
@@ -385,7 +385,7 @@ pub enum ProtocolEvent {
 impl ProtocolEvent {
     /// Borrow the inner [`InputEvent`] when this is the MIDI/HID variant.
     ///
-    /// The #1758 pump wraps existing MIDI/HID ingress as
+    /// The event pump wraps existing MIDI/HID ingress as
     /// `ProtocolEvent::Input(..)` and unwraps here before the (still
     /// `InputEvent`-shaped) route / event-processing stage.
     pub fn as_input(&self) -> Option<&InputEvent> {

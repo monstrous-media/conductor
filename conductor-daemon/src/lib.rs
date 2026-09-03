@@ -168,21 +168,21 @@ pub mod action_executor;
 pub mod conditions;
 pub mod connector_registry; // ADR-031 § 3.4 — signal routing graph runtime
 pub mod daemon;
-pub mod gamepad_device; // HID device management - Game Controllers (v3.0)
-pub mod input_manager; // Unified MIDI + Gamepad input (v3.0)
-pub mod input_source; // ADR-039 §4.1 — uniform inbound extension point (#1758)
+pub mod gamepad_device; // HID device management - Game Controllers
+pub mod input_manager; // Unified MIDI + Gamepad input
+pub mod input_source; // ADR-039 §4.1 — uniform inbound extension point
 pub mod listeners; // ADR-042 Phase A — network-listener edge (ACL/rate-limit/audit)
-pub mod midi_bytes; // Wire-format MIDI reconstruction for MidiForward (#1119)
+pub mod midi_bytes; // Wire-format MIDI reconstruction for MidiForward
 pub mod midi_device;
 pub mod midi_template; // Shared {cc}/{value}/{note}/{velocity} substitution (ADR-038 R2 P5)
-pub mod migration; // Comment-preserving config migrations (ADR-036 Slice 8)
-pub mod osc_parser; // ADR-039-A Slice 1 — OSC datagram → OscInbound (#1361)
+pub mod migration; // Comment-preserving config migrations (ADR-036)
+pub mod osc_parser; // ADR-039-A — OSC datagram → OscInbound
 pub mod permissions; // TCC permission detection (ADR-029 §D3)
 pub mod plugin_manager;
 pub mod route_engine; // ADR-031 § 4.4 — signal routing graph runtime (Phase 2B)
 pub mod security; // Capability/tier enforcement gate (ADR-027 D5)
-pub mod shell_timeout; // ADR-027 D7 — shell action timeout enforcement (#1166)
-pub mod skills; // Agent Skills validation (v4.11 - ADR-007)
+pub mod shell_timeout; // ADR-027 D7 — shell action timeout enforcement
+pub mod skills; // Agent Skills validation (ADR-007)
 pub mod transforms; // ADR-031 § 7 — cross-protocol transforms (Phase 5)
 
 // Re-export core types for convenience
@@ -202,18 +202,18 @@ pub use action_executor::{ActionExecutor, TriggerContext, derive_shell_argv, par
 pub use conditions::{ConditionContext, evaluate_condition};
 
 // Re-export device managers for daemon use
-pub use gamepad_device::GamepadDeviceManager; // Alias for backward compat (v3.0)
-pub use gamepad_device::HidDeviceManager; // HID device manager (v3.0)
-pub use input_manager::{InputManager, InputMode}; // Unified input (v3.0)
-pub use input_source::{InputSource, InputSourceMetrics, InputSourceMetricsHandle}; // ADR-039 (#1758)
+pub use gamepad_device::GamepadDeviceManager; // Alias for backward compat
+pub use gamepad_device::HidDeviceManager; // HID device manager
+pub use input_manager::{InputManager, InputMode}; // Unified input
+pub use input_source::{InputSource, InputSourceMetrics, InputSourceMetricsHandle}; // ADR-039
 pub use midi_device::MidiDeviceManager;
 
-// Re-export PluginManager for daemon use (v2.3)
+// Re-export PluginManager for daemon use
 pub use plugin_manager::{PluginManager, PluginManagerError, PluginManagerResult};
 
-// Re-export skills module for Agent Skills (v4.11 - ADR-007)
+// Re-export skills module for Agent Skills (ADR-007)
 pub use skills::{
-    // P5-05: Sandbox types for user-provided skills
+    // Sandbox types for user-provided skills
     SandboxConfig,
     SandboxError,
     SandboxResult,

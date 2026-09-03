@@ -1,7 +1,7 @@
 // Copyright 2025-2026 Monstrous Media
 // SPDX-License-Identifier: MIT
 
-//! Unit tests for Slice B.7 keychain init-race + rotation cadence. In a `#[path]`
+//! Unit tests for keychain init-race + rotation cadence. In a `#[path]`
 //! sibling to keep the impl file within the Council verify content budget.
 
 use super::*;
