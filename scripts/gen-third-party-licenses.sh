@@ -35,7 +35,7 @@ fi
 rows=$(cargo license --all-features --avoid-dev-deps --tsv \
   | tail -n +2 \
   | awk -F'\t' 'BEGIN{OFS="\t"}
-      $1 !~ /^conductor(-core|-daemon|-capture|-knowledge|-gui)?$/ {print $1, $2, $5}' \
+      $1 !~ /^conductor(-core|-daemon|-capture)?$/ {print $1, $2, $5}' \
   | sort -u)
 
 count=$(printf '%s\n' "$rows" | grep -c . || true)

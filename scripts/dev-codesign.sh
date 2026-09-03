@@ -35,7 +35,6 @@ fi
 # `media.monstrous.conductor.daemon`). TCC keys grants on identifier, so a
 # dev grant won't accidentally cover a production binary or vice versa.
 BINARIES=(
-  "target/debug/conductor-gui:media.monstrous.conductor.dev:conductor-gui/src-tauri/entitlements.plist"
   "target/debug/conductor:media.monstrous.conductor.daemon.dev:"
 )
 

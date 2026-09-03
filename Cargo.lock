@@ -645,7 +645,6 @@ dependencies = [
  "proptest",
  "rstest",
  "serde_json",
- "serde_yaml",
  "tempfile",
  "toml 1.1.2+spec-1.1.0",
 ]

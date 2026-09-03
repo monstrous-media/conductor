@@ -5,8 +5,7 @@ members = [
     "conductor-capture",
 ]
 exclude = [
-    "plugins/conductor-spotify-plugin",
-    "plugins/conductor-obs-plugin",
+    "plugins/wasm-minimal",
     "plugins/wasm-template",
 ]
 resolver = "2"
@@ -48,8 +47,8 @@ repository = "https://github.com/monstrous-media/conductor"
 # `cargo build --workspace` from a developer shell into the same
 # state so the build output isn't flooded with 20+ warnings of pure
 # noise. When we migrate to `objc2-foundation` (tracked in the
-# `// TODO Phase 5` comments in conductor-gui/src-tauri/src/app_detection.rs
-# and conductor-daemon/src/daemon/app_detector.rs) we can drop this.
+# `// TODO Phase 5` comments in conductor-daemon/src/daemon/app_detector.rs)
+# we can drop this.
 unexpected_cfgs = "allow"
 
 [workspace.lints.clippy]
@@ -61,12 +60,8 @@ unimplemented = "deny"
 dbg_macro = "deny"
 
 # Debug-print indicators — should be tracing::* calls in lib code.
-# Genuine lib violations (12 total — fixed in this PR) lived in
-# conductor-core (actions, config/loader, config/validation,
-# plugin/discovery, plugin_registry — 8 sites), conductor-daemon
-# (state, service, conditions — 3 sites), and conductor-gui Tauri
-# (commands.rs — 1 site). Bin targets keep raw println!/eprintln!
-# via per-file #![allow(...)] attributes.
+# Bin targets keep raw println!/eprintln! via per-file
+# #![allow(...)] attributes.
 print_stdout = "deny"
 print_stderr = "deny"
 
@@ -100,9 +95,8 @@ chrono.workspace = true
 enigo.workspace = true
 toml.workspace = true
 serde_json.workspace = true
-serde_yaml = "0.9"  # tests/tauri_cache_cleanup_test.rs — typed YAML inspection (#1645 Bundle C, Council R1)
 dirs.workspace = true
-tempfile = "3.27"  # tests/plugin_integration_test.rs — hermetic temp plugins dir (#1507)
+tempfile = "3.27"  # tests/plugin_integration_test.rs — hermetic temp plugins dir
 
 [workspace.dependencies]
 # Core dependencies (used by conductor-core)
@@ -146,11 +140,6 @@ enigo = "0.6"
 colored = "3.1"
 ctrlc = "3.5"
 clap = { version = "4.6", features = ["derive", "cargo"] }
-
-# Knowledge layer — ONNX embedding (ADR-023)
-ort = { version = "2.0.0-rc.12", features = ["ndarray"] }
-tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
-ndarray = "0.17"
 
 # Testing
 proptest = "1.11"
