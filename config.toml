@@ -1,3 +1,7 @@
+# Minimal example configuration. See config_enhanced.toml for a fuller
+# tour of trigger types, modes, and feedback, and config/examples/ for
+# device-specific setups.
+
 [[global_mappings]]
 description = "Global Action Example"
 [global_mappings.trigger]
@@ -9,34 +13,34 @@ keys = "a"
 modifiers = ["cmd"]
 
 [[modes]]
-name = "Test"
+name = "Default"
 
 [[modes.mappings]]
-description = "Show Function Key (Fn)"
+description = "Spotlight Search"
 [modes.mappings.trigger]
 type = "Note"
-note = 12  # The pad you pressed
+note = 12
 [modes.mappings.action]
 type = "Keystroke"
-keys = "fn"
-modifiers = []
+keys = "space"
+modifiers = ["cmd"]
 
 [[modes.mappings]]
 description = "Type Q"
 [modes.mappings.trigger]
 type = "Note"
-note = 13  # The pad you pressed
+note = 13
 [modes.mappings.action]
 type = "Keystroke"
 keys = "q"
 modifiers = []
 
 [[modes.mappings]]
-description = "Trigger Wispr (Ctrl+Opt+Cmd+Shift+W)"
+description = "Screenshot (Cmd+Shift+4)"
 [modes.mappings.trigger]
 type = "Note"
-note = 14  # The pad you pressed
+note = 14
 [modes.mappings.action]
 type = "Keystroke"
-keys = "w"
-modifiers = ["ctrl", "alt", "cmd", "shift"]
+keys = "4"
+modifiers = ["cmd", "shift"]
