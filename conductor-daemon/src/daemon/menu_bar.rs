@@ -22,6 +22,9 @@ use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
 };
 
+// cocoa 0.26 deprecates these in favor of objc2 — allowed until the
+// objc2-foundation migration (tracked alongside the app_detector TODO).
+#[allow(deprecated)]
 #[cfg(target_os = "macos")]
 use cocoa::base::{id, nil};
 #[cfg(target_os = "macos")]
@@ -186,6 +189,7 @@ impl MenuBar {
         #[cfg(target_os = "macos")]
         {
             // Check if we can access the window server
+            #[allow(deprecated)] // cocoa id/nil — see the use-site note above
             unsafe {
                 let app: id = msg_send![class!(NSApplication), sharedApplication];
                 app != nil
