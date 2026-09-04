@@ -36,11 +36,16 @@ jobs:
         run: ./scripts/check-spdx.sh
 
   clippy:
-    name: clippy
-    runs-on: ubuntu-latest
+    name: clippy (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Linux build deps
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           # alsa/udev: MIDI + gilrs. xdo: enigo keystroke output.
