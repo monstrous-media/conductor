@@ -392,13 +392,13 @@ impl MikroMK3LEDs {
     }
 
     pub fn sparkle_effect(&mut self) -> Result<(), Box<dyn Error>> {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use rand::RngExt;
+        let mut rng = rand::rng();
 
         for i in 0..16 {
             let led_pos = Self::map_pad_to_led_position(i as u8) as usize;
-            if rng.gen_bool(0.2) {
-                let brightness = if rng.gen_bool(0.5) {
+            if rng.random_bool(0.2) {
+                let brightness = if rng.random_bool(0.5) {
                     Brightness::Normal
                 } else {
                     Brightness::Bright

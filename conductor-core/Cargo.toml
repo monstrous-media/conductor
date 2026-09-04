@@ -35,6 +35,7 @@ midi-msg.workspace = true  # MIDI message parsing
 libloading.workspace = true  # Plugin loading
 sha2.workspace = true  # Checksum verification
 zeroize = "1"  # ADR-042 Phase B-early: scrub HMAC key material from memory on drop
+getrandom = "0.4"  # Fallible OS CSPRNG for HMAC key generation (keychain)
 keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }  # ADR-042 Phase B-early: OS keychain for the network-approval HMAC key; features match conductor-gui so the workspace builds unchanged
 ed25519-dalek = { workspace = true, optional = true }  # Plugin signing
 hex = { workspace = true, optional = true }  # Hex encoding for signatures
@@ -73,6 +74,7 @@ libc = "0.2"
 
 [dev-dependencies]
 conductor-daemon = { version = "0.1.0", path = "../conductor-daemon" }  # For integration tests
+rand_core.workspace = true  # rand_core 0.6 OsRng for ed25519-dalek keygen in signing tests
 proptest.workspace = true
 rstest.workspace = true
 criterion = { version = "0.8", features = ["html_reports"] }

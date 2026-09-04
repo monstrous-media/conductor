@@ -598,7 +598,7 @@ pub fn save_trusted_keys(public_keys: &[String]) -> Result<(), EngineError> {
 mod tests {
     use super::*;
     use ed25519_dalek::SigningKey;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     #[test]
     fn load_trusted_keys_from_returns_empty_when_path_missing() {
