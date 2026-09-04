@@ -52,11 +52,8 @@ impl HmacKey {
 
     /// Generate a fresh key from the OS CSPRNG.
     pub fn generate() -> Result<Self, KeychainError> {
-        use rand::RngCore;
         let mut bytes = [0u8; HMAC_KEY_LEN];
-        rand::rngs::OsRng
-            .try_fill_bytes(&mut bytes)
-            .map_err(|e| KeychainError::Entropy(e.to_string()))?;
+        getrandom::fill(&mut bytes).map_err(|e| KeychainError::Entropy(e.to_string()))?;
         Ok(Self { bytes })
     }
 

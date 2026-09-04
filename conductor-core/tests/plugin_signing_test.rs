@@ -25,7 +25,7 @@ use conductor_core::plugin::{
     wasm_runtime::{WasmConfig, WasmPlugin},
 };
 use ed25519_dalek::{Signer, SigningKey};
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 use std::path::PathBuf;
 
 /// Get path to a test plugin

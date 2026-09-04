@@ -65,7 +65,7 @@ fn generate_keypair(output_path: &str) {
     #[cfg(feature = "plugin-signing")]
     {
         use ed25519_dalek::SigningKey;
-        use rand::rngs::OsRng;
+        use rand_core::OsRng;
 
         println!("Generating Ed25519 keypair...");
 
