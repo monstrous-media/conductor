@@ -1,0 +1,301 @@
+name: Release
+
+# Public (MIT) daemon release pipeline for monstrous-media/conductor.
+#
+# Ships ONLY the open-source daemon CLI (conductor + conductorctl) as per-arch
+# tarballs. The GUI/.dmg half lives in monstrous-media/conductor-studio.
+#
+# Signing note: the daemon and the Studio GUI MUST be signed by the same Apple
+# team (38H355VKB5). conductor-daemon/src/security/peer_pin.rs uses the Team ID
+# as its IPC trust anchor — a GUI signed under a different team is classified
+# Untrusted at runtime. Keep the Apple secrets org-level and shared between
+# this repo and conductor-studio.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Tag pushes are unique per release, so cancel-in-progress: false — never
+# cancel a release mid-notarization if someone force-pushes/retags.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## Conductor Daemon (CLI)
+
+            Open-source (MIT) input-mapping engine — MIDI + game controllers.
+
+            - **macOS (Apple Silicon)**: conductor-daemon-aarch64-apple-darwin.tar.gz
+            - **macOS (Intel)**: conductor-daemon-x86_64-apple-darwin.tar.gz
+            - **Linux (x86_64)**: conductor-daemon-x86_64-unknown-linux-gnu.tar.gz
+
+            ```bash
+            tar xzf conductor-daemon-*.tar.gz
+            chmod +x conductor
+            sudo mv conductor /usr/local/bin/
+            ```
+
+            macOS builds are Developer ID signed and notarized.
+
+            See [README.md](https://github.com/monstrous-media/conductor#installation).
+          draft: false
+          prerelease: ${{ contains(github.ref, 'pre') || contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          generate_release_notes: true
+
+  # ──────────────────────────────────────────────────────────────
+  # Daemon CLI binary — per-architecture tarballs
+  # ──────────────────────────────────────────────────────────────
+  build-daemon:
+    name: Build Daemon (${{ matrix.target }})
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    # ADR-029 §D2 — Apple signing secrets are scoped PER STEP (never at job
+    # level). This keeps them out of the env of `cargo build` and any
+    # third-party build.rs / proc-macro that runs during compilation (#1443).
+    # Do not "simplify" this by hoisting them to the job.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+
+      # Daemon-only build: midir needs ALSA, gilrs needs libudev. The GTK /
+      # webkit / appindicator packages the combined repo installed are GUI-only
+      # and are deliberately omitted here.
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev \
+            libudev-dev \
+            pkg-config
+
+      # #2148: do NOT use dtolnay/rust-toolchain@stable here. It defaults to the
+      # floating `stable` channel and does not read rust-toolchain.toml, so CI
+      # would install whatever stable happens to be that day — releases were
+      # only ever saved by cargo's invocation-time override of the pin, which is
+      # the implicit reliance #2148 exists to remove. This composite parses the
+      # pinned channel out of rust-toolchain.toml and passes it explicitly.
+      # (ci.yml in this repo still uses floating stable — worth aligning.)
+      - name: Install pinned Rust toolchain
+        uses: ./.github/actions/rust-toolchain
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-daemon-${{ matrix.target }}
+          # Never cache ~/.cargo/bin — a stale snapshot can restore a broken
+          # cargo over a good one (issue #1206).
+          prefix-key: v1-rust
+          cache-bin: false
+
+      # Package-scoped, never --workspace: feature unification across a
+      # workspace build could smuggle paid features into the OSS artifact.
+      - name: Build daemon release binary
+        run: cargo build --release --target ${{ matrix.target }} --package conductor-daemon
+
+      - name: Strip binary
+        run: |
+          strip target/${{ matrix.target }}/release/conductor 2>/dev/null || true
+          strip target/${{ matrix.target }}/release/conductorctl 2>/dev/null || true
+
+      # ADR-045 D3 (#2494): negative assertions on the FINAL artifact — no
+      # SQLite, no gated MCP tool names, no telemetry SDK markers. Runs AFTER
+      # strip so it checks exactly the bytes that ship.
+      - name: Assert clean OSS artifact (ADR-045 D3)
+        run: bash scripts/check-oss-binary.sh target/${{ matrix.target }}/release/conductor
+
+      # ADR-029 §D2 — Developer ID signing gives the binary a STABLE code
+      # identity, so macOS TCC grants (Input Monitoring) survive upgrades.
+      #
+      # `secrets.*` cannot be used in `if:`, so this guard step converts
+      # availability into plain outputs. Secrets are mapped into env here and
+      # on the signing steps only. Forks without the cert still build — they
+      # just produce unsigned binaries.
+      - name: Detect Apple signing/notarize secrets
+        id: apple-secrets
+        if: runner.os == 'macOS'
+        env:
+          HAS_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+          HAS_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
+          HAS_NOTARIZE: ${{ secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
+        run: |
+          {
+            echo "has_cert=$HAS_CERT"
+            echo "has_identity=$HAS_IDENTITY"
+            echo "has_notarize=$HAS_NOTARIZE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Import Apple Developer Certificate
+        if: runner.os == 'macOS' && steps.apple-secrets.outputs.has_cert == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/daemon-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 24)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          rm certificate.p12
+
+      - name: Codesign daemon binaries
+        if: runner.os == 'macOS' && steps.apple-secrets.outputs.has_identity == 'true'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          # Identifier is what TCC keys the Input Monitoring grant on, and must
+          # match conductor-studio's re-signing of the bundled daemon exactly.
+          # Rebranded to the media.monstrous.* namespace for the new org; this
+          # voids any existing TCC grant (acceptable — no installed base).
+          codesign --force --options runtime --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            --identifier media.monstrous.conductor.daemon \
+            --entitlements conductor-daemon/install/macos/entitlements.plist \
+            target/${{ matrix.target }}/release/conductor
+
+          if [[ -f target/${{ matrix.target }}/release/conductorctl ]]; then
+            codesign --force --options runtime --timestamp \
+              --sign "$APPLE_SIGNING_IDENTITY" \
+              --identifier media.monstrous.conductor.conductorctl \
+              target/${{ matrix.target }}/release/conductorctl
+          fi
+
+          # Catches missing identifier / entitlements / runtime-flag drift.
+          codesign --verify --strict --verbose=2 \
+            target/${{ matrix.target }}/release/conductor
+
+          if [[ -f target/${{ matrix.target }}/release/conductorctl ]]; then
+            codesign --verify --strict --verbose=2 \
+              target/${{ matrix.target }}/release/conductorctl
+          fi
+
+      # Guards the split invariant: a daemon signed under any team other than
+      # 38H355VKB5 will be classified Untrusted by peer_pin.rs at runtime, and
+      # the Studio GUI will refuse to talk to it. CI otherwise cannot catch this.
+      - name: Verify Team ID matches peer_pin trust anchor
+        if: runner.os == 'macOS' && steps.apple-secrets.outputs.has_identity == 'true'
+        run: |
+          set -euo pipefail
+          # Extract ONLY the CONDUCTOR_TEAM_IDS array. A bare grep for
+          # /"[0-9A-Z]{10}"/ over the whole file also matches the "FAKETEAMID"
+          # fixture in the negative test, which would let a wrongly-signed
+          # binary pass this gate. The declaration line itself is included so
+          # a rustfmt-collapsed single-line array still parses, and `//`
+          # comments are stripped so a commented-out (retired) Team ID can
+          # never satisfy the gate.
+          ALLOWED=$(awk '
+            /const CONDUCTOR_TEAM_IDS/ { inblock = 1 }
+            inblock                    { print }
+            inblock && /\];/           { exit }
+          ' conductor-daemon/src/security/peer_pin.rs \
+            | sed 's|//.*||' \
+            | grep -oE '"[0-9A-Z]{10}"' | tr -d '"')
+
+          if [ -z "$ALLOWED" ]; then
+            echo "::error::could not parse CONDUCTOR_TEAM_IDS from peer_pin.rs"
+            exit 1
+          fi
+
+          ACTUAL=$(codesign -dv --verbose=4 \
+            target/${{ matrix.target }}/release/conductor 2>&1 \
+            | grep -i '^TeamIdentifier=' | cut -d= -f2)
+
+          echo "peer_pin.rs allows: $(echo "$ALLOWED" | tr '\n' ' ')"
+          echo "binary is signed by: $ACTUAL"
+
+          if ! echo "$ALLOWED" | grep -qx "$ACTUAL"; then
+            echo "::error::Team ID '$ACTUAL' is not in CONDUCTOR_TEAM_IDS — this daemon would classify as Untrusted at the IPC gate"
+            exit 1
+          fi
+
+      - name: Notarize daemon binaries
+        if: runner.os == 'macOS' && steps.apple-secrets.outputs.has_notarize == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # notarytool wants a single zip/pkg/dmg per submission. Bundle BOTH
+          # executables so neither triggers Gatekeeper at run time.
+          mkdir -p /tmp/notarize-${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/conductor /tmp/notarize-${{ matrix.target }}/
+          if [[ -f target/${{ matrix.target }}/release/conductorctl ]]; then
+            cp target/${{ matrix.target }}/release/conductorctl /tmp/notarize-${{ matrix.target }}/
+          fi
+          ditto -c -k --keepParent \
+            /tmp/notarize-${{ matrix.target }} \
+            /tmp/conductor-${{ matrix.target }}.zip
+
+          xcrun notarytool submit /tmp/conductor-${{ matrix.target }}.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          # Bare executables can't be stapled (only .app/.dmg/.pkg can).
+          # Notarization alone is enough — macOS checks the cloud record.
+
+      - name: Create tarball
+        run: |
+          mkdir -p staging
+          cp target/${{ matrix.target }}/release/conductor staging/
+          cp target/${{ matrix.target }}/release/conductorctl staging/ 2>/dev/null || true
+          cd staging
+          tar czf ../conductor-daemon-${{ matrix.target }}.tar.gz *
+          cd ..
+          shasum -a 256 conductor-daemon-${{ matrix.target }}.tar.gz \
+            > conductor-daemon-${{ matrix.target }}.tar.gz.sha256
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            conductor-daemon-${{ matrix.target }}.tar.gz
+            conductor-daemon-${{ matrix.target }}.tar.gz.sha256

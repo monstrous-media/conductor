@@ -24,7 +24,10 @@ jobs:
           fetch-depth: 0 # full history — public history starts at the squash commit
       - name: Run gitleaks over tree + history
         run: |
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+          # Digest-pinned (supply-chain hygiene; Scorecard Pinned-Dependencies).
+          # Bump deliberately: docker pull zricethezav/gitleaks:latest && docker inspect --format='{{index .RepoDigests 0}}' zricethezav/gitleaks:latest
+          docker run --rm -v "$PWD:/repo" \
+            zricethezav/gitleaks:latest@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             detect --source /repo --no-banner --redact -v
 
   cargo-deny:

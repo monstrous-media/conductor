@@ -1,0 +1,87 @@
+# Conductor Test Configuration - Plugin Actions
+# This config demonstrates plugin action integration.
+# (#2066: updated to the current schema — explicit `trigger`, PascalCase action
+# `type`s, and `params` for plugin payloads. Mappings require a `trigger`; the
+# `Note` trigger uses `velocity_min` (there is no per-mapping `velocity` field).)
+
+[[endpoints]]
+alias = "test-controller"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Test Controller" }]
+
+[advanced_settings]
+chord_timeout_ms = 100
+double_tap_timeout_ms = 300
+hold_threshold_ms = 2000
+
+# Default mode with plugin actions
+[[modes]]
+name = "Plugin Test Mode"
+color = "blue"
+
+# Spotify Plugin Actions
+[[modes.mappings]]
+trigger = { type = "Note", note = 36 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "play_pause" } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 37 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "next_track" } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 38 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "previous_track" } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 39 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "set_volume", volume = 50 } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 40 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "toggle_shuffle" } }
+
+# OBS Plugin Actions
+[[modes.mappings]]
+trigger = { type = "Note", note = 48 }
+action = { type = "Plugin", plugin = "obs", params = { type = "switch_scene", scene_name = "Main" } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 49 }
+action = { type = "Plugin", plugin = "obs", params = { type = "toggle_recording" } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 50 }
+action = { type = "Plugin", plugin = "obs", params = { type = "start_recording" } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 51 }
+action = { type = "Plugin", plugin = "obs", params = { type = "stop_recording" } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 52 }
+action = { type = "Plugin", plugin = "obs", params = { type = "toggle_streaming" } }
+
+# Chained action - Start recording and switch scene
+[[modes.mappings]]
+trigger = { type = "Note", note = 60 }
+action = { type = "Sequence", actions = [
+  { type = "Plugin", plugin = "obs", params = { type = "start_recording" } },
+  { type = "Delay", ms = 100 },
+  { type = "Plugin", plugin = "obs", params = { type = "switch_scene", scene_name = "Recording" } },
+] }
+
+# Velocity-sensitive Spotify volume control.
+# `Note` only has `velocity_min`, so the bands are expressed as min thresholds
+# ordered high→low (first-match-wins picks the highest band the velocity meets).
+[[modes.mappings]]
+trigger = { type = "Note", note = 44, velocity_min = 81 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "set_volume", volume = 100 } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 44, velocity_min = 41 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "set_volume", volume = 60 } }
+
+[[modes.mappings]]
+trigger = { type = "Note", note = 44, velocity_min = 1 }
+action = { type = "Plugin", plugin = "spotify", params = { type = "set_volume", volume = 30 } }

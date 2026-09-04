@@ -1,0 +1,50 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
+// This diagnostic tool only uses external crates (midir)
+// and standard library - no conductor_core imports needed
+
+// CLI binary: legitimate println!/eprintln! to stdout/stderr.
+// See docs/epic-loop/rust-coverage.md Path A.
+#![allow(clippy::print_stdout, clippy::print_stderr)]
+
+use midir::{MidiInput, MidiOutput};
+
+fn main() {
+    println!("=== MIDI Input Ports ===");
+    match MidiInput::new("MidiTest") {
+        Ok(midi_in) => {
+            for (i, p) in midi_in.ports().iter().enumerate() {
+                match midi_in.port_name(p) {
+                    Ok(name) => println!("{}: {}", i, name),
+                    Err(e) => println!("{}: Error getting name: {}", i, e),
+                }
+            }
+            if midi_in.ports().is_empty() {
+                println!("No input ports found");
+            }
+        }
+        Err(e) => println!("Error creating MIDI input: {}", e),
+    }
+
+    println!("\n=== MIDI Output Ports ===");
+    match MidiOutput::new("MidiTest") {
+        Ok(midi_out) => {
+            for (i, p) in midi_out.ports().iter().enumerate() {
+                match midi_out.port_name(p) {
+                    Ok(name) => println!("{}: {}", i, name),
+                    Err(e) => println!("{}: Error getting name: {}", i, e),
+                }
+            }
+            if midi_out.ports().is_empty() {
+                println!("No output ports found");
+            }
+        }
+        Err(e) => println!("Error creating MIDI output: {}", e),
+    }
+
+    // Also check virtual ports
+    println!("\n=== System Info ===");
+    println!("OS: {}", std::env::consts::OS);
+    println!("Arch: {}", std::env::consts::ARCH);
+}

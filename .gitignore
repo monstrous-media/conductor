@@ -1,11 +1,64 @@
-# Rust
-/target/
-**/*.rs.bk
-
-# Editors / OS
+node_modules/
+dist/
 .DS_Store
+target/
+
+# Strategic planning documents (private)
+docs/strategic-assessment-*.md
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.github/instructions/snyk_rules.instructions.md
+
+# Internal documentation archive (project management files)
+internal-docs-archive-*.zip
+.git-backup-*/
+.council
+
+# Local Claude Code session artifacts (per-machine, should not be tracked)
+.claude/
+
+# slop-detector: governance config (contains codebase complexity surface — keep private)
+.slopconfig.yaml
+
+# Epic-loop sidecar artefacts (slop-detector reports, summary md)
+# Ignore contents (not the dir) so the config negation works.
+.epic-loop/*
+# Exception: the per-repo /epic-loop config IS tracked.
+!.epic-loop/config.yaml
+
+# Clawpatch state (feature map, findings, locks — persistent across runs but not tracked)
+.clawpatch/
+# Exception: known-findings.md IS tracked (triage suppression list)
+!.clawpatch/known-findings.md
+
+# Codex CLI side-effects (created on first `codex --version` invocation in a repo)
+.codex/
+.agents/
+AGENTS.md
+
+# Stray Rust build artifacts (belong under target/, never at the repo root)
+*.rlib
+
+# Python bytecode (scripts/ helpers — e.g. check_bench_delta.py)
+__pycache__/
+*.pyc
+.epic-loop/
+
+# Understand-Anything knowledge graph (generated, machine-specific, re-creatable via /understand)
+.understand-anything/
+
+# Local WIP scratch files — never belong in a commit (a `git add -A` swept these
+# into PR #2587 by accident).
+*.local-wip
+
+# Personal editor workspace: contains machine-specific absolute paths.
+conductor.code-workspace
+# Isolated cargo target dir for epic-loop/agent builds (keeps them from
+# invalidating rust-analyzer's artifacts and vice versa; see epic-loop#141).
+target-epic-loop/
+
+# Editor settings and stray logs must never ride into a public commit
 .vscode/
 .idea/
-
-# Local config & logs
 *.log
+**/*.rs.bk

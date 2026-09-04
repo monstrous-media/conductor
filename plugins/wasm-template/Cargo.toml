@@ -1,0 +1,33 @@
+# #2155: this template lives under `plugins/` and is `exclude`d from the root
+# workspace, but without its own `[workspace]` marker cargo walks up to the root
+# manifest and refuses to build it ("current package believes it's in a
+# workspace when it's not"). That breaks the template's whole purpose: a
+# developer copies it out to start a plugin and `cargo build` fails. An empty
+# `[workspace]` table makes it a self-contained workspace root.
+[workspace]
+
+[package]
+name = "conductor-wasm-plugin-template"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <you@example.com>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# WASM-specific allocator (smaller binary size)
+wee_alloc = { version = "0.4", optional = true }
+
+[profile.release]
+opt-level = "z"     # Optimize for size
+lto = true          # Enable link-time optimization
+strip = true        # Strip symbols
+codegen-units = 1   # Single codegen unit for better optimization
+
+[features]
+default = []
+wee_alloc_support = ["wee_alloc"]

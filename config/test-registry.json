@@ -1,0 +1,49 @@
+{
+  "plugins": [
+    {
+      "id": "spotify",
+      "name": "Spotify Control",
+      "version": "0.1.0",
+      "description": "Control Spotify playback (play/pause, next/previous, volume, shuffle, repeat)",
+      "author": "Conductor Team",
+      "homepage": "https://github.com/monstrous-media/conductor",
+      "license": "MIT",
+      "capabilities": ["Network", "Filesystem"],
+      "download_url": "https://github.com/monstrous-media/conductor-spotify-plugin/releases/download/v0.1.0/libconductor_spotify_plugin.dylib",
+      "sha256": "abc123def456",
+      "binary_name": "libconductor_spotify_plugin.dylib",
+      "categories": ["media", "streaming"],
+      "tags": ["spotify", "music", "playback", "audio"]
+    },
+    {
+      "id": "obs",
+      "name": "OBS Studio Control",
+      "version": "0.1.0",
+      "description": "Control OBS Studio through WebSocket (scenes, recording, streaming, sources)",
+      "author": "Conductor Team",
+      "homepage": "https://github.com/monstrous-media/conductor",
+      "license": "MIT",
+      "capabilities": ["Network"],
+      "download_url": "https://github.com/monstrous-media/conductor-obs-plugin/releases/download/v0.1.0/libconductor_obs_plugin.dylib",
+      "sha256": "def456abc123",
+      "binary_name": "libconductor_obs_plugin.dylib",
+      "categories": ["streaming", "video"],
+      "tags": ["obs", "streaming", "recording", "video"]
+    },
+    {
+      "id": "http",
+      "name": "HTTP Request",
+      "version": "0.1.0",
+      "description": "Send HTTP requests (GET, POST, PUT, DELETE) with custom headers and body",
+      "author": "Conductor Team",
+      "homepage": "https://github.com/monstrous-media/conductor",
+      "license": "MIT",
+      "capabilities": ["Network"],
+      "download_url": "https://github.com/monstrous-media/conductor-http-plugin/releases/download/v0.1.0/libconductor_http_plugin.dylib",
+      "sha256": "789012ghi345",
+      "binary_name": "libconductor_http_plugin.dylib",
+      "categories": ["integration", "automation"],
+      "tags": ["http", "api", "webhook", "rest"]
+    }
+  ]
+}

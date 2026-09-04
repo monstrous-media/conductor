@@ -1,0 +1,11 @@
+# Cargo audit configuration
+# See: https://github.com/rustsec/rustsec/tree/main/cargo-audit
+#
+# No advisories are currently suppressed.
+#
+# The previous block ignored 18 wasmtime / wasmtime-wasi advisories (incl.
+# RUSTSEC-2026-0149, CVSS 7.5 — path_open TRUNCATE bypassing FilePerms::WRITE)
+# because wasmtime was pinned at 26.x, which had no patch for them. Resolved in
+# #1439 by upgrading wasmtime + wasmtime-wasi 26.0 → 45.0, so `cargo audit` is
+# now an enforceable signal again. Re-introduce an `[advisories] ignore` block
+# only with a tracking issue and a rationale per entry.

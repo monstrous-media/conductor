@@ -107,7 +107,7 @@ Conductor follows **Semantic Versioning (SemVer)**:
 - **MINOR** (0.x.0): New features, backward-compatible additions
 - **PATCH** (0.0.x): Bug fixes, performance improvements, documentation
 
-Current version: v5.x-alpha line (pre-1.0 API stability; see ROADMAP)
+Current version: 0.1.x line (pre-1.0 API stability; see ROADMAP)
 
 ### Feature Proposal Process
 

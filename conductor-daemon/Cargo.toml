@@ -1,0 +1,236 @@
+[package]
+name = "conductor-daemon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Conductor CLI daemon and diagnostic tools"
+
+[[bin]]
+name = "conductor"
+path = "src/main.rs"
+
+# Diagnostic tools
+[[bin]]
+name = "midi_diagnostic"
+path = "src/bin/midi_diagnostic.rs"
+
+[[bin]]
+name = "led_diagnostic"
+path = "src/bin/led_diagnostic.rs"
+
+[[bin]]
+name = "led_tester"
+path = "src/bin/led_tester.rs"
+
+[[bin]]
+name = "pad_mapper"
+path = "src/bin/pad_mapper.rs"
+
+[[bin]]
+name = "test_midi"
+path = "src/bin/test_midi.rs"
+
+[[bin]]
+name = "midi_simulator"
+path = "src/bin/midi_simulator.rs"
+
+[[bin]]
+name = "conductorctl"
+path = "src/bin/conductorctl.rs"
+
+# Menu bar service
+[[bin]]
+name = "conductor-menubar"
+path = "src/bin/conductor_menubar.rs"
+
+# Plugin signing tool (v2.7)
+[[bin]]
+name = "conductor-sign"
+path = "src/bin/conductor-sign.rs"
+required-features = ["plugin-signing"]
+
+# Skills validation tool (v4.11 - ADR-007)
+[[bin]]
+name = "conductor-skills"
+path = "src/bin/conductor_skills.rs"
+
+# Control-state inspector (ADR-025 Phase 3.E)
+[[bin]]
+name = "conductor-state"
+path = "src/bin/conductor_state.rs"
+
+# Test helper for ADR-027 D1 (2/N) — connects to a unix socket then
+# blocks in pause(). Used by tests/peer_pin_2n_lifecycle.rs to
+# exercise still_pinned() across peer-process termination.
+[[bin]]
+name = "d1-peer-test-helper"
+path = "tests/bin/d1_peer_test_helper.rs"
+
+[[bench]]
+name = "reload_benchmark"
+path = "benches/reload_benchmark.rs"
+harness = false
+
+# ADR-036 / ADR-037: unified routing passthrough latency
+# gate. Lives in conductor-daemon (not conductor-core per spec §7) because
+# it measures the rule engine (core) AND the post-mapping RouteEngine
+# (daemon) together — the "rule engine + route engine" passthrough per
+# Council R2 §9. Custom harness: computes median/p99/stddev and prints a
+# machine-parseable block consumed by scripts/check_bench_thresholds.py.
+[[bench]]
+name = "unified_routing_bench"
+path = "benches/unified_routing_bench.rs"
+harness = false
+
+[dependencies]
+# Core engine (with optional WASM plugin support)
+conductor-core = { version = "0.1.0", path = "../conductor-core", features = ["osc"] }
+
+# CLI dependencies
+colored.workspace = true
+chrono.workspace = true
+ctrlc.workspace = true
+clap.workspace = true
+
+# Action execution (moved from core for architectural purity)
+enigo.workspace = true
+
+# MIDI I/O and threading
+midir.workspace = true
+midi-msg.workspace = true
+crossbeam-channel.workspace = true
+
+# HID device access (for LED diagnostic tools)
+hidapi.workspace = true
+gilrs.workspace = true  # Gamepad/HID input (v3.0)
+
+# Async runtime and utilities
+tokio = { version = "1.50", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# IPC and file watching
+interprocess = "2.4"
+notify-debouncer-full = "0.7"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "1.1"
+toml_edit = "0.25"  # Comment-preserving TOML rewrite (ADR-036 Slice 8 — migrate-config --routing)
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# ADR-042 Phase A — network-listener rate-limit edge (Slice A.4).
+# governor: GCRA rate limiter (per-sender + per-listener total buckets).
+# lru: bounded per-sender bucket store (spoofed-source OOM defense, spec §4.3).
+governor = "0.10"
+lru = "0.18"
+
+# System integration
+dirs = "6.0"
+
+# Utilities
+uuid = { version = "1.23", features = ["v4", "serde"] }
+sha2 = "0.10"
+hex.workspace = true  # Hash encoding (ADR-007 Phase 2 + plugin signing)
+regex = "1.12"
+dashmap = "6"  # Lock-free concurrent HashMap for per-device EventProcessors (ADR-009 Phase 2)
+rosc = "0.11"  # OSC message encoding/decoding for OscSend action (ADR-009 Gap H)
+arc-swap = "1"  # Lock-free atomic swap for CompiledRuleSet + ModeState (ADR-009 Phase 3)
+serde_yaml = "0.9"
+tempfile = "3.27"  # Atomic file writes (mcp_registry save: temp + rename)
+getrandom = "0.4"  # OS-RNG nonce generation (gui_handshake — ADR-027 D19)
+base64 = "0.22"  # URL-safe nonce transport over stdin/IPC (ADR-027 D19)
+subtle = "2.6"  # Constant-time comparison for authentication nonces (ADR-027 D19)
+hmac = "0.12"  # ADR-042 Phase B-early: HMAC-SHA256 over the network-approval envelope
+serde_jcs = "=0.2.0"  # ADR-042 Phase B-early: RFC 8785 canonical JSON for the envelope `data` (spec §4.7.1 P0d — exact pin, no semver range. Spec named "=0.1.1" but that version never existed on crates.io; pinned =0.2.0)
+
+# Database (P4-04: Audit logging) — optional since ADR-045 D1: only the
+# `audit-db` feature pulls SQLite into the binary; the OSS default profile
+# ships without it (see [features] below).
+rusqlite = { version = "0.40", features = ["bundled"], optional = true }
+
+# Plugin signing (v2.7 - optional)
+ed25519-dalek = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+
+# Platform-specific dependencies for menu bar
+[target.'cfg(target_os = "macos")'.dependencies]
+# macOS-only: the menubar tray helper. Keeping this off Linux keeps the
+# unmaintained GTK3 binding tree (cargo-deny errors) out of the graph —
+# the Linux daemon is headless.
+tray-icon = "0.23"
+cocoa = "0.25"
+objc = "0.2"
+# ADR-027 D1 (3/N): peer trust classification via Security.framework
+# (SecCode / SecCodeCopySigningInformation for Apple Team ID extraction).
+security-framework = "3"
+core-foundation = "0.10"
+
+# Unix system calls (for permission checking)
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+# D4.B.2 — flock(2) singleton enforcement via nix::fcntl::flock.
+# `fs` feature pulls in the flock + fcntl bindings without dragging
+# the whole nix surface.
+nix = { version = "0.31", features = ["fs"] }
+
+# ADR-027 §D10b — Linux shell-action sandboxing via Landlock LSM
+# (kernel 5.13+). The crate negotiates the available ABI at runtime and
+# degrades on older kernels (we treat total absence as "unsandboxed").
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = "0.4"
+
+[dev-dependencies]
+rstest.workspace = true
+indexmap.workspace = true  # ADR-025 acceptance tests: construct PcContextSwitch mappings
+proptest.workspace = true  # ADR-030 P2 raw_forward integration property tests
+
+[features]
+# ADR-045 D1 — open-core tier boundary. Feature names are LOAD-BEARING:
+# the public-repo CI composition matrix builds exactly these names
+# (mcp / llm-executor / mcp-write / audit-db) and expects default=["mcp"].
+# Do not rename.
+#
+# OSS profile (default): mapping/routing engine + read-only MCP. No SQLite.
+default = ["mcp"]
+
+# MCP server with ReadOnly-tier inspection tools only (status, device
+# enumeration, config read, event streams, diagnostics).
+mcp = []
+
+# Write machinery: ToolExecutor, ConfigPlan (TOCTOU plan/apply), undo/redo.
+# Reachable ONLY over the GUI's IPC protocol — NOT exposed on the MCP socket.
+# This is what the Studio-bundled daemon ships.
+llm-executor = ["audit-db"]
+
+# Additionally exposes the Stateful/ConfigChange/HardwareIO tiers (MIDI Learn
+# session control, plan/apply mutation, send-MIDI) over the MCP socket.
+# NOT enabled in ANY official artifact — source-builders only (ADR-045 D3/D8).
+mcp-write = ["mcp", "llm-executor"]
+
+# SQLite-backed audit log (rusqlite). Without it, the audit subsystem
+# uses the lightweight append-only sink (ADR-045 D5, story A2).
+audit-db = ["dep:rusqlite"]
+
+plugin-wasm = ["conductor-core/plugin-wasm"]
+plugin-signing = ["conductor-core/plugin-signing", "dep:ed25519-dalek", "dep:rand"]
+# `test-helpers` exposes intentionally-bypass-the-CAS-protocol seams
+# (`LiveConfig::install_test_snapshot`, `LiveConfig::with_compiler`)
+# that integration tests in `tests/` need to drive overflow paths and
+# count compiler invocations directly. The default-off gate
+# stops a downstream lib consumer from accidentally reaching for these
+# helpers — their docstrings warn that misuse silently corrupts the
+# LiveConfig state. CI and pre-push gates use `cargo test
+# --all-features` which activates this feature, so the existing
+# integration tests continue to compile.
+test-helpers = []
+
+[lints]
+workspace = true

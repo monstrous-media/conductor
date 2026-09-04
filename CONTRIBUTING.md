@@ -19,7 +19,7 @@ support.
 
 This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable
-behavior to conduct@amiable.dev.
+behavior to conduct@monstrous.media.
 
 ## Developer Certificate of Origin (DCO)
 
@@ -40,7 +40,7 @@ which appends a line like:
 Signed-off-by: Your Name <your.email@example.com>
 ```
 
-The DCO check runs on every pull request; unsigned commits will fail CI. If you forget,
+Pull requests are checked for DCO sign-off; unsigned commits will fail the check. If you forget,
 amend and force-push: `git commit --amend -s && git push -f`.
 
 ## Ways to Contribute
@@ -113,6 +113,10 @@ include tests and documentation, use an MIT-compatible license.
    cargo build --workspace
    cargo test --workspace
    ```
+
+   Common tasks are wrapped in a [justfile](justfile) (`cargo install just`):
+   `just ci` runs the same format/header/lint/test gates as CI, and
+   `just test-compositions` builds the daemon feature matrix.
 
 3. **Run the daemon**
    ```bash
@@ -203,7 +207,7 @@ cargo test -- --nocapture           # with output
   questions, ideas, show & tell, device profiles
 - **[GitHub Issues](https://github.com/monstrous-media/conductor/issues)** — bugs,
   approved feature requests, documentation issues
-- **Email** — security: security@amiable.dev · conduct: conduct@amiable.dev
+- **Email** — security: security@monstrous.media · conduct: conduct@monstrous.media
 
 ## First-Time Contributors
 

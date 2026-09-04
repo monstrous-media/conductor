@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        ADR-029 Phase 2 (D2) — entitlements applied to the daemon
+        binary at codesign time in CI. macOS keys TCC permissions on
+        a binary's code identity (signing identifier + Developer ID),
+        and the entitlements file is part of that identity. This file
+        documents what the daemon does and what permissions it needs
+        for the runtime hardened-runtime checks.
+
+        The daemon is unsandboxed, so most of these declarations are
+        documentation-grade rather than strictly required. We declare
+        them anyway so the manifest stays honest about the runtime
+        behaviour.
+    -->
+
+    <!-- HID device access (gamepads, joysticks). Required for gilrs's
+         IOHIDManagerCreate to succeed. -->
+    <key>com.apple.security.device.hid</key>
+    <true/>
+
+    <!-- USB device access (MIDI controllers, custom HID devices). -->
+    <key>com.apple.security.device.usb</key>
+    <true/>
+
+    <!-- Apple Events. The daemon uses osascript for volume control
+         (`action_executor.rs:1230`) and frontmost-app detection
+         (`conditions.rs:342`). -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+
+    <!-- Keep Apple's library validation enabled in official daemon
+         builds. Do **not** add `com.apple.security.cs.disable-library-
+         validation` unless shipped builds also enforce plugin
+         signature verification at load time (ADR-027 §D9). Plugin
+         signature verification is currently behind the
+         `plugin-signing` Cargo feature and is not enabled by the
+         release workflow, so disabling library validation here would
+         weaken the hardened runtime with no compensating control.
+         Native dylib plugins won't load under hardened runtime + lib
+         validation today; that's the correct conservative default
+         until plugin signing is wired into release builds. -->
+    <!--
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    -->
+</dict>
+</plist>

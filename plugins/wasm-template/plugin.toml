@@ -1,0 +1,51 @@
+# Conductor WASM Plugin Manifest
+#
+# This file describes your plugin to the Conductor daemon and marketplace.
+
+[plugin]
+name = "example-wasm-plugin"
+version = "0.1.0"
+description = "Example WASM plugin template for Conductor"
+author = "Your Name <you@example.com>"
+license = "MIT"
+repository = "https://github.com/yourusername/your-plugin"
+
+# Plugin type: "wasm" for WebAssembly plugins
+type = "wasm"
+
+# Entry point: path to .wasm file (relative to this manifest)
+entry_point = "conductor_wasm_plugin_template.wasm"
+
+# Capabilities requested by this plugin
+capabilities = []
+
+# Actions provided by this plugin
+[[actions]]
+name = "hello"
+description = "Print hello message to console"
+parameters = []
+
+[[actions]]
+name = "greet"
+description = "Greet a specific person"
+parameters = [
+    { name = "name", type = "string", required = true, description = "Name to greet" }
+]
+
+[[actions]]
+name = "goodbye"
+description = "Print goodbye message to console"
+parameters = []
+
+# Minimum Conductor version required
+min_conductor_version = "2.5.0"
+
+# Plugin categories (for marketplace)
+categories = ["example", "template"]
+
+# Keywords for search
+keywords = ["wasm", "template", "example", "sandbox"]
+
+# Changelog
+[changelog]
+"0.1.0" = "Initial release"
