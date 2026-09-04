@@ -166,7 +166,7 @@ rand = { workspace = true, optional = true }
 # unmaintained GTK3 binding tree (cargo-deny errors) out of the graph —
 # the Linux daemon is headless.
 tray-icon = "0.23"
-cocoa = "0.25"
+cocoa = "0.26"
 objc = "0.2"
 # ADR-027 D1 (3/N): peer trust classification via Security.framework
 # (SecCode / SecCodeCopySigningInformation for Apple Team ID extraction).
