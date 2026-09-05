@@ -164,6 +164,17 @@
 //! - [`daemon::types`] - Shared types and data structures
 //! - [`daemon::error`] - Error types and handling
 
+// Artifact tripwire for the `test-helpers` feature (ADR-045 posture): the
+// feature exposes deliberate CAS-bypass seams (LiveConfig::with_compiler,
+// install_test_snapshot, set_*_for_test) that must never ship in a release
+// artifact. `#[used]` keeps this byte string in .rodata even fully
+// unreferenced and stripped, so scripts/check-oss-binary.sh can assert its
+// ABSENCE in the bytes that actually ship — build flags are a convention,
+// the artifact is the truth.
+#[cfg(feature = "test-helpers")]
+#[used]
+static TEST_HELPERS_ARTIFACT_MARKER: [u8; 31] = *b"CONDUCTOR_TEST_HELPERS_COMPILED";
+
 pub mod action_executor;
 pub mod conditions;
 pub mod connector_registry; // ADR-031 § 3.4 — signal routing graph runtime

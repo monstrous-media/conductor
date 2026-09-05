@@ -38,12 +38,12 @@ jobs:
         id: get_version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Create Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           name: Release ${{ steps.get_version.outputs.version }}
           body: |
@@ -92,7 +92,7 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Daemon-only build: midir needs ALSA, gilrs needs libudev. The GTK /
       # webkit / appindicator packages the combined repo installed are GUI-only
@@ -106,7 +106,7 @@ jobs:
             libudev-dev \
             pkg-config
 
-      # #2148: do NOT use dtolnay/rust-toolchain@stable here. It defaults to the
+      # #2148: do NOT use dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch 2026-09 here. It defaults to the
       # floating `stable` channel and does not read rust-toolchain.toml, so CI
       # would install whatever stable happens to be that day — releases were
       # only ever saved by cargo's invocation-time override of the pin, which is
@@ -118,7 +118,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           shared-key: release-daemon-${{ matrix.target }}
           # Never cache ~/.cargo/bin — a stale snapshot can restore a broken
@@ -294,7 +294,7 @@ jobs:
             > conductor-daemon-${{ matrix.target }}.tar.gz.sha256
 
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             conductor-daemon-${{ matrix.target }}.tar.gz

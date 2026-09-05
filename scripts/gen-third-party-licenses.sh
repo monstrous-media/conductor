@@ -6,8 +6,9 @@
 # via `cargo license`.
 #
 # These files are GENERATED — do not hand-edit. Run this (`just licenses`)
-# after any dependency change. There is no CI drift gate yet — adding a
-# regenerate-and-diff job is tracked follow-up work.
+# after any dependency change. The `license-inventory` job in
+# .github/workflows/security.yml regenerates and diffs them on every PR
+# (cargo-license pinned to 0.7.0 there and in dev setups).
 #
 # Output is deterministic (sorted, no timestamps) so `git diff --exit-code`
 # is a reliable staleness check.
@@ -46,7 +47,7 @@ count=$(printf '%s\n' "$rows" | grep -c . || true)
   echo
   echo "<!-- GENERATED FILE — do not edit by hand."
   echo "     Regenerate: scripts/gen-third-party-licenses.sh"
-  echo "     CI fails if this drifts from Cargo.lock (#1488). -->"
+  echo "     CI fails if this drifts from Cargo.lock. -->"
   echo
   echo "Conductor distributes the third-party Rust crates listed below, taken"
   echo "from the workspace dependency graph (\`cargo license --all-features"

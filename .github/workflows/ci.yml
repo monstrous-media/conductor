@@ -27,8 +27,8 @@ jobs:
     name: rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch 2026-09
         with:
           components: rustfmt
       - run: cargo fmt --all --check
@@ -43,7 +43,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Linux build deps
         if: runner.os == 'Linux'
         run: |
@@ -52,10 +52,10 @@ jobs:
           # (No GTK: the tray stack is a macOS-only target dependency.)
           sudo apt-get install -y --no-install-recommends \
             libasound2-dev libudev-dev pkg-config libxdo-dev
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch 2026-09
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       # --all-features so core's plugin/plugin-wasm/plugin-signing code is
       # linted too — the compositions matrix below only varies daemon features.
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
@@ -68,7 +68,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Linux build deps
         if: runner.os == 'Linux'
         run: |
@@ -77,8 +77,8 @@ jobs:
           # (No GTK: the tray stack is a macOS-only target dependency.)
           sudo apt-get install -y --no-install-recommends \
             libasound2-dev libudev-dev pkg-config libxdo-dev
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch 2026-09
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       # Default-features build first (what a plain `cargo build` gives users),
       # then the full-features test suite — core's plugin runtimes and the
       # daemon's write/executor tiers are only compiled with their features on.
@@ -109,14 +109,14 @@ jobs:
             flags: "--features mcp-write"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Linux build deps
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libasound2-dev libudev-dev pkg-config libxdo-dev
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch 2026-09
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo build -p conductor-daemon ${{ matrix.flags }} --locked
       - run: cargo test  -p conductor-daemon ${{ matrix.flags }} --locked
