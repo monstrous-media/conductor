@@ -73,7 +73,10 @@ alsa = { workspace = true, optional = true }
 libc = "0.2"
 
 [dev-dependencies]
-conductor-daemon = { version = "0.1.0", path = "../conductor-daemon" }  # For integration tests
+# Path-only (no version) ON PURPOSE: cargo strips versionless path
+# dev-deps at packaging, which breaks the core→daemon→core cycle at first
+# publish. cargo-deny allows this via bans.allow-wildcard-paths.
+conductor-daemon = { path = "../conductor-daemon" }  # For integration tests
 rand_core.workspace = true  # rand_core 0.6 OsRng for ed25519-dalek keygen in signing tests
 proptest.workspace = true
 rstest.workspace = true

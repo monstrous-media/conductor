@@ -88,7 +88,7 @@ conductor-core = { version = "0.1.0", path = "conductor-core" }
 
 [dev-dependencies]
 # For integration tests that use ActionExecutor and PluginManager
-conductor-daemon = { version = "0.1.0", path = "conductor-daemon" }
+conductor-daemon = { path = "conductor-daemon" }
 proptest.workspace = true
 rstest.workspace = true
 chrono.workspace = true

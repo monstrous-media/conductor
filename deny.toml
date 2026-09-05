@@ -51,6 +51,10 @@ confidence-threshold = 0.9
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# Path-only dev-deps (no version) are deliberate: cargo strips them at
+# packaging, which is what breaks the core→daemon→core dev-dep cycle on
+# first publish. Only wildcard REGISTRY deps remain denied.
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"
