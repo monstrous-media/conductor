@@ -91,7 +91,18 @@ for pat in "${TELEMETRY_PATTERNS[@]}"; do
   fi
 done
 
+# --- 4. test-helpers seams ---------------------------------------------------
+# The daemon's `test-helpers` feature exposes CAS-bypass seams for the test
+# suite. conductor-daemon/src/lib.rs plants a `#[used]` marker string whenever
+# the feature is compiled in; a release artifact must not contain it.
+if grep -q -- 'CONDUCTOR_TEST_HELPERS_COMPILED' "$STRINGS_FILE"; then
+  echo "FAIL: test-helpers marker present — the test-only CAS-bypass seams were compiled into this artifact"
+  fail=1
+else
+  echo "OK: test-helpers marker absent"
+fi
+
 if [[ "$fail" -eq 0 ]]; then
-  echo "PASS: $BIN is a clean OSS artifact (no SQLite, no gated tools, no telemetry)"
+  echo "PASS: $BIN is a clean OSS artifact (no SQLite, no gated tools, no telemetry, no test seams)"
 fi
 exit "$fail"
