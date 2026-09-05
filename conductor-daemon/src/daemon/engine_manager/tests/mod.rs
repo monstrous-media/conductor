@@ -187,7 +187,7 @@ async fn background_tasks_spawn_at_most_once_across_reconnects() {
     );
     assert!(
         !manager.spawn_background_tasks_once(),
-        "a reconnect must NOT respawn — no duplicate background tasks (the #2404 leak)"
+        "a reconnect must NOT respawn — no duplicate background tasks (the leak)"
     );
     assert!(
         !manager.spawn_background_tasks_once(),

@@ -171,7 +171,7 @@ async fn test_obs_switch_scene() {
         .await;
     assert!(
         with_param.is_ok(),
-        "switch_scene should succeed when the scene_name parameter is passed (#1446): {with_param:?}"
+        "switch_scene should succeed when the scene_name parameter is passed: {with_param:?}"
     );
 
     // ...and still fails when the required parameter is omitted.
@@ -201,7 +201,7 @@ async fn test_obs_toggle_mute() {
         .await;
     assert!(
         with_param.is_ok(),
-        "toggle_mute should succeed when the source_name parameter is passed (#1446): {with_param:?}"
+        "toggle_mute should succeed when the source_name parameter is passed: {with_param:?}"
     );
 
     // ...and still fails when the required parameter is omitted.

@@ -133,7 +133,7 @@ async fn over_limit_without_eof_returns_overflow_before_eof() {
     .await
     .expect(
         "read_bounded_line hung waiting for newline/EOF instead of returning \
-         Overflow at the cap (the #1313 streaming/OOM vector)",
+         Overflow at the cap (the streaming/OOM vector)",
     );
 
     assert!(

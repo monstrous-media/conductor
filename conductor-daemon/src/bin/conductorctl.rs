@@ -5819,7 +5819,7 @@ mod tests {
         let result = check_ipc_response(&resp, "rollback");
         assert!(
             result.is_err(),
-            "daemon error response MUST yield Err so process exits non-zero (#1322); got Ok"
+            "daemon error response MUST yield Err so process exits non-zero; got Ok"
         );
         let err_msg = format!("{:#}", result.unwrap_err());
         assert!(
@@ -5883,7 +5883,7 @@ mod tests {
             assert!(
                 result.is_err(),
                 "{ctx}: a daemon error response MUST yield Err so the process \
-                 exits non-zero in JSON mode too (#1424)"
+                 exits non-zero in JSON mode too"
             );
             let msg = format!("{:#}", result.unwrap_err());
             assert!(

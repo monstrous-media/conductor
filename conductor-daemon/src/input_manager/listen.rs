@@ -470,7 +470,7 @@ impl InputManager {
             Ok(()) => {
                 let connected = self.get_status().1;
                 if connected {
-                    info!("Hot-plug: gamepad connected via rescan (#2293)");
+                    info!("Hot-plug: gamepad connected via rescan");
                 }
                 connected
             }
@@ -852,7 +852,7 @@ mod tests {
 
         assert!(
             manager.midi_managers.is_empty(),
-            "GamepadOnly mode must not open MIDI ports (#974)"
+            "GamepadOnly mode must not open MIDI ports"
         );
     }
 
@@ -887,7 +887,7 @@ mod tests {
         assert!(
             manager.is_multi_device(),
             "helper must set multi_device_active so hot-plug rescans run \
-             when devices connect later (#969 review)"
+             when devices connect later"
         );
     }
 

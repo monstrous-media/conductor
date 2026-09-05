@@ -123,7 +123,7 @@ async fn test_mapping_matched_carries_source_device_id() {
     assert_eq!(
         evt.device_id.as_deref(),
         Some("Mikro"),
-        "#1135: mapping_matched MonitorEvent must carry the source DeviceId, \
+        "mapping_matched MonitorEvent must carry the source DeviceId, \
              not None (which renders as 'Unknown' in the GUI EventRow); got {:?}",
         evt.device_id
     );

@@ -117,7 +117,7 @@ fn generate_key_private_file_has_mode_0600() {
         mode_bits, 0o600,
         "private signing key MUST be 0o600 (owner-only) even under a permissive \
          0o022 umask; got {mode_bits:#o} (a std::fs::write regression would be \
-         0o644 here — #1316/#1542)"
+         0o644 here)"
     );
 }
 
@@ -150,7 +150,7 @@ fn generate_key_public_file_is_readable() {
         mode_bits, 0o644,
         "public key must keep the default broadly-readable mode (0o644 under a \
          0o022 umask); got {mode_bits:#o}. An accidental harden to 0o600 or \
-         loosen to 0o666 must fail here (#1542)."
+         loosen to 0o666 must fail here."
     );
 }
 
@@ -189,7 +189,7 @@ fn generate_key_refuses_to_overwrite_existing_private_key() {
         .expect("second generate-key");
     assert!(
         !second.status.success(),
-        "second generate-key MUST exit non-zero rather than overwrite (#1316); \
+        "second generate-key MUST exit non-zero rather than overwrite; \
          stdout={}, stderr={}",
         String::from_utf8_lossy(&second.stdout),
         String::from_utf8_lossy(&second.stderr)
@@ -229,7 +229,7 @@ fn generate_key_refuses_to_overwrite_existing_public_key() {
 
     assert!(
         !out.status.success(),
-        "generate-key MUST refuse (non-zero) when <prefix>.public exists (#1419); \
+        "generate-key MUST refuse (non-zero) when <prefix>.public exists; \
          stdout={}, stderr={}",
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
@@ -244,7 +244,7 @@ fn generate_key_refuses_to_overwrite_existing_public_key() {
     let after = std::fs::read(&public_path).expect("read public after refusal");
     assert_eq!(
         after, sentinel,
-        "existing public key MUST survive the rejected generate-key (#1419)"
+        "existing public key MUST survive the rejected generate-key"
     );
     // ...and no private key should have been created (the preflight refuses
     // before writing anything).

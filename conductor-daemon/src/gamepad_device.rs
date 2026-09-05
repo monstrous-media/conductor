@@ -628,7 +628,7 @@ impl HidDeviceManager {
                     debug!(
                         attempts,
                         elapsed_ms = start.elapsed().as_millis(),
-                        "Gamepad registered after pumping gilrs events (async BLE-HID discovery, #2229)"
+                        "Gamepad registered after pumping gilrs events (async BLE-HID discovery)"
                     );
                 }
                 // No preference → take first immediately (historical behaviour).
@@ -660,7 +660,7 @@ impl HidDeviceManager {
                     debug!(
                         attempts,
                         window_ms = window.as_millis(),
-                        "No gamepad registered within discovery window (#2229)"
+                        "No gamepad registered within discovery window"
                     );
                 }
                 return first;

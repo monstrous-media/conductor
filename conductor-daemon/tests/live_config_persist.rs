@@ -461,7 +461,7 @@ async fn mutate_refused_when_audit_outbox_fails_to_open() {
 
     assert!(
         lc.is_audit_unavailable(),
-        "#2296: a failed outbox open must mark the daemon audit-unavailable"
+        "a failed outbox open must mark the daemon audit-unavailable"
     );
 
     let base = lc.load().state_generation;
@@ -478,12 +478,12 @@ async fn mutate_refused_when_audit_outbox_fails_to_open() {
         .await;
     match res {
         Err(MutateError::AuditUnavailable(_)) => {}
-        other => panic!("#2296: expected AuditUnavailable when outbox open failed, got {other:?}"),
+        other => panic!("expected AuditUnavailable when outbox open failed, got {other:?}"),
     }
     assert_eq!(
         lc.load().state_generation,
         base,
-        "#2296: a refused mutation must NOT publish a new generation"
+        "a refused mutation must NOT publish a new generation"
     );
 }
 
@@ -522,10 +522,7 @@ async fn resume_audit_recovers_corrupt_outbox_and_clears_gate() {
         other => panic!("expected Recovered{{Some}}, got {other:?}"),
     };
 
-    assert!(
-        !lc.is_audit_unavailable(),
-        "#2380: resume must clear the gate"
-    );
+    assert!(!lc.is_audit_unavailable(), "resume must clear the gate");
     assert!(rotated.exists(), "corrupt outbox preserved at {rotated:?}");
 
     // The fresh chain's FIRST record is the ChainReset attestation.
@@ -551,7 +548,7 @@ async fn resume_audit_recovers_corrupt_outbox_and_clears_gate() {
         },
     )
     .await
-    .expect("#2380: mutations succeed after resume");
+    .expect("mutations succeed after resume");
     assert!(lc.load().state_generation > base);
 }
 

@@ -1449,7 +1449,7 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                     format!("{}.filter.cc_range", path),
                     format!(
                         "Route filter `cc_range = [{}, {}]` has min > max — would silently \
-                         match nothing (per spec § 4.1 post-#1139, same diagnose-class as #1118).",
+                         match nothing (per spec § 4.1, same diagnose-class).",
                         min, max
                     ),
                 );
@@ -1461,7 +1461,7 @@ fn validate_routes(config: &Config, ctx: &mut ValidationCtx) {
                     format!("{}.filter.note_range", path),
                     format!(
                         "Route filter `note_range = [{}, {}]` has min > max — would silently \
-                         match nothing (per spec § 4.1 post-#1139, same diagnose-class as #1118).",
+                         match nothing (per spec § 4.1, same diagnose-class).",
                         min, max
                     ),
                 );

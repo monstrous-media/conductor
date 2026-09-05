@@ -1280,7 +1280,7 @@ mod tests {
         assert_eq!(
             std::fs::read(&victim).unwrap(),
             sentinel,
-            "config.save must not write through the predictable config.tmp symlink (#1437)"
+            "config.save must not write through the predictable config.tmp symlink"
         );
 
         // The planted symlink is untouched (still a symlink, not consumed).

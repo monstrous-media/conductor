@@ -53,7 +53,7 @@ fn spotify_plugin_path() -> PathBuf {
 }
 
 #[tokio::test]
-#[ignore = "requires the built Spotify WASM artifact; see module header (#1515)"]
+#[ignore = "requires the built Spotify WASM artifact; see module header"]
 async fn test_load_spotify_plugin() {
     let wasm_path = spotify_plugin_path();
 
@@ -67,7 +67,7 @@ async fn test_load_spotify_plugin() {
 }
 
 #[tokio::test]
-#[ignore = "requires the built Spotify WASM artifact; see module header (#1515)"]
+#[ignore = "requires the built Spotify WASM artifact; see module header"]
 async fn test_spotify_plugin_metadata() {
     let wasm_path = spotify_plugin_path();
 
@@ -92,7 +92,7 @@ async fn test_spotify_plugin_metadata() {
 }
 
 #[tokio::test]
-#[ignore = "requires the built Spotify WASM artifact; see module header (#1515)"]
+#[ignore = "requires the built Spotify WASM artifact; see module header"]
 async fn test_spotify_play_pause_action() {
     let wasm_path = spotify_plugin_path();
 
@@ -114,7 +114,7 @@ async fn test_spotify_play_pause_action() {
 }
 
 #[tokio::test]
-#[ignore = "requires the built Spotify WASM artifact; see module header (#1515)"]
+#[ignore = "requires the built Spotify WASM artifact; see module header"]
 async fn test_spotify_all_actions() {
     let wasm_path = spotify_plugin_path();
 
@@ -165,7 +165,7 @@ async fn test_spotify_all_actions() {
 }
 
 #[tokio::test]
-#[ignore = "requires the built Spotify WASM artifact; see module header (#1515)"]
+#[ignore = "requires the built Spotify WASM artifact; see module header"]
 async fn test_spotify_unknown_action() {
     let wasm_path = spotify_plugin_path();
 

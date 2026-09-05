@@ -1602,12 +1602,12 @@ mod tests {
         // The mapped target (note-on, note 99, velocity 5 on channel 1).
         assert!(
             captured.contains(&[0x90, 99, 5]),
-            "Custom scheme must use the custom mapping's LED target (#1460); got {captured:?}"
+            "Custom scheme must use the custom mapping's LED target; got {captured:?}"
         );
         // And NOT the default pad_to_note(0) == note 0.
         assert!(
             !captured.iter().any(|m| m[0] == 0x90 && m[1] == 0),
-            "Custom scheme must not drive the default note for a mapped pad (#1460); got {captured:?}"
+            "Custom scheme must not drive the default note for a mapped pad; got {captured:?}"
         );
     }
 
@@ -1638,11 +1638,11 @@ mod tests {
         let captured = fb.midi.captured();
         assert!(
             captured.contains(&[0xB0, 88, 7]),
-            "APC Custom scheme must use the custom mapping's CC target (#1460); got {captured:?}"
+            "APC Custom scheme must use the custom mapping's CC target; got {captured:?}"
         );
         assert!(
             !captured.iter().any(|m| m[0] == 0xB0 && m[1] == 56),
-            "APC Custom scheme must not drive the default CC for a mapped pad (#1460); got {captured:?}"
+            "APC Custom scheme must not drive the default CC for a mapped pad; got {captured:?}"
         );
     }
 
@@ -1659,7 +1659,7 @@ mod tests {
         assert_eq!(
             captured.len(),
             2,
-            "flash_pad must emit note-on AND note-off (#1464); got {captured:?}"
+            "flash_pad must emit note-on AND note-off; got {captured:?}"
         );
         assert_eq!(captured[0], [0x90, 40, 127], "note-on");
         assert_eq!(captured[1], [0x80, 40, 0], "note-off");
@@ -1676,7 +1676,7 @@ mod tests {
         assert_eq!(
             captured.len(),
             2,
-            "trait flash must emit on+off (#1464); got {captured:?}"
+            "trait flash must emit on+off; got {captured:?}"
         );
         assert_eq!(captured[0][0] & 0xF0, 0x90, "first is a note-on");
         assert_eq!(captured[1][0] & 0xF0, 0x80, "second is a note-off");

@@ -1037,11 +1037,11 @@ async fn try_mutate_replace_whole_aborts_publish_on_closure_err() {
     let after = live.load();
     assert_eq!(
         after.state_generation, before_gen,
-        "state_generation MUST NOT advance when mutator aborts (#1320)"
+        "state_generation MUST NOT advance when mutator aborts"
     );
     assert_eq!(
         after.revision, before_rev,
-        "revision MUST NOT change when mutator aborts (#1320)"
+        "revision MUST NOT change when mutator aborts"
     );
     assert_ne!(
         after.config.default_mode,
@@ -1260,6 +1260,6 @@ async fn interleaved_replace_whole_does_not_clobber_mark_known_good() {
     assert_eq!(
         final_snap.known_good_revision, marker_after_b,
         "Task B's known_good marker MUST survive Task A's interleaved \
-         stale-reject — #1324 deterministic interleave"
+         stale-reject (deterministic interleave)"
     );
 }

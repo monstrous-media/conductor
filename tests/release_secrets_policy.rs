@@ -57,7 +57,7 @@ fn apple_secrets_are_not_in_job_level_env() {
     assert!(
         violations.is_empty(),
         "Apple signing secrets must be scoped to signing/notarization steps, \
-         not a job-level env block (#1443). Offending lines in \
+         not a job-level env block. Offending lines in \
          .github/workflows/release.yml:\n{}",
         violations
             .iter()

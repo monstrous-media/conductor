@@ -612,7 +612,7 @@ mod tests {
         assert_eq!(
             warnings.len(),
             1,
-            "the corrupt file must be reported (#1415): {warnings:?}"
+            "the corrupt file must be reported: {warnings:?}"
         );
         assert!(
             warnings[0].contains("corrupt.json"),
@@ -649,7 +649,7 @@ mod tests {
         assert_eq!(
             warnings.len(),
             1,
-            "the unreadable entry must be reported (#1415): {warnings:?}"
+            "the unreadable entry must be reported: {warnings:?}"
         );
         assert!(
             warnings[0].contains("unreadable capture file"),

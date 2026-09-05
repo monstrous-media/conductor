@@ -561,7 +561,7 @@ mod tests {
         let Some(info) = DaemonAppDetector::detect_frontmost_app() else {
             eprintln!(
                 "skipping test_detect_frontmost_app: no GUI session \
-                 (headless runner) — FU-9 #1888"
+                 (headless runner)"
             );
             return;
         };

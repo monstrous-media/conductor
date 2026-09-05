@@ -297,7 +297,7 @@ mod tests {
         assert_ne!(
             stats.classify(),
             DeviceCategory::EncoderController,
-            "a repeatedly-moved absolute fader must not be read as an encoder (#1451)"
+            "a repeatedly-moved absolute fader must not be read as an encoder"
         );
         assert_eq!(stats.classify(), DeviceCategory::FaderController);
     }
@@ -371,7 +371,7 @@ mod tests {
         assert_eq!(
             stats.classify(),
             DeviceCategory::Unknown,
-            "non-dominant notes (40%) mixed with CC (60%) must stay Unknown, not PadController (#1452)"
+            "non-dominant notes (40%) mixed with CC (60%) must stay Unknown, not PadController"
         );
     }
 

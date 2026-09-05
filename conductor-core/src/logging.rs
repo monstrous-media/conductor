@@ -596,7 +596,7 @@ mod tests {
         let result = init_logging(&config);
         assert!(
             result.is_err(),
-            "repeated init_logging must return Err, not panic (#2151)"
+            "repeated init_logging must return Err, not panic"
         );
     }
 
@@ -636,7 +636,7 @@ mod tests {
 
         assert!(
             remaining <= config.max_files,
-            "expected <= {} retained logs after pruning, found {} (#2152 — max_files ignored?)",
+            "expected <= {} retained logs after pruning, found {} (max_files ignored?)",
             config.max_files,
             remaining
         );
@@ -663,7 +663,7 @@ mod tests {
         let appender = build_file_appender(&config);
         assert!(
             appender.is_ok(),
-            "build_file_appender must not panic/err on max_files=0 (#2152)"
+            "build_file_appender must not panic/err on max_files=0"
         );
     }
 

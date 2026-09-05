@@ -486,7 +486,7 @@ mod tests {
         assert_ne!(
             leds.buffer[pad_slot(0)],
             0,
-            "non-black set_pad_color must light the pad (#1461)"
+            "non-black set_pad_color must light the pad"
         );
     }
 
@@ -517,7 +517,7 @@ mod tests {
         assert_ne!(
             leds.buffer[pad_slot(2)],
             0,
-            "a Custom scheme step must light the legacy Mikro pad (#1461)"
+            "a Custom scheme step must light the legacy Mikro pad"
         );
     }
 }

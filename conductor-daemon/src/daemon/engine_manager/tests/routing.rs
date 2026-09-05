@@ -63,7 +63,7 @@ async fn test_process_device_event_suppresses_dispatch_when_learn_active_legacy(
 
     assert!(
         !drain_for_mapping_matched(&mut rx),
-        "mapping_matched must NOT fire when midi_learn_active is true (#836)"
+        "mapping_matched must NOT fire when midi_learn_active is true"
     );
 }
 
@@ -157,7 +157,7 @@ async fn test_process_device_event_drops_muted_device() {
         .expect("process_device_event must return Ok — a pipeline error would mask the drop");
     assert!(
         !drain_for_mapping_matched(&mut rx),
-        "a muted device's event must be dropped — no mapping_matched (#1499)"
+        "a muted device's event must be dropped — no mapping_matched"
     );
 
     // Enabled device → the identical event still flows through and
@@ -177,7 +177,7 @@ async fn test_process_device_event_drops_muted_device() {
         .expect("process_device_event must return Ok");
     assert!(
         drain_for_mapping_matched(&mut rx),
-        "an enabled device's event must still flow through and dispatch (#1499)"
+        "an enabled device's event must still flow through and dispatch"
     );
 }
 

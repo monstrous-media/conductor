@@ -197,17 +197,17 @@ added_at = "{bob_added_at}"
     // every record with empty name + empty email + fresh added_at.
     assert_eq!(
         alice_after.name, "Alice Developer",
-        "Alice's NAME must survive trust remove Bob (#1315)"
+        "Alice's NAME must survive trust remove Bob"
     );
     assert_eq!(
         alice_after.email, "alice@example.com",
-        "Alice's EMAIL must survive trust remove Bob (#1315 — \
+        "Alice's EMAIL must survive trust remove Bob (\
          Council R2 specifically called out this field as the \
          most likely silent failure point in the bug)"
     );
     assert_eq!(
         alice_after.added_at, alice_added_at,
-        "Alice's added_at must survive trust remove Bob (#1315 \
+        "Alice's added_at must survive trust remove Bob (\
          regenerated it to now())"
     );
 }

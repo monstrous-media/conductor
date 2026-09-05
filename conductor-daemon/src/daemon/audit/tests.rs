@@ -400,10 +400,10 @@ fn d13b_chain_detects_provenance_tamper() {
     match logger.verify_chain() {
         Err(super::ChainBreak::HashMismatch { .. }) => { /* expected */ }
         Err(other) => {
-            panic!("#2120: provenance tamper must be detected as HashMismatch, got: {other}")
+            panic!("provenance tamper must be detected as HashMismatch, got: {other}")
         }
         Ok(n) => panic!(
-            "#2120: provenance tamper went UNDETECTED — verify_chain returned \
+            "provenance tamper went UNDETECTED — verify_chain returned \
              Ok({n}). The provenance column is outside the hash chain; an \
              attacker can forge mutation provenance without a trace.",
         ),
@@ -428,7 +428,7 @@ fn d13b_chain_unaffected_for_entries_without_provenance() {
     assert_eq!(
         logger.verify_chain().unwrap(),
         1,
-        "a provenance-free entry must verify unchanged after the #2120 fix"
+        "a provenance-free entry must verify unchanged after the fix"
     );
 }
 

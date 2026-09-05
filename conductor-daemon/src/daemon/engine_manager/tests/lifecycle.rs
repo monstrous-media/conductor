@@ -373,7 +373,7 @@ network_acl = ["not-a-valid-cidr"]
     let result = manager.prepare_runtime(&bad).await;
     assert!(
         result.is_err(),
-        "#2100: prepare_runtime must reject a malformed listener ACL (the fallible PREPARE seam)"
+        "prepare_runtime must reject a malformed listener ACL (the fallible PREPARE seam)"
     );
 }
 
@@ -412,7 +412,7 @@ port = 0
 
     assert!(
         manager.prepare_runtime(&good).await.is_ok(),
-        "#2100: prepare_runtime must build for a valid config (loopback OSC listener)"
+        "prepare_runtime must build for a valid config (loopback OSC listener)"
     );
 }
 
@@ -465,12 +465,12 @@ network_acl = ["not-a-valid-cidr"]
 
     assert!(
         matches!(response.status, ResponseStatus::Error),
-        "#2100: SaveConfig of an unbuildable config must be rejected"
+        "SaveConfig of an unbuildable config must be rejected"
     );
     assert_eq!(
         manager.live_config.load().state_generation,
         base_generation,
-        "#2100 ATOMICITY: a PREPARE failure must NOT commit — live_config generation unchanged"
+        "ATOMICITY: a PREPARE failure must NOT commit — live_config generation unchanged"
     );
 }
 
@@ -545,7 +545,7 @@ network_acl = ["not-a-valid-cidr"]
 
     assert!(
         matches!(response.status, ResponseStatus::Error),
-        "#2100: SaveConfig of an unbuildable config must be rejected"
+        "SaveConfig of an unbuildable config must be rejected"
     );
     assert!(
         manager
@@ -553,7 +553,7 @@ network_acl = ["not-a-valid-cidr"]
             .lock()
             .await
             .shell_allow_unsandboxed(),
-        "#2100 R2: a rejected (pre-commit-failed) SaveConfig must NOT mutate \
+        "R2: a rejected (pre-commit-failed) SaveConfig must NOT mutate \
          the shell-sandbox policy — set_shell_security belongs in APPLY"
     );
 }
@@ -636,11 +636,11 @@ async fn apply_committed_guarded_reprepares_on_revision_mismatch() {
     let registry = manager.connector_registry.read().await;
     assert!(
         registry.contains("alias_b"),
-        "#2100 guard: runtime must reflect the COMMITTED config B (re-prepared)"
+        "guard: runtime must reflect the COMMITTED config B (re-prepared)"
     );
     assert!(
         !registry.contains("alias_a"),
-        "#2100 guard: the discarded prepared-A must NOT be installed"
+        "guard: the discarded prepared-A must NOT be installed"
     );
 }
 
@@ -705,12 +705,12 @@ port = 9000
     assert_ne!(
         state,
         LifecycleState::Reloading,
-        "#2100 R1: a failed reload must NOT leave the daemon stuck in Reloading"
+        "R1: a failed reload must NOT leave the daemon stuck in Reloading"
     );
     assert_eq!(
         state,
         LifecycleState::Running,
-        "#2100 R1: a failed reload restores the pre-reload Running state"
+        "R1: a failed reload restores the pre-reload Running state"
     );
 }
 
@@ -933,11 +933,11 @@ async fn reload_from_cached_config_rebuilds_connector_registry() {
     let registry = manager.connector_registry.read().await;
     assert!(
         registry.contains("pads"),
-        "#1365: binding lowered to connector must be in the registry after cached reload"
+        "binding lowered to connector must be in the registry after cached reload"
     );
     assert!(
         registry.contains("absynth"),
-        "#1365: explicit connector must be in the registry after cached reload"
+        "explicit connector must be in the registry after cached reload"
     );
 }
 
@@ -1038,11 +1038,11 @@ async fn reload_config_rebuilds_connector_registry() {
     let registry = manager.connector_registry.read().await;
     assert!(
         registry.contains("pads_rc"),
-        "#1602 Gap A: binding-derived connector must be in the registry after non-cached reload"
+        "Gap A: binding-derived connector must be in the registry after non-cached reload"
     );
     assert!(
         registry.contains("absynth_rc"),
-        "#1602 Gap A: explicit connector must be in the registry after non-cached reload"
+        "Gap A: explicit connector must be in the registry after non-cached reload"
     );
 }
 
@@ -1092,15 +1092,15 @@ async fn known_good_backup_comes_from_validated_in_memory_config() {
         .expect("reload should succeed");
 
     let backup = std::fs::read_to_string(&known_good_path)
-        .expect("#2173: known_good backup must be written on a successful reload");
+        .expect("known_good backup must be written on a successful reload");
     assert!(
         !backup.contains("DISTINCTIVE_TOCTOU_MARKER_2173"),
-        "#2173: known_good must be the serialized in-memory config (no source comments), \
+        "known_good must be the serialized in-memory config (no source comments), \
          not a raw file copy — got:\n{backup}"
     );
     // And it must be a valid, parseable config (the validated content).
     conductor_core::Config::load(known_good_path.to_str().unwrap())
-        .expect("#2173: the known_good backup must itself be a loadable config");
+        .expect("the known_good backup must itself be a loadable config");
 }
 
 #[tokio::test]
@@ -1180,7 +1180,7 @@ async fn save_config_ipc_rebuilds_connector_registry() {
     let registry = refs.connector_registry.read().await;
     assert!(
         registry.contains("new_pads"),
-        "SaveConfig must rebuild the connector registry without a restart (#2051)"
+        "SaveConfig must rebuild the connector registry without a restart"
     );
 }
 
@@ -1290,11 +1290,11 @@ async fn sync_config_after_apply_rebuilds_connector_registry() {
     let registry = manager.connector_registry.read().await;
     assert!(
         registry.contains("pads_apply"),
-        "#1598 Phase 2 Step B: binding-derived connector must be in the registry after plan apply"
+        "Phase 2 Step B: binding-derived connector must be in the registry after plan apply"
     );
     assert!(
         registry.contains("absynth_apply"),
-        "#1598 Phase 2 Step B: explicit connector must be in the registry after plan apply"
+        "Phase 2 Step B: explicit connector must be in the registry after plan apply"
     );
 }
 
@@ -1345,7 +1345,7 @@ async fn reload_from_cached_config_reapplies_probe_toggle() {
 
     assert!(
         !manager.probe_coordinator.is_enabled(),
-        "#2071: cached profile switch must re-apply the SysEx probe toggle \
+        "cached profile switch must re-apply the SysEx probe toggle \
          (full runtime rebuild via apply_committed_config)"
     );
 }
@@ -1397,7 +1397,7 @@ async fn sync_config_after_apply_reapplies_probe_toggle() {
 
     assert!(
         !manager.probe_coordinator.is_enabled(),
-        "#2071: plan-apply must re-apply the SysEx probe toggle \
+        "plan-apply must re-apply the SysEx probe toggle \
          (full runtime rebuild via apply_committed_config)"
     );
 }
@@ -1465,18 +1465,18 @@ network_acl = ["not-a-valid-cidr"]
 
     assert!(
         result.is_err(),
-        "#2316: sync_config_after_apply must reject a config that fails PREPARE"
+        "sync_config_after_apply must reject a config that fails PREPARE"
     );
     assert_eq!(
         std::fs::read_to_string(&config_path).unwrap(),
         original_on_disk,
-        "#2316 SPLIT-BRAIN: a PREPARE failure must NOT write the profile to disk \
+        "SPLIT-BRAIN: a PREPARE failure must NOT write the profile to disk \
          (PREPARE runs before the save)"
     );
     assert_eq!(
         manager.live_config.load().state_generation,
         base_generation,
-        "#2316 ATOMICITY: a PREPARE failure must NOT commit — live_config generation unchanged"
+        "ATOMICITY: a PREPARE failure must NOT commit — live_config generation unchanged"
     );
 }
 
@@ -1637,7 +1637,7 @@ async fn ipc_dispatch_backstop_rebuilds_after_out_of_band_commit() {
             .read()
             .await
             .contains("backstop_pads"),
-        "#2071/Q2: the IPC dispatch backstop must rebuild the runtime after an \
+        "Q2: the IPC dispatch backstop must rebuild the runtime after an \
          out-of-band commit — structural guarantee, not caller-remembered"
     );
 }
@@ -1723,7 +1723,7 @@ async fn reload_config_extends_device_output_map_with_connectors() {
     assert_eq!(
         map.get("absynth_1611").map(String::as_str),
         Some("absynth_virtual_1611"),
-        "#1611: output connector alias must resolve via device_output_map \
+        "output connector alias must resolve via device_output_map \
              after reload so ActionExecutor::resolve_output_port can match it"
     );
 }
@@ -1795,7 +1795,7 @@ async fn reload_creates_and_tears_down_virtual_midi_port() {
             .await
             .virtual_port_names()
             .contains(&"Conductor 2063 Test".to_string()),
-        "#2063: the MidiVirtualPort endpoint must create an enumerable OS port"
+        "the MidiVirtualPort endpoint must create an enumerable OS port"
     );
 
     // Reload without it → the OS port is torn down.
@@ -1813,7 +1813,7 @@ async fn reload_creates_and_tears_down_virtual_midi_port() {
             .await
             .virtual_port_names()
             .contains(&"Conductor 2063 Test".to_string()),
-        "#2063: removing the endpoint must tear the OS port down"
+        "removing the endpoint must tear the OS port down"
     );
 }
 

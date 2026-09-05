@@ -649,7 +649,7 @@ mod tests {
         );
         assert!(
             reachable.contains("Conductor: DAW"),
-            "#2421: a daemon-created virtual output must be reachable even when \
+            "a daemon-created virtual output must be reachable even when \
              absent from the live enumeration"
         );
     }
