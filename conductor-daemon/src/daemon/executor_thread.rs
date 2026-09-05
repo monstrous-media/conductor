@@ -1855,7 +1855,7 @@ mod tests {
         assert!(
             matches!(completion.result, Ok(DispatchOutcome::Completed)),
             "OscForward must resolve the endpoint stored via the shared ArcSwap \
-             AFTER spawn (the #2396 propagation path), got: {:?}",
+             AFTER spawn (the propagation path), got: {:?}",
             completion.result
         );
         // End-to-end: the message actually reached the UDP endpoint.

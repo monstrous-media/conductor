@@ -96,7 +96,7 @@ fn systemd_read_write_paths_includes_dot_conductor_state_dir() {
         "systemd unit's ReadWritePaths MUST include `%h/.conductor` — \
          that's where `StateManager::get_state_dir()` writes on Linux. \
          Without this, a hardened systemd launch \
-         (ProtectHome=read-only) blocks startup state creation (#1314). \
+         (ProtectHome=read-only) blocks startup state creation. \
          Current ReadWritePaths: {paths:?}"
     );
 }

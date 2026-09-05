@@ -107,9 +107,7 @@ mod app {
                         time::sleep(*drain).await;
                     }
                     QuitAction::ExitImmediately { status } => {
-                        tracing::error!(
-                            "Stop request failed during Quit; exiting menubar anyway (#1428)"
-                        );
+                        tracing::error!("Stop request failed during Quit; exiting menubar anyway");
                         menu_bar.update_status(status);
                     }
                 }
@@ -397,7 +395,7 @@ mod app {
                     );
                 }
                 QuitAction::DrainThenExit { .. } => panic!(
-                    "a failed Stop must map to ExitImmediately, not DrainThenExit (#1428); got {plan:?}"
+                    "a failed Stop must map to ExitImmediately, not DrainThenExit; got {plan:?}"
                 ),
             }
         }
@@ -435,7 +433,7 @@ mod app {
 
             assert!(
                 result.is_err(),
-                "a never-resolving IPC future must time out, not hang (#1429); got {result:?}"
+                "a never-resolving IPC future must time out, not hang; got {result:?}"
             );
             assert!(
                 result.unwrap_err().contains("not responding"),

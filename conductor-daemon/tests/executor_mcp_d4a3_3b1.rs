@@ -276,7 +276,7 @@ fn d4a3_3b1_no_arc_rwlock_config_in_any_daemon_source() {
     assert!(
         violations.is_empty(),
         "retired Arc<RwLock<…Config…>> pattern(s) present in daemon source \
-         (#1502 — invariant is repo-wide):\n{}",
+         (invariant is repo-wide):\n{}",
         violations.join("\n")
     );
 }

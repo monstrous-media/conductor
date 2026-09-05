@@ -209,7 +209,7 @@ fn mcp_revoke_canonicalizes_symlinked_exe_path() {
         entries_after_revoke.is_empty(),
         "registry MUST be empty after revoke via symlink — pre-fix the \
          literal symlink path didn't match the canonical stored entry, \
-         leaving the grant in place (#1317). Got:\n{after_revoke}"
+         leaving the grant in place. Got:\n{after_revoke}"
     );
 
     // And the revoke output should report removed=true (not the
@@ -295,7 +295,7 @@ fn mcp_revoke_removes_entry_for_deleted_binary() {
     );
     assert!(
         rev.status.success(),
-        "mcp revoke of a DELETED registered binary must exit 0 (#1430); stderr={}\nstdout={}",
+        "mcp revoke of a DELETED registered binary must exit 0; stderr={}\nstdout={}",
         String::from_utf8_lossy(&rev.stderr),
         String::from_utf8_lossy(&rev.stdout),
     );
@@ -305,7 +305,7 @@ fn mcp_revoke_removes_entry_for_deleted_binary() {
     assert_eq!(
         rev_json["removed"],
         serde_json::Value::Bool(true),
-        "revoke of a deleted-but-registered binary must report removed=true (#1430); got:\n{rev_json}"
+        "revoke of a deleted-but-registered binary must report removed=true; got:\n{rev_json}"
     );
 
     let after_revoke: serde_json::Value =
@@ -317,7 +317,7 @@ fn mcp_revoke_removes_entry_for_deleted_binary() {
             .expect("entries")
             .is_empty(),
         "registry MUST be empty after revoking a deleted binary — pre-fix the \
-         stale grant survived because canonicalize() failed (#1430). Got:\n{after_revoke}"
+         stale grant survived because canonicalize() failed. Got:\n{after_revoke}"
     );
 }
 

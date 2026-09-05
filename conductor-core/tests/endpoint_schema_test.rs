@@ -412,7 +412,7 @@ fn json_null_optionals_deserialize_as_none() {
         "protocol": null,
         "channels": null,
     }))
-    .expect("#2064: JSON null optionals must deserialize, not error");
+    .expect("JSON null optionals must deserialize, not error");
     assert_eq!(ep.alias, "daw");
     assert!(ep.description.is_none(), "null description → None");
     assert!(ep.protocol.is_none(), "null protocol → None");

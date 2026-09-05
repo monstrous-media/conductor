@@ -776,7 +776,7 @@ mod tests {
         assert_eq!(
             usage.get(&ToolRiskTier::ArtifactRender),
             Some(&(2, 30)),
-            "ArtifactRender usage must be reported, not omitted (#2144)"
+            "ArtifactRender usage must be reported, not omitted"
         );
         // ArtifactRender is a SEPARATE bucket from Stateful — recording
         // ArtifactRender must not be counted against Stateful.
@@ -805,7 +805,7 @@ mod tests {
         let unknown: HashSet<ToolRiskTier> = limiter.get_usage("never-seen").into_keys().collect();
         assert_eq!(
             unknown, expected,
-            "unknown-client usage key set must equal ALL_REPORTED_TIERS (#2144)"
+            "unknown-client usage key set must equal ALL_REPORTED_TIERS"
         );
 
         // Known client → recorded branch.
@@ -815,7 +815,7 @@ mod tests {
         let known: HashSet<ToolRiskTier> = limiter.get_usage("client1").into_keys().collect();
         assert_eq!(
             known, expected,
-            "known-client usage key set must equal ALL_REPORTED_TIERS (#2144)"
+            "known-client usage key set must equal ALL_REPORTED_TIERS"
         );
     }
 

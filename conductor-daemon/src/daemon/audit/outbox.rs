@@ -830,7 +830,7 @@ mod tests {
         let after_open_len = std::fs::metadata(&path).unwrap().len();
         assert!(
             after_open_len < torn_len,
-            "#2228: open() must truncate the torn trailing bytes \
+            "open() must truncate the torn trailing bytes \
              (was {torn_len}, now {after_open_len})"
         );
 
@@ -842,7 +842,7 @@ mod tests {
         // was appended after the un-truncated torn partial, producing a
         // non-final unparseable line → fatal `Corruption`.
         let (_again, recovered2) = AuditOutbox::open(path.clone())
-            .expect("#2228: second restart must not brick on a glued torn line");
+            .expect("second restart must not brick on a glued torn line");
         assert_eq!(
             recovered2.len(),
             3,
@@ -1135,7 +1135,7 @@ mod tests {
         // The whole chain — compacted survivors + the post-compaction append —
         // must re-read cleanly: no prev_hash discontinuity, no fatal corruption.
         let (reopened, recovered) = AuditOutbox::open(path.clone())
-            .expect("#2296: compaction boundary must not break the chain on restart");
+            .expect("compaction boundary must not break the chain on restart");
         let ids: Vec<&str> = recovered.iter().map(|e| e.record.id.as_str()).collect();
         assert_eq!(
             ids,
@@ -1153,7 +1153,7 @@ mod tests {
             .unwrap();
         drop(ob3);
         let (_again, recovered2) = AuditOutbox::open(path)
-            .expect("#2296: a second restart after another append stays continuous");
+            .expect("a second restart after another append stays continuous");
         let ids2: Vec<&str> = recovered2.iter().map(|e| e.record.id.as_str()).collect();
         assert_eq!(ids2, vec!["b", "c", "d", "e"]);
     }

@@ -44,7 +44,7 @@ fn unregistered_peer_denied_config_change() {
     let result = check_peer_tier_ceiling(None, ToolRiskTier::ConfigChange);
     assert!(
         result.is_err(),
-        "unregistered peer MUST be denied ConfigChange (#1311); got {result:?}"
+        "unregistered peer MUST be denied ConfigChange; got {result:?}"
     );
 }
 

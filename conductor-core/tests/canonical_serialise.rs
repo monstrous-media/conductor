@@ -257,7 +257,7 @@ fn serialise_handles_populated_midi_to_artnet_cc_to_dmx() {
 
     let bytes = canonical::serialise(&config).expect(
         "populated MidiToArtNet cc_to_dmx must serialise to TOML; \
-         #1356 was that u8 keys broke canonical (TOML requires string keys)",
+         the original bug was that u8 keys broke canonical (TOML requires string keys)",
     );
     let s = std::str::from_utf8(&bytes).expect("UTF-8");
     // Spot-check: the CC numbers must appear as string keys in the output.

@@ -179,7 +179,7 @@ async fn resume_audit_already_healthy_does_not_clear_audit_degraded() {
     assert_eq!(
         *manager.state.read().await,
         crate::daemon::types::LifecycleState::AuditDegraded,
-        "#2384: an AlreadyHealthy resume must NOT transition AuditDegraded → Running"
+        "an AlreadyHealthy resume must NOT transition AuditDegraded → Running"
     );
 }
 

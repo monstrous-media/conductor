@@ -379,7 +379,7 @@ mod tests {
         assert_eq!(rx.recv().await, Some(a), "the queued reload survives");
         assert!(
             rx.try_recv().is_err(),
-            "#2197: the second notification was dropped on a full channel, not blocked/queued"
+            "the second notification was dropped on a full channel, not blocked/queued"
         );
 
         // A closed channel (receiver dropped) is a no-op, not a panic/block.
@@ -430,7 +430,7 @@ mod tests {
             .expect("watch task should not panic");
         assert!(
             res.is_ok(),
-            "#2197: a retarget re-watch failure must not terminate the watch loop; got {res:?}"
+            "a retarget re-watch failure must not terminate the watch loop; got {res:?}"
         );
     }
 

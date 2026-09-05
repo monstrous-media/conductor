@@ -105,7 +105,7 @@ pub(crate) async fn handle_tools_call(
         return McpResponse::error(
             request.id.clone(),
             McpError::invalid_request(&format!(
-                "Permission denied (#1311): {reason} — tool '{}' requires {:?} tier",
+                "Permission denied: {reason} — tool '{}' requires {:?} tier",
                 params.name, risk_tier
             )),
         );

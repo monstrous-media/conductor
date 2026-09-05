@@ -110,7 +110,7 @@ mod tests {
         assert!(
             expected.exists(),
             "ADR-027 D13b: audit DB MUST exist on disk after `create_audit_logger` succeeds. \
-             Issue #1038 caught the case where this file silently never appeared. \
+             A past regression left this file silently never created. \
              Path checked: {}",
             expected.display(),
         );

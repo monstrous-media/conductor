@@ -1242,7 +1242,7 @@ mod tests {
         write!(std::fs::File::create(&upper).unwrap(), "# profile").unwrap();
         assert!(
             validate_profile_path(upper.to_str().unwrap()).is_ok(),
-            "#1294: an uppercase `.TOML` extension must validate (matches startup)"
+            "an uppercase `.TOML` extension must validate (matches startup)"
         );
 
         // Mixed case too.

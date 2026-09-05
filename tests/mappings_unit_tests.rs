@@ -2316,7 +2316,7 @@ fn global_mapping_fires_when_mode_specific_has_no_match() {
     };
     assert!(
         engine.get_action(&event, 0).is_some(),
-        "global mapping must fire when the existing mode has no matching mapping (#1463)"
+        "global mapping must fire when the existing mode has no matching mapping"
     );
 
     // Sanity: the mode-specific mapping still wins for its own note.

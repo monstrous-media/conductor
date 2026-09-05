@@ -945,11 +945,11 @@ async fn reload_reapplies_hold_and_double_tap_to_existing_processors() {
     assert_eq!(
         p.hold_threshold(),
         Duration::from_millis(750),
-        "reload must apply hold_threshold_ms to existing processors (#2490)"
+        "reload must apply hold_threshold_ms to existing processors"
     );
     assert_eq!(
         p.double_tap_timeout(),
         Duration::from_millis(222),
-        "reload must apply double_tap_timeout_ms to existing processors (#2490)"
+        "reload must apply double_tap_timeout_ms to existing processors"
     );
 }

@@ -820,7 +820,7 @@ async fn adopt_explicit_config_to(
         .map_err(|e| DaemonError::Ipc(format!("overwrite live.toml during --config adopt: {e}")))?;
     warn!(
         "Adopted --config {} as the live configuration: overwrote {} \
-         (live.toml is the daemon's authority; subsequent boots resume it). #1318",
+         (live.toml is the daemon's authority; subsequent boots resume it).",
         arg_path.display(),
         paths.live.display()
     );
@@ -859,12 +859,12 @@ mod tests {
             .expect("adopt should succeed");
 
         // live.toml now holds X's content, not the stale default.
-        let adopted = Config::load(paths.live.to_str().unwrap())
-            .expect("#1318: adopted live.toml must be loadable");
+        let adopted =
+            Config::load(paths.live.to_str().unwrap()).expect("adopted live.toml must be loadable");
         assert_eq!(
             adopted.last_selected_mode.as_deref(),
             Some("EXPLICIT_X_1318"),
-            "#1318: an explicit --config must overwrite live.toml with its content"
+            "an explicit --config must overwrite live.toml with its content"
         );
     }
 
@@ -884,13 +884,13 @@ mod tests {
 
         assert!(
             adopt_explicit_config_to(&bad, &paths).await.is_err(),
-            "#1318: an unloadable --config must fail the adopt"
+            "an unloadable --config must fail the adopt"
         );
         let kept = Config::load(paths.live.to_str().unwrap()).expect("live.toml still loads");
         assert_eq!(
             kept.last_selected_mode.as_deref(),
             Some("KEEP_ME"),
-            "#1318: a failed adopt must leave the existing live.toml untouched"
+            "a failed adopt must leave the existing live.toml untouched"
         );
     }
 
@@ -917,7 +917,7 @@ mod tests {
 
         tokio::time::timeout(std::time::Duration::from_secs(2), handle)
             .await
-            .expect("signal handler did not exit on shutdown broadcast (#1295 hang)")
+            .expect("signal handler did not exit on shutdown broadcast")
             .expect("signal handler task panicked");
     }
 

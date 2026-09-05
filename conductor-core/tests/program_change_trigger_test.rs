@@ -436,7 +436,7 @@ fn process_emits_program_change_from_raw_midi_event() {
         pc,
         Some((5, Some(0))),
         "process() must emit ProcessedEvent::ProgramChange for a raw \
-         MidiEvent::ProgramChange (#1458); got {results:?}"
+         MidiEvent::ProgramChange; got {results:?}"
     );
 }
 
@@ -482,6 +482,6 @@ command = "echo pc-5"
     assert!(
         matched,
         "a raw ProgramChange routed through process() must fire the compiled \
-         Trigger::ProgramChange mapping (#1458); got {results:?}"
+         Trigger::ProgramChange mapping; got {results:?}"
     );
 }

@@ -424,7 +424,7 @@ async fn handle_client(
                     ),
                     Some(json!({
                         "max_size": MAX_REQUEST_SIZE,
-                        "security": "Request rejected and connection closed to prevent memory exhaustion (#1313)"
+                        "security": "Request rejected and connection closed to prevent memory exhaustion"
                     })),
                 );
                 send_response(&mut writer, &error_response).await?;

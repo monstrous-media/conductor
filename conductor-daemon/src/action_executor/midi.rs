@@ -163,7 +163,7 @@ mod tests {
         } else {
             eprintln!(
                 "skipping {test}: virtual MIDI ports unavailable \
-                 (headless runner / no CoreMIDI session) — FU-9 #1888"
+                 (headless runner / no CoreMIDI session)"
             );
             false
         }

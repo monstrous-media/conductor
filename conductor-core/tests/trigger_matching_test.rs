@@ -1552,7 +1552,7 @@ command = "echo at"
     };
     assert!(
         engine.get_action(&at, 0).is_some(),
-        "raw Aftertouch over threshold must match (#1457)"
+        "raw Aftertouch over threshold must match"
     );
 
     let weak = MidiEvent::Aftertouch {
@@ -1593,7 +1593,7 @@ command = "echo poly"
     };
     assert!(
         engine.get_action(&hit, 0).is_some(),
-        "raw PolyPressure on matching note must match (#1457)"
+        "raw PolyPressure on matching note must match"
     );
 
     let other = MidiEvent::PolyPressure {
@@ -1634,7 +1634,7 @@ command = "echo bend"
     };
     assert!(
         engine.get_action(&in_range, 0).is_some(),
-        "raw PitchBend within range must match (#1457)"
+        "raw PitchBend within range must match"
     );
 
     let out = MidiEvent::PitchBend {
@@ -1673,7 +1673,7 @@ command = "echo pc"
     };
     assert!(
         engine.get_action(&pc5, 0).is_some(),
-        "raw ProgramChange matching pc must match (#1457)"
+        "raw ProgramChange matching pc must match"
     );
 
     let pc6 = MidiEvent::ProgramChange {

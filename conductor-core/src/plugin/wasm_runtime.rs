@@ -1300,7 +1300,7 @@ mod tests {
         assert_eq!(
             value["parameters"],
             serde_json::json!(["Scene 1", "extra"]),
-            "host must serialize positional `parameters` for the guest (#1446); got {json}"
+            "host must serialize positional `parameters` for the guest; got {json}"
         );
 
         // Round-trips into the exact shape every bundled guest deserializes.
@@ -1327,7 +1327,7 @@ mod tests {
             serde_json::from_str(&json).expect("deserialize request without parameters");
         assert!(
             request.parameters.is_empty(),
-            "a request without `parameters` must default to an empty list (#1446)"
+            "a request without `parameters` must default to an empty list"
         );
     }
 }

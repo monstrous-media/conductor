@@ -1343,8 +1343,7 @@ mod tests {
                      SecCodeCopySigningInformation. Passing any other \
                      value (notably 0) silently omits the `teamid` \
                      key from the returned signing dict — that is the \
-                     v5.6.0-alpha regression captured in #1122 and the \
-                     gap this test (#1125) exists to lock down. \
+                     pre-migration regression this test exists to lock down. \
                      Got flags = 0x{:x}.",
                     SEC_CS_SIGNING_INFORMATION, flags,
                 );

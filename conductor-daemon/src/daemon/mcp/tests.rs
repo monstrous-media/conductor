@@ -1186,10 +1186,10 @@ async fn test_handle_tools_call_unregistered_peer_denied_config_change() {
     let err = response
         .error
         .as_ref()
-        .expect("unregistered ConfigChange call MUST return JSON-RPC error (#1311)");
+        .expect("unregistered ConfigChange call MUST return JSON-RPC error");
     assert!(
-        err.message.contains("Permission denied") || err.message.contains("#1311"),
-        "expected permission-denied error referencing #1311; got: {}",
+        err.message.contains("Permission denied"),
+        "expected a permission-denied error; got: {}",
         err.message
     );
 
@@ -1199,7 +1199,7 @@ async fn test_handle_tools_call_unregistered_peer_denied_config_change() {
     assert_eq!(
         modes_after, modes_before,
         "unregistered peer's ConfigChange tool MUST be rejected BEFORE \
-             touching LiveConfig (#1311 was: dispatched as internal_trusted)"
+             touching LiveConfig (previously: dispatched as internal_trusted)"
     );
 }
 

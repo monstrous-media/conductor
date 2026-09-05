@@ -435,7 +435,7 @@ action = { type = "Keystroke", keys = "b" }
         .expect("a rule matches ProgramChange program 5");
     assert_eq!(
         matched, "pc-5",
-        "the program-specific rule must win over the wildcard declared first (#2132)"
+        "the program-specific rule must win over the wildcard declared first"
     );
 
     // The wildcard still serves a program with no specific rule.

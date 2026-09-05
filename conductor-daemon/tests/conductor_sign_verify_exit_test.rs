@@ -70,8 +70,11 @@ fn verify_with_untrusted_key_exits_non_zero() {
 
     // 2. Write a fake plugin (any bytes — only the SHA256 matters
     //    for signing, and we don't care about content).
-    std::fs::write(&plugin_path, b"fake wasm plugin contents for #1312 test")
-        .expect("write fake plugin");
+    std::fs::write(
+        &plugin_path,
+        b"fake wasm plugin contents for the verify-exit test",
+    )
+    .expect("write fake plugin");
 
     // 3. Sign it with our test key.
     let out = Command::new(&bin)
@@ -121,7 +124,7 @@ fn verify_with_untrusted_key_exits_non_zero() {
     assert_eq!(
         out.status.code(),
         Some(1),
-        "verify with untrusted key MUST exit with code 1 (#1312); \
+        "verify with untrusted key MUST exit with code 1; \
          got code={:?}\nstdout=\n{stdout}\nstderr=\n{stderr}",
         out.status.code()
     );

@@ -262,7 +262,7 @@ async fn test_no_wasi_plugin_init_returns_real_metadata() {
     let metadata = plugin
         .init()
         .await
-        .expect("no-WASI plugin init must return valid metadata (#1467)");
+        .expect("no-WASI plugin init must return valid metadata");
     assert_eq!(metadata.name, "minimal_no_wasi_plugin");
     assert_eq!(metadata.version, "0.1.0");
     assert_eq!(metadata.description, "Minimal no-WASI test plugin");

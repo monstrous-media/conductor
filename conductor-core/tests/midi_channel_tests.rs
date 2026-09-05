@@ -1514,7 +1514,7 @@ fn held_notes_are_isolated_by_channel() {
     assert_eq!(
         channels.len(),
         2,
-        "note 60 held on two channels must yield two independent holds (#2125); got {channels:?}"
+        "note 60 held on two channels must yield two independent holds; got {channels:?}"
     );
     assert!(
         channels.contains(&Some(0)) && channels.contains(&Some(9)),

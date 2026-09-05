@@ -1327,7 +1327,7 @@ mod tests {
         let registry2 = discovery.scan().expect("re-scan");
         assert!(
             !registry2.list_names().contains(&"orphan".to_string()),
-            "flat-file install must NOT be picked up by discovery (pre-#948 behaviour was the bug)"
+            "flat-file install must NOT be picked up by discovery (previous behaviour was the bug)"
         );
     }
 }

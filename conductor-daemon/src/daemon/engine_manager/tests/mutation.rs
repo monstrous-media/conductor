@@ -779,7 +779,7 @@ async fn get_config_body_serves_freshly_booted_config_without_a_mutate() {
     assert_eq!(
         data["state_generation"].as_u64(),
         Some(1),
-        "boot publishes gen 1 (#2533)"
+        "boot publishes gen 1"
     );
     // The body is SERVED, not blanked to null.
     assert!(

@@ -233,7 +233,7 @@ fn test_feedback_manager_on_pad_press_ignored_in_non_reactive_scheme() {
     assert_eq!(
         manager.active_pads(),
         0,
-        "presses during a non-reactive scheme must not inflate active_pads (#1459)"
+        "presses during a non-reactive scheme must not inflate active_pads"
     );
 
     // Switching (back) into Reactive must not resurrect a stale press.
@@ -241,7 +241,7 @@ fn test_feedback_manager_on_pad_press_ignored_in_non_reactive_scheme() {
     let completed = manager.update().unwrap();
     assert!(
         completed.is_empty(),
-        "no stale non-reactive press should complete after switching to Reactive (#1459)"
+        "no stale non-reactive press should complete after switching to Reactive"
     );
 }
 

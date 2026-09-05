@@ -635,7 +635,7 @@ fn test_v0_1_0_baseline_fixture_is_rejected() {
         .err()
         .map(|e| e.to_string())
         .unwrap_or_else(|| {
-            panic!("v0.1.0 baseline uses a legacy [device] block and must be rejected (#2124)")
+            panic!("v0.1.0 baseline uses a legacy [device] block and must be rejected")
         });
     assert!(
         err.contains("[device]") && err.contains("[[endpoints]]"),
