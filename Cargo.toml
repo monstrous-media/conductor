@@ -127,7 +127,7 @@ hex = "0.4"  # Hex encoding for signatures
 # 45 → 46.0.3 clears RUSTSEC-2026-0222 + RUSTSEC-2026-0269 (no patched
 # 45.x exists). The earlier 26 → 45 jump cleared 18 advisories incl.
 # RUSTSEC-2026-0149 (CVSS 7.5 path_open sandbox bypass).
-wasmtime = "46.0.3"
+wasmtime = "48.0.1"
 wasmtime-wasi = "46.0.3"
 
 # Platform-specific MIDI output (optional, for virtual port creation)
