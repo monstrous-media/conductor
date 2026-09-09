@@ -764,7 +764,11 @@ impl PluginManager {
         let mut hasher = Sha256::new();
         hasher.update(&bytes);
         let result = hasher.finalize();
-        Ok(format!("{:x}", result))
+        // digest 0.11's output array no longer implements LowerHex.
+        Ok(result
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>())
     }
 
     /// Verify plugin binary checksum

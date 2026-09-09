@@ -119,7 +119,7 @@ libloading = "0.9"  # Plugin loading - native .dylib/.so/.dll
 gilrs = "0.11.2"  # Gamepad/HID input (0.11 toward macOS BT-HID support)
 dashmap = "6"  # Concurrent HashMap with sharded locking (used by PhysicalControlStateStore, per-device EventProcessors)
 indexmap = { version = "2", features = ["serde"] }  # Insertion-order map for PcContextSwitch branches (ADR-025 P2.D)
-sha2 = "0.10"  # Checksum verification
+sha2 = "0.11"  # Checksum verification
 ed25519-dalek = { version = "2.1", features = ["rand_core"] }  # Plugin signing
 hex = "0.4"  # Hex encoding for signatures
 

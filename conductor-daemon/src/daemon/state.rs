@@ -428,7 +428,14 @@ pub async fn calculate_checksum(path: &Path) -> Result<String> {
     hasher.update(&content);
     let result = hasher.finalize();
 
-    Ok(format!("sha256:{:x}", result))
+    // digest 0.11's output array no longer implements LowerHex.
+    Ok(format!(
+        "sha256:{}",
+        result
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    ))
 }
 
 #[cfg(test)]

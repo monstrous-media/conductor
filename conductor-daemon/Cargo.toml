@@ -137,7 +137,7 @@ dirs = "6.0"
 
 # Utilities
 uuid = { version = "1.23", features = ["v4", "serde"] }
-sha2 = "0.10"
+sha2 = "0.11"
 hex.workspace = true  # Hash encoding (ADR-007 Phase 2 + plugin signing)
 regex = "1.12"
 dashmap = "6"  # Lock-free concurrent HashMap for per-device EventProcessors (ADR-009 Phase 2)
@@ -148,7 +148,7 @@ tempfile = "3.27"  # Atomic file writes (mcp_registry save: temp + rename)
 getrandom = "0.4"  # OS-RNG nonce generation (gui_handshake — ADR-027 D19)
 base64 = "0.23"  # URL-safe nonce transport over stdin/IPC (ADR-027 D19)
 subtle = "2.6"  # Constant-time comparison for authentication nonces (ADR-027 D19)
-hmac = "0.12"  # ADR-042 Phase B-early: HMAC-SHA256 over the network-approval envelope
+hmac = "0.13"  # ADR-042 Phase B-early: HMAC-SHA256 over the network-approval envelope
 serde_jcs = "=0.2.0"  # ADR-042 Phase B-early: RFC 8785 canonical JSON for the envelope `data` (spec §4.7.1 P0d — exact pin, no semver range. Spec named "=0.1.1" but that version never existed on crates.io; pinned =0.2.0)
 
 # Database (P4-04: Audit logging) — optional since ADR-045 D1: only the

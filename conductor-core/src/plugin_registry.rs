@@ -484,7 +484,14 @@ impl PluginRegistryClient {
         // Verify checksum
         let expected_checksum = self.get_checksum(plugin);
         let digest = sha2::Sha256::digest(&bytes);
-        let actual_checksum = format!("sha256:{:x}", digest);
+        // digest 0.11's output array no longer implements LowerHex.
+        let actual_checksum = format!(
+            "sha256:{}",
+            digest
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        );
         if actual_checksum != *expected_checksum {
             return Err(format!(
                 "Checksum mismatch: expected {}, got {}",

@@ -136,7 +136,11 @@ fn redact_opt_if_pii(text: &Option<String>) -> Option<String> {
 fn hash_id(id: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(id.as_bytes());
-    format!("{:x}", hasher.finalize())
+    hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>()
 }
 
 /// Check if text contains potential PII
