@@ -9,7 +9,7 @@ from the workspace dependency graph (`cargo license --all-features
 --avoid-dev-deps`). Dev/test-only dependencies are excluded. All listed
 licenses are OSI-approved and compatible with Conductor's MIT license.
 
-Total third-party crates: 444
+Total third-party crates: 452
 
 ## License summary
 
@@ -25,7 +25,7 @@ Total third-party crates: 444
 - Apache-2.0 OR ISC OR MIT: 3
 - Apache-2.0 OR LGPL-2.1-or-later OR MIT: 2
 - Apache-2.0 OR MIT OR Zlib: 6
-- Apache-2.0 OR MIT: 262
+- Apache-2.0 OR MIT: 270
 - Apache-2.0 WITH LLVM-exception: 37
 - Apache-2.0: 3
 - BSD-3-Clause OR GPL-2.0: 2
@@ -62,6 +62,7 @@ Total third-party crates: 444
 | base64ct | 1.8.0 | Apache-2.0 OR MIT |
 | bitflags | 2.11.1 | Apache-2.0 OR MIT |
 | block-buffer | 0.10.4 | Apache-2.0 OR MIT |
+| block-buffer | 0.12.1 | Apache-2.0 OR MIT |
 | block2 | 0.6.2 | MIT |
 | bstr | 1.12.1 | Apache-2.0 OR MIT |
 | bumpalo | 3.20.3 | Apache-2.0 OR MIT |
@@ -79,8 +80,10 @@ Total third-party crates: 444
 | chacha20 | 0.10.2 | Apache-2.0 OR MIT |
 | chrono | 0.4.45 | Apache-2.0 OR MIT |
 | cmake | 0.1.58 | Apache-2.0 OR MIT |
+| cmov | 0.5.4 | Apache-2.0 OR MIT |
 | cobs | 0.3.0 | Apache-2.0 OR MIT |
 | combine | 4.6.7 | MIT |
+| const-oid | 0.10.2 | Apache-2.0 OR MIT |
 | const-oid | 0.9.6 | Apache-2.0 OR MIT |
 | core-foundation | 0.10.1 | Apache-2.0 OR MIT |
 | core-foundation | 0.9.4 | Apache-2.0 OR MIT |
@@ -109,6 +112,8 @@ Total third-party crates: 444
 | crossbeam-epoch | 0.9.20 | Apache-2.0 OR MIT |
 | crossbeam-utils | 0.8.21 | Apache-2.0 OR MIT |
 | crypto-common | 0.1.7 | Apache-2.0 OR MIT |
+| crypto-common | 0.2.2 | Apache-2.0 OR MIT |
+| ctutils | 0.4.2 | Apache-2.0 OR MIT |
 | curve25519-dalek | 4.1.3 | BSD-3-Clause |
 | curve25519-dalek-derive | 0.1.1 | Apache-2.0 OR MIT |
 | dashmap | 6.2.1 | MIT |
@@ -116,6 +121,7 @@ Total third-party crates: 444
 | der | 0.7.10 | Apache-2.0 OR MIT |
 | deranged | 0.5.5 | Apache-2.0 OR MIT |
 | digest | 0.10.7 | Apache-2.0 OR MIT |
+| digest | 0.11.3 | Apache-2.0 OR MIT |
 | directories-next | 2.0.0 | Apache-2.0 OR MIT |
 | dirs | 6.0.0 | Apache-2.0 OR MIT |
 | dirs-sys | 0.5.0 | Apache-2.0 OR MIT |
@@ -169,6 +175,7 @@ Total third-party crates: 444
 | http-body | 1.0.1 | MIT |
 | http-body-util | 0.1.3 | MIT |
 | httparse | 1.10.1 | Apache-2.0 OR MIT |
+| hybrid-array | 0.4.10 | Apache-2.0 OR MIT |
 | hyper | 1.8.1 | MIT |
 | hyper-rustls | 0.27.7 | Apache-2.0 OR ISC OR MIT |
 | hyper-util | 0.1.18 | MIT |
@@ -310,6 +317,7 @@ Total third-party crates: 444
 | serde_json | 1.0.151 | Apache-2.0 OR MIT |
 | serde_spanned | 1.1.1 | Apache-2.0 OR MIT |
 | sha2 | 0.10.9 | Apache-2.0 OR MIT |
+| sha2 | 0.11.0 | Apache-2.0 OR MIT |
 | sharded-slab | 0.1.7 | MIT |
 | shlex | 2.0.1 | Apache-2.0 OR MIT |
 | signal-hook-registry | 1.4.6 | Apache-2.0 OR MIT |

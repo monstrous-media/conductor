@@ -25,7 +25,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use conductor_core::security::keychain::HmacKey;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
@@ -96,7 +96,8 @@ struct Envelope {
 }
 
 fn hmac_sha256(key: &HmacKey, data: &[u8]) -> [u8; 32] {
-    let mut mac = <HmacSha256 as Mac>::new_from_slice(key.as_bytes())
+    // hmac 0.13 moved key construction from Mac onto KeyInit.
+    let mut mac = <HmacSha256 as KeyInit>::new_from_slice(key.as_bytes())
         .expect("HMAC accepts a key of any length");
     mac.update(data);
     let tag = mac.finalize().into_bytes();
