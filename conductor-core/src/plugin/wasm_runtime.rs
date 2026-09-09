@@ -743,20 +743,16 @@ impl WasmPlugin {
                 EngineError::PluginLoadFailed(format!("Failed to create plugin data dir: {}", e))
             })?;
 
-            // Preopen directory with read/write access (wasmtime v26 API)
-            // This allows the plugin to access only this specific directory
-            use wasmtime_wasi::DirPerms;
-            use wasmtime_wasi::FilePerms;
-
-            let dir_perms = DirPerms::all();
-            let file_perms = FilePerms::all();
+            // Preopen directory with read/write access. This allows the
+            // plugin to access only this specific directory. (wasmtime 48
+            // collapsed the old DirPerms/FilePerms pair into one FsPerms.)
+            use wasmtime_wasi::FsPerms;
 
             wasi_builder
                 .preopened_dir(
                     plugin_data_dir,
                     "/", // Mount at root of WASI filesystem
-                    dir_perms,
-                    file_perms,
+                    FsPerms::ReadWrite,
                 )
                 .map_err(|e| {
                     EngineError::PluginLoadFailed(format!("Failed to preopen directory: {}", e))
