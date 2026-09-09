@@ -266,7 +266,7 @@ Total third-party crates: 446
 | quote | 1.0.45 | Apache-2.0 OR MIT |
 | r-efi | 5.3.0 | Apache-2.0 OR LGPL-2.1-or-later OR MIT |
 | r-efi | 6.0.0 | Apache-2.0 OR LGPL-2.1-or-later OR MIT |
-| rand | 0.10.1 | Apache-2.0 OR MIT |
+| rand | 0.10.2 | Apache-2.0 OR MIT |
 | rand | 0.9.3 | Apache-2.0 OR MIT |
 | rand_chacha | 0.9.0 | Apache-2.0 OR MIT |
 | rand_core | 0.10.1 | Apache-2.0 OR MIT |
@@ -350,7 +350,7 @@ Total third-party crates: 446
 | tokio-rustls | 0.26.4 | Apache-2.0 OR MIT |
 | tokio-util | 0.7.18 | MIT |
 | toml | 0.9.8 | Apache-2.0 OR MIT |
-| toml | 1.1.2+spec-1.1.0 | Apache-2.0 OR MIT |
+| toml | 1.1.3+spec-1.1.0 | Apache-2.0 OR MIT |
 | toml_datetime | 0.7.3 | Apache-2.0 OR MIT |
 | toml_datetime | 1.1.1+spec-1.1.0 | Apache-2.0 OR MIT |
 | toml_parser | 1.1.2+spec-1.1.0 | Apache-2.0 OR MIT |
