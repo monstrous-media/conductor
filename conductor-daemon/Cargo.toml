@@ -137,7 +137,7 @@ dirs = "6.0"
 
 # Utilities
 uuid = { version = "1.23", features = ["v4", "serde"] }
-sha2 = "0.10"
+sha2 = "0.11"
 hex.workspace = true  # Hash encoding (ADR-007 Phase 2 + plugin signing)
 regex = "1.12"
 dashmap = "6"  # Lock-free concurrent HashMap for per-device EventProcessors (ADR-009 Phase 2)
