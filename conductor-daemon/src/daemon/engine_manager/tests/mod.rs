@@ -361,7 +361,9 @@ fn drain_for_event_type(
 
 fn lt_test_envelope(let_through: bool, mapping_id: Option<usize>) -> ActionEnvelope {
     ActionEnvelope {
-        action: conductor_core::actions::Action::Text("x".to_string()),
+        // Inert payload: only inspected by RouteDisposition::from_envelope
+        // today, but an empty Text keeps it harmless if ever dispatched.
+        action: conductor_core::actions::Action::Text(String::new()),
         device_id: Some("pads".to_string()),
         matched_rule: Some("rule".to_string()),
         mode_name: Some("Default".to_string()),

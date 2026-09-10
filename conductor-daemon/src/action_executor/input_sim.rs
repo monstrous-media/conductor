@@ -245,34 +245,30 @@ mod tests {
     }
 
     #[test]
-    fn execute_keystroke_with_unrestricted_policy_skips_denylist() {
-        // Power-user opt-out path. We can't actually dispatch in
-        // a CI environment without Accessibility, so we just
-        // verify the policy check itself accepts the combo —
-        // the subsequent enigo failure is OK because it's a
-        // platform/permission issue, not a policy violation.
-        let mut e =
-            empty_executor().with_keystroke_policy(keystroke_policy::KeystrokePolicyEnforcer::new(
-                keystroke_policy::KeystrokePolicy::Unrestricted,
-            ));
-        let result = e.execute_keystroke(vec![KeyCode::Unicode('q')], vec![ModifierKey::Command]);
-        match result {
-            // Either the whole thing succeeded (Accessibility OK) or
-            // enigo barfed AFTER the policy passed. Both are
-            // acceptable — what we care about is that the error
-            // (if any) is NOT a D8 policy denial.
-            Ok(()) => {}
-            Err(DispatchError::OsAutomation(msg)) => {
-                assert!(
-                    !msg.contains("ADR-027 D8"),
-                    "Unrestricted policy must NOT produce a D8 denial; \
-                     enigo failures from the host are OK. Got {msg:?}",
-                );
-            }
-            Err(other) => {
-                panic!("Unrestricted Cmd+Q should not produce a D8 denial; got {other:?}",)
-            }
-        }
+    fn unrestricted_policy_skips_denylist() {
+        // Power-user opt-out path: Unrestricted bypasses the D8 deny-list.
+        //
+        // Assert on the ENFORCER, never via `execute_keystroke`. Once the
+        // policy passes there is nothing between the call and `enigo.key(...)`,
+        // so dispatching here really presses Cmd+Q and QUITS THE FOCUSED APP.
+        // Not hypothetical: macOS attributes Accessibility to the responsible
+        // process, which for a test binary is the developer's terminal or
+        // editor -- and those commonly hold the grant, so the keystroke lands.
+        // CI has no display server, enigo errors, and the hazard stays hidden.
+        //
+        // The invariant under test is purely the policy decision, so check it
+        // directly. See `execute_keystroke_refuses_denylisted_combo_before_enigo`
+        // for the deny path, safe precisely because it never reaches the injector.
+        let enforcer = keystroke_policy::KeystrokePolicyEnforcer::new(
+            keystroke_policy::KeystrokePolicy::Unrestricted,
+        );
+        assert!(
+            enforcer
+                .check(&[KeyCode::Unicode('q')], &[ModifierKey::Command])
+                .is_ok(),
+            "Unrestricted policy must NOT deny Cmd+Q — the deny-list is \
+             the thing being opted out of",
+        );
     }
 
     #[test]
