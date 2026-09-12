@@ -39,7 +39,7 @@ path = "src/bin/midi_simulator.rs"
 
 [[bin]]
 name = "conductorctl"
-path = "src/bin/conductorctl.rs"
+path = "src/bin/conductorctl/main.rs"
 
 # Menu bar service
 [[bin]]
