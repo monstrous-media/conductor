@@ -324,6 +324,83 @@ async fn test_update_mapping_returns_plan() {
     }
 }
 
+/// `cleanup_expired_plans` removes exactly the expired plans — live
+/// plans with future `expires_at` must survive the sweep.
+#[tokio::test]
+async fn test_cleanup_expired_plans_removes_only_expired() {
+    let config = create_test_config();
+    let executor = ToolExecutor::new(live_config_arc(config));
+
+    // Two pending plans
+    for note in [37, 38] {
+        let args = json!({
+            "mode": "Default",
+            "trigger": { "type": "Note", "note": note, "velocity_min": 1 },
+            "action": { "type": "Keystroke", "keys": "v", "modifiers": ["cmd"] }
+        });
+        let result = executor
+            .execute("conductor_create_mapping", Some(args), None)
+            .await;
+        assert!(matches!(result, ExecutionResult::PlanCreated { .. }));
+    }
+
+    // Force one past its TTL
+    let expired_id = {
+        let mut plans = executor.pending_plans.write().await;
+        let id = *plans.keys().next().expect("two plans pending");
+        plans.get_mut(&id).unwrap().expires_at = chrono::Utc::now() - chrono::Duration::minutes(1);
+        id
+    };
+
+    executor.cleanup_expired_plans().await;
+
+    let pending = executor.list_pending_plans().await;
+    assert_eq!(pending.len(), 1, "only the expired plan is swept");
+    assert!(pending.iter().all(|p| p.id != expired_id));
+}
+
+/// `clear_execution_log` empties the log; entries from prior stateful
+/// executions must not linger.
+#[tokio::test]
+async fn test_clear_execution_log_empties_log() {
+    let config = create_test_config();
+    let executor = ToolExecutor::new(live_config_arc(config));
+
+    let _ = executor
+        .execute_stateful("conductor_start_midi_learn", None)
+        .await;
+    assert_eq!(executor.get_execution_log().await.len(), 1);
+
+    executor.clear_execution_log().await;
+    assert!(executor.get_execution_log().await.is_empty());
+}
+
+/// `summarize_result` maps the is_error flag to the exact audit-log
+/// strings: Some(true) → "Error", Some(false)/None → "Success".
+#[tokio::test]
+async fn test_summarize_result_maps_error_flag() {
+    use crate::daemon::mcp_types::ToolCallResult;
+    let config = create_test_config();
+    let executor = ToolExecutor::new(live_config_arc(config));
+
+    let ok = ToolCallResult {
+        content: vec![],
+        is_error: None,
+    };
+    let explicit_ok = ToolCallResult {
+        content: vec![],
+        is_error: Some(false),
+    };
+    let err = ToolCallResult {
+        content: vec![],
+        is_error: Some(true),
+    };
+
+    assert_eq!(executor.summarize_result(&ok), "Success");
+    assert_eq!(executor.summarize_result(&explicit_ok), "Success");
+    assert_eq!(executor.summarize_result(&err), "Error");
+}
+
 #[tokio::test]
 async fn test_batch_changes_with_create_route_operation() {
     // ADR-031 P3 § 5.4 — a batch containing a
