@@ -1882,11 +1882,19 @@ mod tests {
 
         // Default (empty) config on the thread = fail-safe DENY for a
         // network-origin sensitive action.
+        //
+        // NOTE on the payload: every sensitive leaf (Shell/Launch/Keystroke/
+        // Text/MouseClick/Plugin) either runs host code or injects input, so
+        // there is no "sensitive but inert" action to exercise the gate with.
+        // We use Action::Text -- same class, same gate path -- with an EMPTY
+        // string, inert by construction: enigo.text("") iterates zero chars.
+        // A non-empty payload here TYPES INTO THE FOCUSED WINDOW once the
+        // second dispatch below opens the gate.
         let id = dispatcher.next_invocation_id();
         let (denied, _) = dispatcher
             .dispatch_and_wait(ActionDispatch {
                 invocation_id: id,
-                action: Action::Text("x".to_string()),
+                action: Action::Text(String::new()),
                 context: None,
                 provenance: test_provenance(),
                 dispatch_time: Instant::now(),
@@ -1915,7 +1923,7 @@ mod tests {
         let (allowed, _) = dispatcher
             .dispatch_and_wait(ActionDispatch {
                 invocation_id: id,
-                action: Action::Text("x".to_string()),
+                action: Action::Text(String::new()),
                 context: None,
                 provenance: test_provenance(),
                 dispatch_time: Instant::now(),
