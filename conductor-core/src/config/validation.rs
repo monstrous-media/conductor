@@ -6289,18 +6289,20 @@ mod tests {
 
     #[test]
     fn test_midi_led_color_velocity_127_boundary_at_named_path() {
-        let mut colors = crate::config::types::MidiLedColors::default();
-        colors.amber = 127;
         let report = validate_config(&midi_led_config(crate::config::types::MidiLedConfig {
-            colors,
+            colors: crate::config::types::MidiLedColors {
+                amber: 127,
+                ..Default::default()
+            },
             ..Default::default()
         }));
         assert!(report.is_valid(), "127 legal: {:?}", report.errors);
 
-        let mut colors = crate::config::types::MidiLedColors::default();
-        colors.amber = 128;
         let report = validate_config(&midi_led_config(crate::config::types::MidiLedConfig {
-            colors,
+            colors: crate::config::types::MidiLedColors {
+                amber: 128,
+                ..Default::default()
+            },
             ..Default::default()
         }));
         // Exact per-color path pins the loop's name interpolation.
