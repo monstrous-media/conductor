@@ -16,742 +16,22 @@ impl ToolExecutor {
         let args = arguments.unwrap_or(json!({}));
 
         match tool_name {
-            "conductor_create_mapping" => {
-                let mode = args
-                    .get("mode")
-                    .and_then(|m| m.as_str())
-                    .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
-                    .to_string();
-
-                let trigger: Trigger =
-                    serde_json::from_value(args.get("trigger").cloned().ok_or_else(|| {
-                        PlanError::InvalidTrigger("Missing 'trigger' argument".to_string())
-                    })?)
-                    .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
-
-                let action: ActionConfig =
-                    serde_json::from_value(args.get("action").cloned().ok_or_else(|| {
-                        PlanError::InvalidAction("Missing 'action' argument".to_string())
-                    })?)
-                    .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
-
-                let description = args
-                    .get("description")
-                    .and_then(|d| d.as_str())
-                    .map(|s| s.to_string());
-
-                // ADR-038: optional let_through (default false = swallow).
-                let let_through = args
-                    .get("let_through")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-
-                // Validate mode exists
-                if !config.modes.iter().any(|m| m.name == mode) {
-                    return Err(PlanError::ModeNotFound(mode));
-                }
-
-                Ok(ConfigPlan::new(
-                    format!("Create new mapping in mode '{}'", mode),
-                    vec![ConfigChange::CreateMapping {
-                        mode,
-                        trigger,
-                        action,
-                        description,
-                        let_through,
-                    }],
-                    config,
-                ))
-            }
+            "conductor_create_mapping" => plan_create_mapping(&args, config),
 
             // ADR-025 Phase 2.H — focused tool for authoring context-
             // switch mappings. Reuses the CreateMapping change but
             // enforces that `action` is PcContextSwitch / CcContextSwitch
             // so the LLM gets a clear error instead of silently
             // authoring a non-routing mapping.
-            "conductor_set_context_mapping" => {
-                let mode = args
-                    .get("mode")
-                    .and_then(|m| m.as_str())
-                    .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
-                    .to_string();
+            "conductor_set_context_mapping" => plan_set_context_mapping(&args, config),
 
-                let trigger: Trigger =
-                    serde_json::from_value(args.get("trigger").cloned().ok_or_else(|| {
-                        PlanError::InvalidTrigger("Missing 'trigger' argument".to_string())
-                    })?)
-                    .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
+            "conductor_update_mapping" => plan_update_mapping(&args, config),
 
-                let action: ActionConfig =
-                    serde_json::from_value(args.get("action").cloned().ok_or_else(|| {
-                        PlanError::InvalidAction("Missing 'action' argument".to_string())
-                    })?)
-                    .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
+            "conductor_delete_mapping" => plan_delete_mapping(&args, config),
 
-                if !matches!(
-                    action,
-                    ActionConfig::PcContextSwitch { .. } | ActionConfig::CcContextSwitch { .. }
-                ) {
-                    return Err(PlanError::InvalidAction(
-                        "conductor_set_context_mapping expects action.type = 'PcContextSwitch' or 'CcContextSwitch'; use conductor_create_mapping for other action shapes".to_string(),
-                    ));
-                }
+            "conductor_batch_changes" => plan_batch_changes(&args, config),
 
-                let description = args
-                    .get("description")
-                    .and_then(|d| d.as_str())
-                    .map(|s| s.to_string());
-
-                if !config.modes.iter().any(|m| m.name == mode) {
-                    return Err(PlanError::ModeNotFound(mode));
-                }
-
-                Ok(ConfigPlan::new(
-                    format!("Create context-switch mapping in mode '{}'", mode),
-                    vec![ConfigChange::CreateMapping {
-                        mode,
-                        trigger,
-                        action,
-                        description,
-                        // Context-switch mappings consume the event (route by
-                        // prior state); let-through doesn't apply.
-                        let_through: false,
-                    }],
-                    config,
-                ))
-            }
-
-            "conductor_update_mapping" => {
-                let mode = args
-                    .get("mode")
-                    .and_then(|m| m.as_str())
-                    .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
-                    .to_string();
-
-                let index = args.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
-                    PlanError::InvalidAction("Missing 'index' argument".to_string())
-                })? as usize;
-
-                let trigger: Trigger =
-                    serde_json::from_value(args.get("trigger").cloned().ok_or_else(|| {
-                        PlanError::InvalidTrigger("Missing 'trigger' argument".to_string())
-                    })?)
-                    .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
-
-                let action: ActionConfig =
-                    serde_json::from_value(args.get("action").cloned().ok_or_else(|| {
-                        PlanError::InvalidAction("Missing 'action' argument".to_string())
-                    })?)
-                    .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
-
-                let description = args
-                    .get("description")
-                    .and_then(|d| d.as_str())
-                    .map(|s| s.to_string());
-
-                // Validate mode and index
-                let mode_obj = config
-                    .modes
-                    .iter()
-                    .find(|m| m.name == mode)
-                    .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
-
-                if index >= mode_obj.mappings.len() {
-                    return Err(PlanError::IndexOutOfRange {
-                        mode: mode.clone(),
-                        index,
-                        count: mode_obj.mappings.len(),
-                    });
-                }
-
-                Ok(ConfigPlan::new(
-                    format!("Update mapping {} in mode '{}'", index, mode),
-                    vec![ConfigChange::UpdateMapping {
-                        mode,
-                        index,
-                        trigger,
-                        action,
-                        description,
-                    }],
-                    config,
-                ))
-            }
-
-            "conductor_delete_mapping" => {
-                let mode = args
-                    .get("mode")
-                    .and_then(|m| m.as_str())
-                    .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
-                    .to_string();
-
-                let index = args.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
-                    PlanError::InvalidAction("Missing 'index' argument".to_string())
-                })? as usize;
-
-                // Validate mode and index
-                let mode_obj = config
-                    .modes
-                    .iter()
-                    .find(|m| m.name == mode)
-                    .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
-
-                if index >= mode_obj.mappings.len() {
-                    return Err(PlanError::IndexOutOfRange {
-                        mode: mode.clone(),
-                        index,
-                        count: mode_obj.mappings.len(),
-                    });
-                }
-
-                Ok(ConfigPlan::new(
-                    format!("Delete mapping {} in mode '{}'", index, mode),
-                    vec![ConfigChange::DeleteMapping { mode, index }],
-                    config,
-                ))
-            }
-
-            "conductor_batch_changes" => {
-                // P3-07: Batch operations support
-                let operations = args
-                    .get("operations")
-                    .and_then(|o| o.as_array())
-                    .ok_or_else(|| {
-                        PlanError::InvalidAction("Missing 'operations' array".to_string())
-                    })?;
-
-                if operations.is_empty() {
-                    return Err(PlanError::InvalidAction(
-                        "Operations array is empty".to_string(),
-                    ));
-                }
-
-                let mut changes = Vec::new();
-                let mut descriptions = Vec::new();
-
-                for (idx, op) in operations.iter().enumerate() {
-                    let op_type = op.get("type").and_then(|t| t.as_str()).ok_or_else(|| {
-                        PlanError::InvalidAction(format!("Operation {} missing 'type' field", idx))
-                    })?;
-
-                    let change = match op_type {
-                        "create_mapping" | "CreateMapping" => {
-                            let mode = op
-                                .get("mode")
-                                .and_then(|m| m.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'mode'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-
-                            // Validate mode exists
-                            if !config.modes.iter().any(|m| m.name == mode) {
-                                return Err(PlanError::ModeNotFound(mode));
-                            }
-
-                            let trigger: Trigger = serde_json::from_value(
-                                op.get("trigger").cloned().ok_or_else(|| {
-                                    PlanError::InvalidTrigger(format!(
-                                        "Operation {} missing 'trigger'",
-                                        idx
-                                    ))
-                                })?,
-                            )
-                            .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
-
-                            let action: ActionConfig = serde_json::from_value(
-                                op.get("action").cloned().ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'action'",
-                                        idx
-                                    ))
-                                })?,
-                            )
-                            .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
-
-                            let description = op
-                                .get("description")
-                                .and_then(|d| d.as_str())
-                                .map(|s| s.to_string());
-
-                            // ADR-038: optional let_through in batch ops too.
-                            let let_through = op
-                                .get("let_through")
-                                .and_then(|v| v.as_bool())
-                                .unwrap_or(false);
-
-                            let desc_str = description.as_deref().unwrap_or("mapping");
-                            descriptions.push(format!("Create '{}' in '{}'", desc_str, mode));
-
-                            ConfigChange::CreateMapping {
-                                mode,
-                                trigger,
-                                action,
-                                description,
-                                let_through,
-                            }
-                        }
-
-                        "update_mapping" | "UpdateMapping" => {
-                            let mode = op
-                                .get("mode")
-                                .and_then(|m| m.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'mode'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-
-                            let index =
-                                op.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'index'",
-                                        idx
-                                    ))
-                                })? as usize;
-
-                            // Validate mode and index
-                            let mode_obj = config
-                                .modes
-                                .iter()
-                                .find(|m| m.name == mode)
-                                .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
-
-                            if index >= mode_obj.mappings.len() {
-                                return Err(PlanError::IndexOutOfRange {
-                                    mode: mode.clone(),
-                                    index,
-                                    count: mode_obj.mappings.len(),
-                                });
-                            }
-
-                            let trigger: Trigger = serde_json::from_value(
-                                op.get("trigger").cloned().ok_or_else(|| {
-                                    PlanError::InvalidTrigger(format!(
-                                        "Operation {} missing 'trigger'",
-                                        idx
-                                    ))
-                                })?,
-                            )
-                            .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
-
-                            let action: ActionConfig = serde_json::from_value(
-                                op.get("action").cloned().ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'action'",
-                                        idx
-                                    ))
-                                })?,
-                            )
-                            .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
-
-                            let description = op
-                                .get("description")
-                                .and_then(|d| d.as_str())
-                                .map(|s| s.to_string());
-
-                            descriptions.push(format!("Update mapping {} in '{}'", index, mode));
-
-                            ConfigChange::UpdateMapping {
-                                mode,
-                                index,
-                                trigger,
-                                action,
-                                description,
-                            }
-                        }
-
-                        "delete_mapping" | "DeleteMapping" => {
-                            let mode = op
-                                .get("mode")
-                                .and_then(|m| m.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'mode'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-
-                            let index =
-                                op.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'index'",
-                                        idx
-                                    ))
-                                })? as usize;
-
-                            // Validate mode and index
-                            let mode_obj = config
-                                .modes
-                                .iter()
-                                .find(|m| m.name == mode)
-                                .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
-
-                            if index >= mode_obj.mappings.len() {
-                                return Err(PlanError::IndexOutOfRange {
-                                    mode: mode.clone(),
-                                    index,
-                                    count: mode_obj.mappings.len(),
-                                });
-                            }
-
-                            descriptions.push(format!("Delete mapping {} in '{}'", index, mode));
-
-                            ConfigChange::DeleteMapping { mode, index }
-                        }
-
-                        "create_mode" | "CreateMode" => {
-                            let name = op
-                                .get("name")
-                                .and_then(|n| n.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'name'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-
-                            let color = op
-                                .get("color")
-                                .and_then(|c| c.as_str())
-                                .map(|s| s.to_string());
-
-                            descriptions.push(format!("Create mode '{}'", name));
-
-                            ConfigChange::CreateMode { name, color }
-                        }
-
-                        "delete_mode" | "DeleteMode" => {
-                            let name = op
-                                .get("name")
-                                .and_then(|n| n.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'name'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-
-                            descriptions.push(format!("Delete mode '{}'", name));
-
-                            ConfigChange::DeleteMode { name }
-                        }
-
-                        // ADR-031 P3 § 5.4 —
-                        // `update_route` completes the route-mutation
-                        // trio (create/delete/update). Total-replace
-                        // semantics: the LLM supplies the full new
-                        // shape, and `apply()` swaps the whole
-                        // RouteConfig at `index`. Required args:
-                        // `index`, `from`, `to`. Optional:
-                        // `transform`, `filter`, `enabled`,
-                        // `description`. Same TOCTOU stability
-                        // story as `delete_route`.
-                        "update_route" | "UpdateRoute" => {
-                            let index = op
-                                .get("index")
-                                .and_then(|i| i.as_u64())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'index' (must be a non-negative integer)",
-                                        idx
-                                    ))
-                                })? as usize;
-
-                            let from = op
-                                .get("from")
-                                .and_then(|f| f.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'from'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-                            if from.trim().is_empty() {
-                                return Err(PlanError::InvalidAction(format!(
-                                    "Operation {} 'from' cannot be empty",
-                                    idx
-                                )));
-                            }
-
-                            let to = op
-                                .get("to")
-                                .and_then(|t| t.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'to'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-                            if to.trim().is_empty() {
-                                return Err(PlanError::InvalidAction(format!(
-                                    "Operation {} 'to' cannot be empty",
-                                    idx
-                                )));
-                            }
-
-                            let transform = op
-                                .get("transform")
-                                .cloned()
-                                .map(serde_json::from_value)
-                                .transpose()
-                                .map_err(|e| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} invalid transform: {}",
-                                        idx, e
-                                    ))
-                                })?;
-
-                            let filter = op
-                                .get("filter")
-                                .cloned()
-                                .map(serde_json::from_value)
-                                .transpose()
-                                .map_err(|e| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} invalid filter: {}",
-                                        idx, e
-                                    ))
-                                })?;
-
-                            let enabled =
-                                op.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
-
-                            let description = op
-                                .get("description")
-                                .and_then(|d| d.as_str())
-                                .map(|s| s.to_string());
-
-                            descriptions.push(format!(
-                                "Update route at index {} ('{}' → '{}')",
-                                index, from, to
-                            ));
-
-                            ConfigChange::UpdateRoute {
-                                index,
-                                from,
-                                to,
-                                transform,
-                                filter,
-                                enabled,
-                                description,
-                            }
-                        }
-
-                        // ADR-031 P3 § 5.4 — paired
-                        // with `create_route` per spec; `delete_route`
-                        // also goes through batch_changes by design
-                        // (no singleton tool). Takes a 0-based `index`
-                        // into `config.routes` as it stands at apply
-                        // time. The plan's TOCTOU base_state_hash
-                        // guards against the underlying list mutating
-                        // between plan creation and approval.
-                        "delete_route" | "DeleteRoute" => {
-                            let index = op
-                                .get("index")
-                                .and_then(|i| i.as_u64())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'index' (must be a non-negative integer)",
-                                        idx
-                                    ))
-                                })? as usize;
-
-                            descriptions.push(format!("Delete route at index {}", index));
-
-                            ConfigChange::DeleteRoute { index }
-                        }
-
-                        // ADR-031 P3 § 5.4 — accept
-                        // `create_route` inside a batch so the LLM can
-                        // build a routing-setup plan with several
-                        // routes in one approval round-trip.
-                        // Singleton-tool form (`conductor_create_route`)
-                        // is deliberately NOT planned per spec § 5.4 —
-                        // route mutations always go through batch_changes.
-                        "create_route" | "CreateRoute" => {
-                            let from = op
-                                .get("from")
-                                .and_then(|f| f.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'from'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-                            if from.trim().is_empty() {
-                                return Err(PlanError::InvalidAction(format!(
-                                    "Operation {} 'from' cannot be empty",
-                                    idx
-                                )));
-                            }
-
-                            let to = op
-                                .get("to")
-                                .and_then(|t| t.as_str())
-                                .ok_or_else(|| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} missing 'to'",
-                                        idx
-                                    ))
-                                })?
-                                .to_string();
-                            if to.trim().is_empty() {
-                                return Err(PlanError::InvalidAction(format!(
-                                    "Operation {} 'to' cannot be empty",
-                                    idx
-                                )));
-                            }
-
-                            let transform = op
-                                .get("transform")
-                                .cloned()
-                                .map(serde_json::from_value)
-                                .transpose()
-                                .map_err(|e| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} invalid transform: {}",
-                                        idx, e
-                                    ))
-                                })?;
-
-                            let filter = op
-                                .get("filter")
-                                .cloned()
-                                .map(serde_json::from_value)
-                                .transpose()
-                                .map_err(|e| {
-                                    PlanError::InvalidAction(format!(
-                                        "Operation {} invalid filter: {}",
-                                        idx, e
-                                    ))
-                                })?;
-
-                            let enabled =
-                                op.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
-
-                            let description = op
-                                .get("description")
-                                .and_then(|d| d.as_str())
-                                .map(|s| s.to_string());
-
-                            descriptions.push(format!("Create route '{}' → '{}'", from, to));
-
-                            ConfigChange::CreateRoute {
-                                from,
-                                to,
-                                transform,
-                                filter,
-                                enabled,
-                                description,
-                            }
-                        }
-
-                        _ => {
-                            return Err(PlanError::InvalidAction(format!(
-                                "Operation {} has unknown type: {}",
-                                idx, op_type
-                            )));
-                        }
-                    };
-
-                    changes.push(change);
-                }
-
-                let description = format!(
-                    "Batch operation ({} changes): {}",
-                    changes.len(),
-                    descriptions.join(", ")
-                );
-
-                Ok(ConfigPlan::new(description, changes, config))
-            }
-
-            "conductor_create_endpoint" => {
-                use conductor_core::config::types::{
-                    ConnectorDirection, ConnectorProtocol, EndpointKind,
-                };
-
-                let alias = args
-                    .get("alias")
-                    .and_then(|a| a.as_str())
-                    .ok_or_else(|| {
-                        PlanError::InvalidAction("Missing 'alias' argument".to_string())
-                    })?
-                    .to_string();
-
-                // `direction` is REQUIRED for endpoints (ADR-035 §4.1 R2 P1 — no
-                // default; forcing it avoids binding a network listener as
-                // implicitly Bidirectional).
-                let direction: ConnectorDirection = args
-                    .get("direction")
-                    .ok_or_else(|| {
-                        PlanError::InvalidAction(
-                            "Missing 'direction' argument (required for endpoints — ADR-035 §4.1)"
-                                .to_string(),
-                        )
-                    })
-                    .and_then(|v| {
-                        serde_json::from_value(v.clone()).map_err(|e| {
-                            PlanError::InvalidAction(format!("Invalid direction: {}", e))
-                        })
-                    })?;
-
-                // `protocol` is optional — inferred from `kind` at load when omitted.
-                let protocol: Option<ConnectorProtocol> = args
-                    .get("protocol")
-                    .map(|v| serde_json::from_value(v.clone()))
-                    .transpose()
-                    .map_err(|e| PlanError::InvalidAction(format!("Invalid protocol: {}", e)))?;
-
-                // `kind` is the internally-tagged `type` + its variant fields,
-                // which sit at the top level of the args (mirroring EndpointConfig).
-                // EndpointKind ignores the common fields it doesn't recognize.
-                let kind: EndpointKind = serde_json::from_value(args.clone()).map_err(|e| {
-                    PlanError::InvalidAction(format!(
-                        "Invalid endpoint `type`/fields (expected a `type` of Matcher/OscEndpoint/ArtNetEndpoint/MidiVirtualPort plus its fields): {}",
-                        e
-                    ))
-                })?;
-
-                let description = args
-                    .get("description")
-                    .and_then(|d| d.as_str())
-                    .map(|s| s.to_string());
-
-                let enabled = args
-                    .get("enabled")
-                    .and_then(|e| e.as_bool())
-                    .unwrap_or(true);
-
-                let channels: Vec<u8> = args
-                    .get("channels")
-                    .map(|v| serde_json::from_value(v.clone()))
-                    .transpose()
-                    .map_err(|e| PlanError::InvalidAction(format!("Invalid channels: {}", e)))?
-                    .unwrap_or_default();
-
-                build_create_endpoint_plan(
-                    alias,
-                    direction,
-                    protocol,
-                    kind,
-                    description,
-                    enabled,
-                    channels,
-                    config,
-                )
-            }
+            "conductor_create_endpoint" => plan_create_endpoint(&args, config),
 
             _ => Err(PlanError::InvalidAction(format!(
                 "Unknown ConfigChange tool: {}",
@@ -967,4 +247,735 @@ impl ToolExecutor {
             "Success".to_string()
         }
     }
+}
+
+fn plan_create_mapping(args: &Value, config: &Config) -> Result<ConfigPlan, PlanError> {
+    let mode = args
+        .get("mode")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
+        .to_string();
+
+    let trigger: Trigger = serde_json::from_value(
+        args.get("trigger")
+            .cloned()
+            .ok_or_else(|| PlanError::InvalidTrigger("Missing 'trigger' argument".to_string()))?,
+    )
+    .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
+
+    let action: ActionConfig = serde_json::from_value(
+        args.get("action")
+            .cloned()
+            .ok_or_else(|| PlanError::InvalidAction("Missing 'action' argument".to_string()))?,
+    )
+    .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
+
+    let description = args
+        .get("description")
+        .and_then(|d| d.as_str())
+        .map(|s| s.to_string());
+
+    // ADR-038: optional let_through (default false = swallow).
+    let let_through = args
+        .get("let_through")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    // Validate mode exists
+    if !config.modes.iter().any(|m| m.name == mode) {
+        return Err(PlanError::ModeNotFound(mode));
+    }
+
+    Ok(ConfigPlan::new(
+        format!("Create new mapping in mode '{}'", mode),
+        vec![ConfigChange::CreateMapping {
+            mode,
+            trigger,
+            action,
+            description,
+            let_through,
+        }],
+        config,
+    ))
+}
+
+fn plan_set_context_mapping(args: &Value, config: &Config) -> Result<ConfigPlan, PlanError> {
+    let mode = args
+        .get("mode")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
+        .to_string();
+
+    let trigger: Trigger = serde_json::from_value(
+        args.get("trigger")
+            .cloned()
+            .ok_or_else(|| PlanError::InvalidTrigger("Missing 'trigger' argument".to_string()))?,
+    )
+    .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
+
+    let action: ActionConfig = serde_json::from_value(
+        args.get("action")
+            .cloned()
+            .ok_or_else(|| PlanError::InvalidAction("Missing 'action' argument".to_string()))?,
+    )
+    .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
+
+    if !matches!(
+        action,
+        ActionConfig::PcContextSwitch { .. } | ActionConfig::CcContextSwitch { .. }
+    ) {
+        return Err(PlanError::InvalidAction(
+            "conductor_set_context_mapping expects action.type = 'PcContextSwitch' or 'CcContextSwitch'; use conductor_create_mapping for other action shapes".to_string(),
+        ));
+    }
+
+    let description = args
+        .get("description")
+        .and_then(|d| d.as_str())
+        .map(|s| s.to_string());
+
+    if !config.modes.iter().any(|m| m.name == mode) {
+        return Err(PlanError::ModeNotFound(mode));
+    }
+
+    Ok(ConfigPlan::new(
+        format!("Create context-switch mapping in mode '{}'", mode),
+        vec![ConfigChange::CreateMapping {
+            mode,
+            trigger,
+            action,
+            description,
+            // Context-switch mappings consume the event (route by
+            // prior state); let-through doesn't apply.
+            let_through: false,
+        }],
+        config,
+    ))
+}
+
+fn plan_update_mapping(args: &Value, config: &Config) -> Result<ConfigPlan, PlanError> {
+    let mode = args
+        .get("mode")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
+        .to_string();
+
+    let index = args
+        .get("index")
+        .and_then(|i| i.as_u64())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'index' argument".to_string()))?
+        as usize;
+
+    let trigger: Trigger = serde_json::from_value(
+        args.get("trigger")
+            .cloned()
+            .ok_or_else(|| PlanError::InvalidTrigger("Missing 'trigger' argument".to_string()))?,
+    )
+    .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
+
+    let action: ActionConfig = serde_json::from_value(
+        args.get("action")
+            .cloned()
+            .ok_or_else(|| PlanError::InvalidAction("Missing 'action' argument".to_string()))?,
+    )
+    .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
+
+    let description = args
+        .get("description")
+        .and_then(|d| d.as_str())
+        .map(|s| s.to_string());
+
+    // Validate mode and index
+    let mode_obj = config
+        .modes
+        .iter()
+        .find(|m| m.name == mode)
+        .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
+
+    if index >= mode_obj.mappings.len() {
+        return Err(PlanError::IndexOutOfRange {
+            mode: mode.clone(),
+            index,
+            count: mode_obj.mappings.len(),
+        });
+    }
+
+    Ok(ConfigPlan::new(
+        format!("Update mapping {} in mode '{}'", index, mode),
+        vec![ConfigChange::UpdateMapping {
+            mode,
+            index,
+            trigger,
+            action,
+            description,
+        }],
+        config,
+    ))
+}
+
+fn plan_delete_mapping(args: &Value, config: &Config) -> Result<ConfigPlan, PlanError> {
+    let mode = args
+        .get("mode")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'mode' argument".to_string()))?
+        .to_string();
+
+    let index = args
+        .get("index")
+        .and_then(|i| i.as_u64())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'index' argument".to_string()))?
+        as usize;
+
+    // Validate mode and index
+    let mode_obj = config
+        .modes
+        .iter()
+        .find(|m| m.name == mode)
+        .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
+
+    if index >= mode_obj.mappings.len() {
+        return Err(PlanError::IndexOutOfRange {
+            mode: mode.clone(),
+            index,
+            count: mode_obj.mappings.len(),
+        });
+    }
+
+    Ok(ConfigPlan::new(
+        format!("Delete mapping {} in mode '{}'", index, mode),
+        vec![ConfigChange::DeleteMapping { mode, index }],
+        config,
+    ))
+}
+
+fn plan_batch_changes(args: &Value, config: &Config) -> Result<ConfigPlan, PlanError> {
+    // P3-07: Batch operations support
+    let operations = args
+        .get("operations")
+        .and_then(|o| o.as_array())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'operations' array".to_string()))?;
+
+    if operations.is_empty() {
+        return Err(PlanError::InvalidAction(
+            "Operations array is empty".to_string(),
+        ));
+    }
+
+    let mut changes = Vec::new();
+    let mut descriptions = Vec::new();
+
+    for (idx, op) in operations.iter().enumerate() {
+        let op_type = op.get("type").and_then(|t| t.as_str()).ok_or_else(|| {
+            PlanError::InvalidAction(format!("Operation {} missing 'type' field", idx))
+        })?;
+
+        let change = match op_type {
+            "create_mapping" | "CreateMapping" => {
+                batch_create_mapping(op, idx, config, &mut descriptions)?
+            }
+
+            "update_mapping" | "UpdateMapping" => {
+                batch_update_mapping(op, idx, config, &mut descriptions)?
+            }
+
+            "delete_mapping" | "DeleteMapping" => {
+                batch_delete_mapping(op, idx, config, &mut descriptions)?
+            }
+
+            "create_mode" | "CreateMode" => batch_create_mode(op, idx, config, &mut descriptions)?,
+
+            "delete_mode" | "DeleteMode" => batch_delete_mode(op, idx, config, &mut descriptions)?,
+
+            // ADR-031 P3 § 5.4 —
+            // `update_route` completes the route-mutation
+            // trio (create/delete/update). Total-replace
+            // semantics: the LLM supplies the full new
+            // shape, and `apply()` swaps the whole
+            // RouteConfig at `index`. Required args:
+            // `index`, `from`, `to`. Optional:
+            // `transform`, `filter`, `enabled`,
+            // `description`. Same TOCTOU stability
+            // story as `delete_route`.
+            "update_route" | "UpdateRoute" => {
+                batch_update_route(op, idx, config, &mut descriptions)?
+            }
+
+            // ADR-031 P3 § 5.4 — paired
+            // with `create_route` per spec; `delete_route`
+            // also goes through batch_changes by design
+            // (no singleton tool). Takes a 0-based `index`
+            // into `config.routes` as it stands at apply
+            // time. The plan's TOCTOU base_state_hash
+            // guards against the underlying list mutating
+            // between plan creation and approval.
+            "delete_route" | "DeleteRoute" => {
+                batch_delete_route(op, idx, config, &mut descriptions)?
+            }
+
+            // ADR-031 P3 § 5.4 — accept
+            // `create_route` inside a batch so the LLM can
+            // build a routing-setup plan with several
+            // routes in one approval round-trip.
+            // Singleton-tool form (`conductor_create_route`)
+            // is deliberately NOT planned per spec § 5.4 —
+            // route mutations always go through batch_changes.
+            "create_route" | "CreateRoute" => {
+                batch_create_route(op, idx, config, &mut descriptions)?
+            }
+
+            _ => {
+                return Err(PlanError::InvalidAction(format!(
+                    "Operation {} has unknown type: {}",
+                    idx, op_type
+                )));
+            }
+        };
+
+        changes.push(change);
+    }
+
+    let description = format!(
+        "Batch operation ({} changes): {}",
+        changes.len(),
+        descriptions.join(", ")
+    );
+
+    Ok(ConfigPlan::new(description, changes, config))
+}
+
+fn plan_create_endpoint(args: &Value, config: &Config) -> Result<ConfigPlan, PlanError> {
+    use conductor_core::config::types::{ConnectorDirection, ConnectorProtocol, EndpointKind};
+
+    let alias = args
+        .get("alias")
+        .and_then(|a| a.as_str())
+        .ok_or_else(|| PlanError::InvalidAction("Missing 'alias' argument".to_string()))?
+        .to_string();
+
+    // `direction` is REQUIRED for endpoints (ADR-035 §4.1 R2 P1 — no
+    // default; forcing it avoids binding a network listener as
+    // implicitly Bidirectional).
+    let direction: ConnectorDirection = args
+        .get("direction")
+        .ok_or_else(|| {
+            PlanError::InvalidAction(
+                "Missing 'direction' argument (required for endpoints — ADR-035 §4.1)".to_string(),
+            )
+        })
+        .and_then(|v| {
+            serde_json::from_value(v.clone())
+                .map_err(|e| PlanError::InvalidAction(format!("Invalid direction: {}", e)))
+        })?;
+
+    // `protocol` is optional — inferred from `kind` at load when omitted.
+    let protocol: Option<ConnectorProtocol> = args
+        .get("protocol")
+        .map(|v| serde_json::from_value(v.clone()))
+        .transpose()
+        .map_err(|e| PlanError::InvalidAction(format!("Invalid protocol: {}", e)))?;
+
+    // `kind` is the internally-tagged `type` + its variant fields,
+    // which sit at the top level of the args (mirroring EndpointConfig).
+    // EndpointKind ignores the common fields it doesn't recognize.
+    let kind: EndpointKind = serde_json::from_value(args.clone()).map_err(|e| {
+        PlanError::InvalidAction(format!(
+            "Invalid endpoint `type`/fields (expected a `type` of Matcher/OscEndpoint/ArtNetEndpoint/MidiVirtualPort plus its fields): {}",
+            e
+        ))
+    })?;
+
+    let description = args
+        .get("description")
+        .and_then(|d| d.as_str())
+        .map(|s| s.to_string());
+
+    let enabled = args
+        .get("enabled")
+        .and_then(|e| e.as_bool())
+        .unwrap_or(true);
+
+    let channels: Vec<u8> = args
+        .get("channels")
+        .map(|v| serde_json::from_value(v.clone()))
+        .transpose()
+        .map_err(|e| PlanError::InvalidAction(format!("Invalid channels: {}", e)))?
+        .unwrap_or_default();
+
+    build_create_endpoint_plan(
+        alias,
+        direction,
+        protocol,
+        kind,
+        description,
+        enabled,
+        channels,
+        config,
+    )
+}
+
+fn batch_create_route(
+    op: &Value,
+    idx: usize,
+    _config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let from = op
+            .get("from")
+            .and_then(|f| f.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'from'", idx)))?
+            .to_string();
+        if from.trim().is_empty() {
+            return Err(PlanError::InvalidAction(format!(
+                "Operation {} 'from' cannot be empty",
+                idx
+            )));
+        }
+
+        let to = op
+            .get("to")
+            .and_then(|t| t.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'to'", idx)))?
+            .to_string();
+        if to.trim().is_empty() {
+            return Err(PlanError::InvalidAction(format!(
+                "Operation {} 'to' cannot be empty",
+                idx
+            )));
+        }
+
+        let transform = op
+            .get("transform")
+            .cloned()
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| {
+                PlanError::InvalidAction(format!("Operation {} invalid transform: {}", idx, e))
+            })?;
+
+        let filter = op
+            .get("filter")
+            .cloned()
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| {
+                PlanError::InvalidAction(format!("Operation {} invalid filter: {}", idx, e))
+            })?;
+
+        let enabled = op.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
+
+        let description = op
+            .get("description")
+            .and_then(|d| d.as_str())
+            .map(|s| s.to_string());
+
+        descriptions.push(format!("Create route '{}' → '{}'", from, to));
+
+        ConfigChange::CreateRoute {
+            from,
+            to,
+            transform,
+            filter,
+            enabled,
+            description,
+        }
+    })
+}
+
+fn batch_delete_route(
+    op: &Value,
+    idx: usize,
+    _config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let index = op.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
+            PlanError::InvalidAction(format!(
+                "Operation {} missing 'index' (must be a non-negative integer)",
+                idx
+            ))
+        })? as usize;
+
+        descriptions.push(format!("Delete route at index {}", index));
+
+        ConfigChange::DeleteRoute { index }
+    })
+}
+
+fn batch_update_route(
+    op: &Value,
+    idx: usize,
+    _config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let index = op.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
+            PlanError::InvalidAction(format!(
+                "Operation {} missing 'index' (must be a non-negative integer)",
+                idx
+            ))
+        })? as usize;
+
+        let from = op
+            .get("from")
+            .and_then(|f| f.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'from'", idx)))?
+            .to_string();
+        if from.trim().is_empty() {
+            return Err(PlanError::InvalidAction(format!(
+                "Operation {} 'from' cannot be empty",
+                idx
+            )));
+        }
+
+        let to = op
+            .get("to")
+            .and_then(|t| t.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'to'", idx)))?
+            .to_string();
+        if to.trim().is_empty() {
+            return Err(PlanError::InvalidAction(format!(
+                "Operation {} 'to' cannot be empty",
+                idx
+            )));
+        }
+
+        let transform = op
+            .get("transform")
+            .cloned()
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| {
+                PlanError::InvalidAction(format!("Operation {} invalid transform: {}", idx, e))
+            })?;
+
+        let filter = op
+            .get("filter")
+            .cloned()
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| {
+                PlanError::InvalidAction(format!("Operation {} invalid filter: {}", idx, e))
+            })?;
+
+        let enabled = op.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
+
+        let description = op
+            .get("description")
+            .and_then(|d| d.as_str())
+            .map(|s| s.to_string());
+
+        descriptions.push(format!(
+            "Update route at index {} ('{}' → '{}')",
+            index, from, to
+        ));
+
+        ConfigChange::UpdateRoute {
+            index,
+            from,
+            to,
+            transform,
+            filter,
+            enabled,
+            description,
+        }
+    })
+}
+
+fn batch_delete_mode(
+    op: &Value,
+    idx: usize,
+    _config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let name = op
+            .get("name")
+            .and_then(|n| n.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'name'", idx)))?
+            .to_string();
+
+        descriptions.push(format!("Delete mode '{}'", name));
+
+        ConfigChange::DeleteMode { name }
+    })
+}
+
+fn batch_create_mode(
+    op: &Value,
+    idx: usize,
+    _config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let name = op
+            .get("name")
+            .and_then(|n| n.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'name'", idx)))?
+            .to_string();
+
+        let color = op
+            .get("color")
+            .and_then(|c| c.as_str())
+            .map(|s| s.to_string());
+
+        descriptions.push(format!("Create mode '{}'", name));
+
+        ConfigChange::CreateMode { name, color }
+    })
+}
+
+fn batch_delete_mapping(
+    op: &Value,
+    idx: usize,
+    config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let mode = op
+            .get("mode")
+            .and_then(|m| m.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'mode'", idx)))?
+            .to_string();
+
+        let index =
+            op.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
+                PlanError::InvalidAction(format!("Operation {} missing 'index'", idx))
+            })? as usize;
+
+        // Validate mode and index
+        let mode_obj = config
+            .modes
+            .iter()
+            .find(|m| m.name == mode)
+            .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
+
+        if index >= mode_obj.mappings.len() {
+            return Err(PlanError::IndexOutOfRange {
+                mode: mode.clone(),
+                index,
+                count: mode_obj.mappings.len(),
+            });
+        }
+
+        descriptions.push(format!("Delete mapping {} in '{}'", index, mode));
+
+        ConfigChange::DeleteMapping { mode, index }
+    })
+}
+
+fn batch_update_mapping(
+    op: &Value,
+    idx: usize,
+    config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let mode = op
+            .get("mode")
+            .and_then(|m| m.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'mode'", idx)))?
+            .to_string();
+
+        let index =
+            op.get("index").and_then(|i| i.as_u64()).ok_or_else(|| {
+                PlanError::InvalidAction(format!("Operation {} missing 'index'", idx))
+            })? as usize;
+
+        // Validate mode and index
+        let mode_obj = config
+            .modes
+            .iter()
+            .find(|m| m.name == mode)
+            .ok_or_else(|| PlanError::ModeNotFound(mode.clone()))?;
+
+        if index >= mode_obj.mappings.len() {
+            return Err(PlanError::IndexOutOfRange {
+                mode: mode.clone(),
+                index,
+                count: mode_obj.mappings.len(),
+            });
+        }
+
+        let trigger: Trigger =
+            serde_json::from_value(op.get("trigger").cloned().ok_or_else(|| {
+                PlanError::InvalidTrigger(format!("Operation {} missing 'trigger'", idx))
+            })?)
+            .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
+
+        let action: ActionConfig =
+            serde_json::from_value(op.get("action").cloned().ok_or_else(|| {
+                PlanError::InvalidAction(format!("Operation {} missing 'action'", idx))
+            })?)
+            .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
+
+        let description = op
+            .get("description")
+            .and_then(|d| d.as_str())
+            .map(|s| s.to_string());
+
+        descriptions.push(format!("Update mapping {} in '{}'", index, mode));
+
+        ConfigChange::UpdateMapping {
+            mode,
+            index,
+            trigger,
+            action,
+            description,
+        }
+    })
+}
+
+fn batch_create_mapping(
+    op: &Value,
+    idx: usize,
+    config: &Config,
+    descriptions: &mut Vec<String>,
+) -> Result<ConfigChange, PlanError> {
+    Ok({
+        let mode = op
+            .get("mode")
+            .and_then(|m| m.as_str())
+            .ok_or_else(|| PlanError::InvalidAction(format!("Operation {} missing 'mode'", idx)))?
+            .to_string();
+
+        // Validate mode exists
+        if !config.modes.iter().any(|m| m.name == mode) {
+            return Err(PlanError::ModeNotFound(mode));
+        }
+
+        let trigger: Trigger =
+            serde_json::from_value(op.get("trigger").cloned().ok_or_else(|| {
+                PlanError::InvalidTrigger(format!("Operation {} missing 'trigger'", idx))
+            })?)
+            .map_err(|e| PlanError::InvalidTrigger(e.to_string()))?;
+
+        let action: ActionConfig =
+            serde_json::from_value(op.get("action").cloned().ok_or_else(|| {
+                PlanError::InvalidAction(format!("Operation {} missing 'action'", idx))
+            })?)
+            .map_err(|e| PlanError::InvalidAction(e.to_string()))?;
+
+        let description = op
+            .get("description")
+            .and_then(|d| d.as_str())
+            .map(|s| s.to_string());
+
+        // ADR-038: optional let_through in batch ops too.
+        let let_through = op
+            .get("let_through")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        let desc_str = description.as_deref().unwrap_or("mapping");
+        descriptions.push(format!("Create '{}' in '{}'", desc_str, mode));
+
+        ConfigChange::CreateMapping {
+            mode,
+            trigger,
+            action,
+            description,
+            let_through,
+        }
+    })
 }
