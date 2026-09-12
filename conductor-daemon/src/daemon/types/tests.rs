@@ -638,7 +638,8 @@ fn test_llm_ipc_commands_deserialization() {
     assert!(matches!(request.command, IpcCommand::ListPendingPlans));
 
     // ExecuteMcpTool
-    let json = r#"{"id":"test","command":"EXECUTE_MCP_TOOL","args":{"tool_name":"conductor_get_status"}}"#;
+    let json =
+        r#"{"id":"test","command":"EXECUTE_MCP_TOOL","args":{"tool_name":"conductor_get_status"}}"#;
     let request: IpcRequest = serde_json::from_str(json).unwrap();
     assert!(matches!(request.command, IpcCommand::ExecuteMcpTool));
 }
