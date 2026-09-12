@@ -15,7 +15,33 @@
 // contract being asserted IS textual (the acceptance criteria literally
 // specify `grep` invariants).
 
-const EXECUTOR_SRC: &str = include_str!("../src/daemon/llm/executor.rs");
+/// Concatenation of every `.rs` under `src/daemon/llm/executor/` — the
+/// module was split into submodules (same treatment as engine_manager
+/// and mcp), so the scan reads the whole directory, tests included.
+fn read_executor_src() -> String {
+    fn collect(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).expect("read executor dir").flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                collect(&p, out);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                out.push(p);
+            }
+        }
+    }
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/daemon/llm/executor");
+    let mut paths: Vec<std::path::PathBuf> = Vec::new();
+    collect(&dir, &mut paths);
+    paths.sort();
+    let mut out = String::new();
+    for p in paths {
+        out.push_str(&std::fs::read_to_string(&p).expect("read executor source file"));
+        out.push('\n');
+    }
+    out
+}
+
+static EXECUTOR_SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(read_executor_src);
 /// Concatenation of every `.rs` under `src/daemon/engine_manager/` — the
 /// module was split into submodules, so the per-file scan below
 /// must read the whole module. Runtime read from `CARGO_MANIFEST_DIR`
@@ -142,7 +168,7 @@ fn d4a3_3b1_mcp_no_arc_rwlock_option_config() {
 
 #[test]
 fn d4a3_3b1_executor_no_arc_rwlock_option_config() {
-    let matches: Vec<usize> = non_comment_lines(EXECUTOR_SRC)
+    let matches: Vec<usize> = non_comment_lines(&EXECUTOR_SRC)
         .into_iter()
         .filter(|(_, line)| line.contains("Arc<RwLock<Option<Config>>>"))
         .map(|(lineno, _)| lineno)
@@ -158,7 +184,7 @@ fn d4a3_3b1_executor_no_arc_rwlock_option_config() {
 fn d4a3_3b1_executor_no_arc_rwlock_config() {
     // `Arc<RwLock<Config>>` (no Option) lived only in `new_with_config`
     // — also retired with the live_config migration.
-    let matches: Vec<usize> = non_comment_lines(EXECUTOR_SRC)
+    let matches: Vec<usize> = non_comment_lines(&EXECUTOR_SRC)
         .into_iter()
         .filter(|(_, line)| line.contains("Arc<RwLock<Config>>"))
         .map(|(lineno, _)| lineno)
@@ -175,7 +201,7 @@ fn d4a3_3b1_executor_no_self_config_lock_access() {
     // Every `self.config.read().await` / `self.config.write().await`
     // should be gone — readers via `live_config.load()`, writers via
     // `live_config.mutate_replace_whole()`.
-    let matches: Vec<usize> = non_comment_lines(EXECUTOR_SRC)
+    let matches: Vec<usize> = non_comment_lines(&EXECUTOR_SRC)
         .into_iter()
         .filter(|(_, line)| {
             line.contains("self.config.read().await") || line.contains("self.config.write().await")
@@ -205,7 +231,7 @@ fn d4a3_3b1_no_arc_rwlock_config_in_three_target_files() {
     let bad_patterns = ["Arc<RwLock<Option<Config>>>", "Arc<RwLock<Config>>"];
     for (label, src) in [
         ("mcp/*.rs", MCP_SRC.as_str()),
-        ("executor.rs", EXECUTOR_SRC),
+        ("llm/executor/*.rs", EXECUTOR_SRC.as_str()),
         ("engine_manager/*.rs", ENGINE_MANAGER_SRC.as_str()),
     ] {
         let scanned = non_comment_lines(src);
