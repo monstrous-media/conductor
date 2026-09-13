@@ -85,7 +85,7 @@ Help us support more controllers:
 
 Extend Conductor with sandboxed WASM plugins — media control, system utilities, DAW and
 streaming integrations. See the plugin template in `plugins/wasm-template/` and the
-[Plugin Development Guide](https://getconductor.dev/docs/plugins).
+[Plugin Development Guide](https://getconductor.dev/guides/plugins.html).
 
 **Plugin requirements**: solve a real problem, request only necessary capabilities,
 include tests and documentation, use an MIT-compatible license.

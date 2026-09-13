@@ -419,6 +419,6 @@ else_action = { type = "Shell", command = "personal-task" }
 ## See Also
 
 - [Action Types](action-types.md)
-- [Configuration Examples](https://getconductor.dev/configuration/examples.html)
-- [Modes and Mappings](https://getconductor.dev/configuration/modes.html)
-- [Advanced Settings](https://getconductor.dev/configuration/overview.html)
+- [Configuration Guide](https://getconductor.dev/guides/configuration.html)
+- [Config Schema — Modes and Mappings](config-schema.md#modes)
+- [Config Schema — Advanced Settings](config-schema.md#advanced-settings-advanced_settings)
