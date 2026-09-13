@@ -1,111 +1,84 @@
 # Conductor Roadmap
 
-This document describes where Conductor is, where it's going, and how the open-source
-and commercial tiers fit together. Detailed history lives in [CHANGELOG.md](CHANGELOG.md);
-strategy detail in [docs/conductor-go-to-market-strategy.md](docs/conductor-go-to-market-strategy.md);
-architectural decisions in [docs/adrs/](docs/adrs/).
+Where the open-source Conductor engine is and where it's going. Version
+history lives in [CHANGELOG.md](CHANGELOG.md); the commercial products built
+on this engine are described at [getconductor.app](https://getconductor.app).
 
 ## Vision
 
-**Transform any input controller — MIDI or gamepad — into an advanced, context-aware
-macro surface with professional-grade feedback, timing-based triggers, and natural-language
-configuration.**
+**Transform any input controller — MIDI or gamepad — into an advanced,
+context-aware macro surface with professional-grade feedback, timing-based
+triggers, and natural-language configuration.**
 
 - Musicians control DAWs and effects with velocity-sensitive, multi-layer mappings
 - Developers streamline workflows with mode-based hotkey systems
 - Streamers and creators drive OBS, scenes, and audio routing from physical controls
 - Power users replace dedicated macro pads with hardware they already own
 
-## Where we are: v5.7.1-alpha (pre-launch)
+## Where we are
 
-Conductor is a mature multi-protocol input mapping system. The major architectural
-phases — engine extraction, daemon infrastructure, Tauri GUI, plugin system (native +
-WASM + Ed25519 signing), Game Controller (HID) support, LLM integration (MCP server,
-plan/apply, 5 chat providers), and multi-device architecture (ADR-009, all 6 phases) —
-are complete. See [CLAUDE.md](CLAUDE.md) and [CHANGELOG.md](CHANGELOG.md) for the full
-feature inventory and version history.
+Conductor is a mature multi-protocol input mapping system, pre-launch. The
+engine in this repository is feature-complete for its core mission: the full
+trigger/action mapping engine, mode system, signal routing between endpoints
+(MIDI, OSC, Art-Net, virtual ports), game-controller (HID) support,
+multi-device architecture, LED feedback, a plugin system (native + WASM with
+Ed25519 signing), config hot-reload, and a read-only MCP server for
+inspection and diagnosis from any LLM client.
 
-**Current focus**: pre-launch hardening (security-first; see ADR-027/ADR-042), the
-open-core tier boundary (ADR-045), and the closed-alpha program.
+Current focus is pre-launch hardening: security posture, release artifact
+integrity, and documentation quality.
 
-## Product structure (three tiers)
+## Open source and commercial
 
-| Tier | Price | What it is |
-|------|-------|------------|
-| **Conductor Open Source** | Free (MIT) | CLI daemon: full mapping/routing engine, all triggers, plugins, config hot-reload, read-only MCP (inspect/diagnose from any LLM client) |
-| **Conductor Studio** | $49 perpetual + optional $29/yr updates | Visual GUI, AI configuration via integrated chat (BYOK, 5 providers, plan/approval workflow), MIDI Learn, profiles |
-| **Conductor Pro** | $79 perpetual | Studio + commercial-use license, priority support, early access, unlimited device configs |
+The daemon and core engine in this repository are MIT **forever**, and the
+plugin system and device-profile layer are permanently free and open — they
+are the community ecosystem. Contributions are accepted under DCO (no CLA).
 
-The daemon and core stay MIT forever; the plugin system and device-profile library are
-permanently free and open — they are the community ecosystem. The free/paid boundary is
-build composition along MCP risk tiers (ADR-045): the OSS daemon cannot mutate config via
-MCP; AI-applied configuration is the paid differentiator. Contributions are accepted
-under DCO (no CLA).
+Commercial products (Conductor Studio — a visual GUI with AI-assisted
+configuration — and Conductor Pro) are built on this engine in a separate,
+closed-source repository. The boundary is build composition along MCP risk
+tiers (ADR-045): every official open-source artifact exposes a **read-only**
+MCP socket; configuration mutation flows only through the commercial GUI.
+Source builds can opt into the full write tier with the `mcp-write` cargo
+feature. See [getconductor.app](https://getconductor.app) for the product
+side.
 
-## Launch phases (2026)
+## Near term (engine scope)
 
-| Phase | Timing | Goal | Status |
-|-------|--------|------|--------|
-| **Closed Alpha** | Apr–May 2026 | 20–50 hand-picked macOS testers; device compatibility data | In progress |
-| **Open Beta** | Jun–Jul 2026 | 200–500 users; beta pricing ($19/$29); Homebrew + crates.io; Show HN | Next |
-| **Public Launch** | Aug–Sep 2026 | Direct download, launch pricing, Product Hunt, press | Planned |
-| **Growth** | Q4 2026+ | Windows release, plugin/profile directory, enterprise tier, Linux, MIDI 2.0 | Planned |
+- **Documentation growth** — expand [getconductor.dev](https://getconductor.dev)
+  (guides, device notes) and keep the in-repo reference synchronized with the
+  code it documents.
+- **Publish the architecture decision records** — the code cites ADR numbers
+  throughout; a sanitized public ADR corpus makes those references resolve
+  ([#45](https://github.com/monstrous-media/conductor/issues/45)).
+- **Device-profile contributions** — lower the friction for community device
+  configs: a contribution template and CI validation for submitted profiles.
+- **macOS Bluetooth gamepad backend** — bridge GCController so Bluetooth
+  controllers work without a USB fallback.
+- **Linux desktop surface** — the Linux daemon is currently headless by
+  design; a system-tray backend is under consideration
+  ([#41](https://github.com/monstrous-media/conductor/issues/41)).
 
-Gating work for beta (tracked as issues/ADRs):
+## Later
 
-- **ADR-045**: feature-gated daemon composition — OSS artifact = mapping/routing +
-  read-only MCP, no SQLite; the MCP socket is read-only in every official artifact, and
-  config mutation flows only through the licensed GUI (IPC)
-- **ADR-046**: repository decomposition — public `monstrous-media/conductor` (engine,
-  MIT, canonical) + private `monstrous-media/conductor-studio` (GUI, knowledge,
-  licensing); target repos are provisioned and configured first, code migration follows
-  as a separate step
-- **LicenseState**: license-key validation in the GUI (Lemon Squeezy), first-run flow
-- **GUI v2**: three-zone workspace rebuild (see `docs/gui-v2/`)
-- Signed/notarized release artifacts for both daemon and GUI (release.yml)
-
-## Engineering priorities
-
-### P0 — beta blockers
-
-- ADR-045 tier-boundary implementation (cargo features, audit-sink seam, CI feature matrix)
-- LicenseState + payment integration
-- Onboarding polish: first-run wizard, device detection, template selection
-- Crash reporting / opt-in telemetry
-
-### P1 — launch quality
-
-- macOS Bluetooth gamepad input backend (GCController bridge, #2229)
-- GUI v2 remaining phases
-- Device-profile library growth + contribution tooling (template, submission CI)
-- Documentation site (getconductor.dev)
-
-### P2 — post-launch
-
-- Windows support, then Linux
-- Free curated plugin & device-profile directory (rev-share marketplace deferred — GTM §5.4)
-- Enterprise tier (multi-seat, broadcast/production)
-- MIDI 2.0
+- **Windows support**, then broader Linux desktop polish
+- **MIDI 2.0**
+- **Curated plugin & device-profile directory** — free, community-driven
+- Enterprise/broadcast scenarios (multi-seat, production environments)
 
 ## Community goals
 
-- An open plugin/integration layer with low-friction contribution is the ecosystem
-  strategy (template repo, docs, CI-validated community submissions)
-- GitHub Discussions for long-form technical conversation; Discord for community
-  (structure in GTM §6)
-- Build in public: release notes every release, monthly roadmap updates
-- Short term: first external contributors, community device profiles, 1,000 GitHub stars
-  within 6 months of launch
+- An open plugin/integration layer with low-friction contribution: template
+  repo, docs, CI-validated community submissions
+- GitHub Discussions for long-form technical conversation
+- Build in public: release notes every release, roadmap updates as things ship
+- Short term: first external contributors and community device profiles
 
 ## Release cadence
 
 - Minor releases every 4–6 weeks; patches as needed
 - Every release: signed artifacts, CHANGELOG entry, release notes
-- v5.x-alpha line until alpha exit criteria are met (GTM §4.3)
 
 ---
 
-**Roadmap version**: 2.0
-**Last updated**: 2026-06-10
-**Supersedes**: v1.0 (2025-11-11), which described the pre-workspace v0.1.0 monolith
-**Next review**: at beta open (July 2026)
+**Last updated**: 2026-09-13
