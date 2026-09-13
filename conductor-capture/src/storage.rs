@@ -55,7 +55,85 @@ impl CaptureStorage {
         // Ensure directory exists
         fs::create_dir_all(&base_dir)?;
 
+        // Best-effort adoption of pre-rebrand captures: never fails
+        // construction — a capture that cannot be moved stays readable in
+        // the legacy directory and is retried on the next run.
+        if let Some(legacy_dir) = Self::legacy_base_dir() {
+            Self::migrate_legacy_captures(&legacy_dir, &base_dir);
+        }
+
         Ok(Self { base_dir })
+    }
+
+    /// The pre-rebrand captures directory, if it exists on this machine.
+    ///
+    /// Before the move to `config_dir()/conductor/captures`, captures lived
+    /// under the `ProjectDirs("dev", "amiable", "conductor")` local data
+    /// dir: `~/Library/Application Support/dev.amiable.conductor/captures`
+    /// on macOS, `~/.local/share/conductor/captures` on Linux. (Windows'
+    /// old ProjectDirs layout is not probed — no pre-rebrand Windows
+    /// artifacts shipped.)
+    fn legacy_base_dir() -> Option<PathBuf> {
+        let data_local = dirs::data_local_dir()?;
+        #[cfg(target_os = "macos")]
+        let dir = data_local.join("dev.amiable.conductor").join("captures");
+        #[cfg(all(unix, not(target_os = "macos")))]
+        let dir = data_local.join("conductor").join("captures");
+        #[cfg(not(unix))]
+        return None;
+        #[cfg(unix)]
+        dir.is_dir().then_some(dir)
+    }
+
+    /// One-shot, non-clobbering migration of legacy capture files.
+    ///
+    /// Each `*.json` in `legacy_dir` is moved into `base_dir` unless a file
+    /// with the same name already exists there (the collision keeps BOTH
+    /// files untouched — never guess which copy the user wants). Rename is
+    /// tried first; a cross-device failure falls back to copy-then-remove,
+    /// and a failed copy removes only the partial destination, leaving the
+    /// original where it was. The legacy directory itself is removed only
+    /// once empty.
+    fn migrate_legacy_captures(legacy_dir: &Path, base_dir: &Path) {
+        let Ok(entries) = fs::read_dir(legacy_dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let src = entry.path();
+            if src.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let Some(name) = src.file_name() else {
+                continue;
+            };
+            let dst = base_dir.join(name);
+            if dst.exists() {
+                tracing::warn!(
+                    src = %src.display(),
+                    dst = %dst.display(),
+                    "legacy capture collides with an existing capture — keeping both in place"
+                );
+                continue;
+            }
+            if fs::rename(&src, &dst).is_ok() {
+                continue;
+            }
+            match fs::copy(&src, &dst) {
+                Ok(_) => {
+                    let _ = fs::remove_file(&src);
+                }
+                Err(e) => {
+                    let _ = fs::remove_file(&dst);
+                    tracing::warn!(
+                        src = %src.display(),
+                        error = %e,
+                        "could not migrate legacy capture — leaving it in place"
+                    );
+                }
+            }
+        }
+        // Only succeeds once every file has moved out.
+        let _ = fs::remove_dir(legacy_dir);
     }
 
     /// Get the base directory for captures
@@ -659,5 +737,68 @@ mod tests {
             warnings[0].contains("unreadable.json"),
             "warning must name the offending path: {warnings:?}"
         );
+    }
+
+    /// Legacy `*.json` captures move into the new base dir; the emptied
+    /// legacy directory is removed.
+    #[test]
+    fn migrate_moves_legacy_captures_and_removes_empty_dir() {
+        let legacy = TempDir::new().unwrap();
+        let base = TempDir::new().unwrap();
+        let legacy_dir = legacy.path().join("captures");
+        fs::create_dir_all(&legacy_dir).unwrap();
+        fs::write(legacy_dir.join("a.json"), b"{\"old\": 1}").unwrap();
+        fs::write(legacy_dir.join("b.json"), b"{\"old\": 2}").unwrap();
+
+        CaptureStorage::migrate_legacy_captures(&legacy_dir, base.path());
+
+        assert!(base.path().join("a.json").exists());
+        assert!(base.path().join("b.json").exists());
+        assert!(!legacy_dir.exists(), "emptied legacy dir must be removed");
+    }
+
+    /// A name collision keeps BOTH files untouched — the migration never
+    /// guesses which copy the user wants.
+    #[test]
+    fn migrate_never_clobbers_an_existing_capture() {
+        let legacy = TempDir::new().unwrap();
+        let base = TempDir::new().unwrap();
+        let legacy_dir = legacy.path().join("captures");
+        fs::create_dir_all(&legacy_dir).unwrap();
+        fs::write(legacy_dir.join("same.json"), b"legacy contents").unwrap();
+        fs::write(base.path().join("same.json"), b"current contents").unwrap();
+
+        CaptureStorage::migrate_legacy_captures(&legacy_dir, base.path());
+
+        assert_eq!(
+            fs::read(base.path().join("same.json")).unwrap(),
+            b"current contents",
+            "existing capture must not be overwritten"
+        );
+        assert_eq!(
+            fs::read(legacy_dir.join("same.json")).unwrap(),
+            b"legacy contents",
+            "colliding legacy capture must stay in place"
+        );
+        assert!(legacy_dir.exists(), "non-empty legacy dir is kept");
+    }
+
+    /// Non-JSON files are not capture data and stay behind; their presence
+    /// also keeps the legacy directory alive.
+    #[test]
+    fn migrate_ignores_non_json_files() {
+        let legacy = TempDir::new().unwrap();
+        let base = TempDir::new().unwrap();
+        let legacy_dir = legacy.path().join("captures");
+        fs::create_dir_all(&legacy_dir).unwrap();
+        fs::write(legacy_dir.join("c.json"), b"{}").unwrap();
+        fs::write(legacy_dir.join("notes.txt"), b"keep me").unwrap();
+
+        CaptureStorage::migrate_legacy_captures(&legacy_dir, base.path());
+
+        assert!(base.path().join("c.json").exists());
+        assert!(!base.path().join("notes.txt").exists());
+        assert!(legacy_dir.join("notes.txt").exists());
+        assert!(legacy_dir.exists());
     }
 }
