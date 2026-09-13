@@ -11,6 +11,8 @@
 //! and inspect stdout. The simulator is purely in-memory (`MidiSimulator`), so
 //! no MIDI hardware is required and the tests are CI-safe.
 
+#![cfg(feature = "diagnostics")]
+
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
