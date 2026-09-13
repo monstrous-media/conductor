@@ -16,26 +16,32 @@ path = "src/main.rs"
 [[bin]]
 name = "midi_diagnostic"
 path = "src/bin/midi_diagnostic.rs"
+required-features = ["diagnostics"]
 
 [[bin]]
 name = "led_diagnostic"
 path = "src/bin/led_diagnostic.rs"
+required-features = ["diagnostics"]
 
 [[bin]]
 name = "led_tester"
 path = "src/bin/led_tester.rs"
+required-features = ["diagnostics"]
 
 [[bin]]
 name = "pad_mapper"
 path = "src/bin/pad_mapper.rs"
+required-features = ["diagnostics"]
 
 [[bin]]
 name = "test_midi"
 path = "src/bin/test_midi.rs"
+required-features = ["diagnostics"]
 
 [[bin]]
 name = "midi_simulator"
 path = "src/bin/midi_simulator.rs"
+required-features = ["diagnostics"]
 
 [[bin]]
 name = "conductorctl"
@@ -218,6 +224,13 @@ mcp-write = ["mcp", "llm-executor"]
 # SQLite-backed audit log (rusqlite). Without it, the audit subsystem
 # uses the lightweight append-only sink (ADR-045 D5, story A2).
 audit-db = ["dep:rusqlite"]
+
+# Hardware diagnostic / bring-up bins (midi_diagnostic, led_diagnostic,
+# led_tester, pad_mapper, test_midi, midi_simulator) — several are
+# Maschine-Mikro-MK3-hardcoded. Off by default so plain builds and the
+# composition lanes ship/compile only the supported surface:
+# `cargo build -p conductor-daemon --features diagnostics` opts in.
+diagnostics = []
 
 plugin-wasm = ["conductor-core/plugin-wasm"]
 plugin-signing = ["conductor-core/plugin-signing", "dep:ed25519-dalek", "dep:rand_core"]

@@ -37,7 +37,7 @@ fn test_my_feature() {
 ### Interactive CLI
 
 ```bash
-cargo run -p conductor-daemon --bin midi_simulator
+cargo run -p conductor-daemon --features diagnostics --bin midi_simulator
 ```
 
 ## File Structure
@@ -205,7 +205,7 @@ Scenarios:
 ## Example Test Session
 
 ```bash
-$ cargo run -p conductor-daemon --bin midi_simulator
+$ cargo run -p conductor-daemon --features diagnostics --bin midi_simulator
 
 > velocity 60
 Simulating velocity levels (soft, medium, hard)...

@@ -13,12 +13,12 @@ hardware-probe tools that predate `clap`, their actual `main()` behavior).
 | `conductor-sign` | `conductor-daemon` | Generate/rotate Ed25519 keys and sign/verify WASM plugins |
 | `conductor-skills` | `conductor-daemon` | Validate, list, and install Agent Skills (see [Agent Skills](../development/agent-skills.md)) |
 | `conductor-state` | `conductor-daemon` | Dump the daemon's live physical-control-state store |
-| `midi_diagnostic` | `conductor-daemon` | Print incoming MIDI events in real time |
-| `led_diagnostic` | `conductor-daemon` | Interactively correlate pad presses with LED addresses (Maschine Mikro MK3 only) |
-| `led_tester` | `conductor-daemon` | Probe HID report offsets to find a pad's LED address (Maschine Mikro MK3 only) |
-| `pad_mapper` | `conductor-daemon` | Capture MIDI-note ↔ HID-pad-index pairs (Maschine Mikro MK3 only) |
-| `test_midi` | `conductor-daemon` | List MIDI input/output ports and exit |
-| `midi_simulator` | `conductor-daemon` | Interactive REPL that fabricates MIDI events without hardware |
+| `midi_diagnostic` | `conductor-daemon` | Print incoming MIDI events in real time (`diagnostics` feature) |
+| `led_diagnostic` | `conductor-daemon` | Interactively correlate pad presses with LED addresses (Maschine Mikro MK3 only; `diagnostics` feature) |
+| `led_tester` | `conductor-daemon` | Probe HID report offsets to find a pad's LED address (Maschine Mikro MK3 only; `diagnostics` feature) |
+| `pad_mapper` | `conductor-daemon` | Capture MIDI-note ↔ HID-pad-index pairs (Maschine Mikro MK3 only; `diagnostics` feature) |
+| `test_midi` | `conductor-daemon` | List MIDI input/output ports and exit (`diagnostics` feature) |
+| `midi_simulator` | `conductor-daemon` | Interactive REPL that fabricates MIDI events without hardware (`diagnostics` feature) |
 | `conductor-capture` | `conductor-capture` | Input-pattern recording tool (early development — most subcommands are stubs) |
 
 `conductor_menubar` (a system-tray helper spawned by the desktop app) also
@@ -30,7 +30,8 @@ All examples below assume an installed binary on `PATH` (e.g. `conductorctl
 status`). From a source checkout, run any binary with `cargo run -p
 conductor-daemon --bin <name> --` (note the `--` separator before the
 binary's own flags), or `cargo run -p conductor-capture --` for
-`conductor-capture`.
+`conductor-capture`. The diagnostic bins are off by default — add
+`--features diagnostics` to build or run them.
 
 ---
 
