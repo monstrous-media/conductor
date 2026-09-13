@@ -61,7 +61,6 @@ To help us help you faster, please:
 
 - Check if your question has already been answered in [Discussions](https://github.com/monstrous-media/conductor/discussions)
 - Search existing [Issues](https://github.com/monstrous-media/conductor/issues)
-- Read the [Troubleshooting Guide](https://getconductor.dev/troubleshooting.html)
 
 ### 2. Gather Information
 

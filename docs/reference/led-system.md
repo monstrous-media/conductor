@@ -439,7 +439,7 @@ impl RGB {
 
 ## See Also
 
-- [Configuration → LED Feedback](https://getconductor.dev/configuration/led-feedback.html)
-- [Device Support → Maschine Mikro MK3](https://getconductor.dev/devices/mikro-mk3.html)
+- [Configuration Guide](https://getconductor.dev/guides/configuration.html)
+- [Devices Guide](https://getconductor.dev/guides/devices.html)
 - [Reference → Action Types](action-types.md) (ModeChange action)
-- [Troubleshooting → Common Issues](https://getconductor.dev/troubleshooting/common-issues.html)
+- [Troubleshooting](../../SUPPORT.md)

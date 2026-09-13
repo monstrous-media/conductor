@@ -972,6 +972,6 @@ else_action = { type = "Keystroke", keys = "right" }
 
 ## See Also
 
-- [Configuration Examples](https://getconductor.dev/configuration/examples.html)
+- [Configuration Guide](https://getconductor.dev/guides/configuration.html)
 - [Trigger Types](trigger-types.md)
-- [Modes and Mappings](https://getconductor.dev/configuration/modes.html)
+- [Config Schema — Modes and Mappings](config-schema.md#modes)

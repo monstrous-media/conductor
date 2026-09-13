@@ -725,11 +725,10 @@ Potential future improvements to the InputManager:
 
 ## Related Documentation
 
-- [Gamepad Support Guide](https://getconductor.dev/guides/gamepad-support.html) - User-facing gamepad setup
+- [Devices Guide](https://getconductor.dev/guides/devices.html) - User-facing device and gamepad setup
 - [Architecture Overview](architecture.md) - Overall system architecture
 - [Event Flow](architecture.md#event-flow) - Event flow details
-- [Device Templates Guide](https://getconductor.dev/guides/device-templates.html) - Pre-configured templates
-- [Configuration Reference](https://getconductor.dev/configuration/overview.html) - Config file syntax
+- [Configuration Guide](https://getconductor.dev/guides/configuration.html) - Config file syntax ([full schema](../reference/config-schema.md))
 
 ## Terminology
 

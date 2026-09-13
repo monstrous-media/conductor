@@ -1215,7 +1215,7 @@ impl GamepadDeviceManager {
 
 ## See Also
 
-- [Gamepad Support Guide](https://getconductor.dev/guides/gamepad-support.html) - User-facing documentation
+- [Devices Guide](https://getconductor.dev/guides/devices.html) - User-facing documentation
 - [Configuration Schema](config-schema.md) - TOML configuration reference
 - [Trigger Types](trigger-types.md) - Available trigger configurations
 - [Action Types](action-types.md) - Available action types
