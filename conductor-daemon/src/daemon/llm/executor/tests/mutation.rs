@@ -197,3 +197,47 @@ async fn test_readonly_audit_routes_error_vs_complete() {
         "clean result must NOT hit log_tool_error; errors={ok_errors:?}"
     );
 }
+
+/// Kills: inverting `!` in `muted = !mgr.is_device_enabled(...)` and
+/// deleting the `is_configured` filter in `input_binding_entries` —
+/// the routing canvas would render every muted device live (or every
+/// unconfigured port as a binding). Previously unreachable: no unit
+/// test constructed an InputManager with a bound device; a headless
+/// MidiDeviceManager makes the seam constructible.
+#[test]
+fn test_input_binding_entries_report_mute_state() {
+    use crate::input_manager::{InputManager, InputMode};
+    use conductor_core::identity::DeviceId;
+
+    let mut mgr = InputManager::new(None, false, InputMode::MidiOnly);
+    let pads = DeviceId::from_alias("pads");
+    let keys = DeviceId::from_alias("keys");
+    let stray = DeviceId::from_alias("stray");
+    for id in [&pads, &keys, &stray] {
+        mgr.midi_managers.insert(
+            id.clone(),
+            crate::midi_device::MidiDeviceManager::new(String::new(), false),
+        );
+    }
+    // `stray` is bound but NOT configured — it must be filtered out.
+    mgr.configured_devices.insert(pads.clone());
+    mgr.configured_devices.insert(keys.clone());
+    mgr.set_device_enabled(&pads, false);
+
+    let mut entries = super::super::readonly::input_binding_entries(&mgr);
+    entries.sort_by(|a, b| a.alias.cmp(&b.alias));
+
+    assert_eq!(
+        entries.iter().map(|e| e.alias.as_str()).collect::<Vec<_>>(),
+        vec!["keys", "pads"],
+        "only configured devices appear as input bindings"
+    );
+    assert!(
+        entries[1].muted,
+        "muted device must report muted=true (pads)"
+    );
+    assert!(
+        !entries[0].muted,
+        "enabled device must report muted=false (keys)"
+    );
+}

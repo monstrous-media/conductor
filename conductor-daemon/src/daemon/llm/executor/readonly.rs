@@ -251,24 +251,7 @@ impl ToolExecutor {
                 let manager_guard = refs.input_manager.lock().await;
                 manager_guard
                     .as_ref()
-                    .map(|mgr| {
-                        // Build entries inside this closure so `is_device_enabled`
-                        // can be queried while `mgr` is in scope.
-                        mgr.get_device_bindings()
-                            .into_iter()
-                            .filter(|(_, _, _, is_configured)| *is_configured)
-                            .map(|(device_id, port_name, connected, _)| {
-                                // Runtime mute = NOT enabled (ADR-009 4b).
-                                let muted = !mgr.is_device_enabled(&device_id);
-                                crate::daemon::llm::resolved_routing_graph::InputBindingEntry {
-                                    alias: device_id.as_str().to_string(),
-                                    port_name,
-                                    connected,
-                                    muted,
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                    })
+                    .map(input_binding_entries)
                     .unwrap_or_default()
             };
 
@@ -486,4 +469,25 @@ impl ToolExecutor {
 
         ExecutionResult::Success { result }
     }
+}
+
+/// Input-side binding entries for the resolved routing graph: one entry
+/// per configured device, carrying runtime mute state (ADR-009 Phase 4b
+/// — muted = NOT `is_device_enabled`).
+pub(super) fn input_binding_entries(
+    mgr: &crate::input_manager::InputManager,
+) -> Vec<crate::daemon::llm::resolved_routing_graph::InputBindingEntry> {
+    mgr.get_device_bindings()
+        .into_iter()
+        .filter(|(_, _, _, is_configured)| *is_configured)
+        .map(|(device_id, port_name, connected, _)| {
+            let muted = !mgr.is_device_enabled(&device_id);
+            crate::daemon::llm::resolved_routing_graph::InputBindingEntry {
+                alias: device_id.as_str().to_string(),
+                port_name,
+                connected,
+                muted,
+            }
+        })
+        .collect()
 }
