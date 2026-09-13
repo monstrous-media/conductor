@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch 2026-09
+      - uses: ./.github/actions/rust-toolchain
       - name: Install cargo-license (pinned)
         run: cargo install cargo-license --version 0.7.0 --locked
       - name: Regenerate and diff attribution files
@@ -69,7 +69,7 @@ jobs:
         id: check
         run: |
           [ -f Cargo.lock ] && echo "has_code=true" >> "$GITHUB_OUTPUT" || echo "has_code=false" >> "$GITHUB_OUTPUT"
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch 2026-09
+      - uses: ./.github/actions/rust-toolchain
         if: steps.check.outputs.has_code == 'true'
       - name: Install and run cargo-audit
         if: steps.check.outputs.has_code == 'true'

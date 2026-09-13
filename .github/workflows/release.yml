@@ -112,7 +112,6 @@ jobs:
       # only ever saved by cargo's invocation-time override of the pin, which is
       # the implicit reliance #2148 exists to remove. This composite parses the
       # pinned channel out of rust-toolchain.toml and passes it explicitly.
-      # (ci.yml in this repo still uses floating stable — worth aligning.)
       - name: Install pinned Rust toolchain
         uses: ./.github/actions/rust-toolchain
         with:
