@@ -119,13 +119,69 @@ pub(crate) fn to_enigo_button(mouse_button: MouseButton) -> Button {
     }
 }
 
+/// True when this crate was compiled as its own unit-test harness.
+#[cfg(test)]
+const UNDER_UNIT_TEST: bool = true;
+#[cfg(not(test))]
+const UNDER_UNIT_TEST: bool = false;
+
+/// Env var integration tests and CI set to declare "this is a test harness".
+/// Needed because `tests/` binaries link the library compiled WITHOUT
+/// `cfg(test)`, so [`UNDER_UNIT_TEST`] is false for them.
+pub const TEST_HARNESS_ENV: &str = "CONDUCTOR_TEST_HARNESS";
+
+/// Deliberate opt-out, for the rare test that genuinely means to inject.
+pub const ALLOW_TEST_INJECTION_ENV: &str = "CONDUCTOR_ALLOW_TEST_INPUT_INJECTION";
+
+/// Refuse to build the OS input injector when running under a test harness.
+///
+/// enigo injects into whatever window currently has focus. macOS attributes
+/// Accessibility to the *responsible* process, which for a test binary is the
+/// developer's terminal or editor — and those commonly hold the grant. So any
+/// test that reaches the injector types into the developer's screen, clicks in
+/// it, or quits their application. CI has no display server, enigo errors
+/// there, and the hazard is invisible in review: it only bites locally.
+///
+/// That is not hypothetical. Two tests shipped exactly this bug — one typed a
+/// literal `x` into the focused window, another pressed a real Cmd+Q and quit
+/// the focused app — and both read as passing. This interlock makes the class
+/// unreachable by construction rather than by review habit.
+///
+/// Opt a deliberate injection test back in with
+/// `CONDUCTOR_ALLOW_TEST_INPUT_INJECTION=1`.
+fn refuse_injection_under_test() -> Result<(), DispatchError> {
+    injection_decision(
+        UNDER_UNIT_TEST || std::env::var_os(TEST_HARNESS_ENV).is_some(),
+        std::env::var_os(ALLOW_TEST_INJECTION_ENV).is_some(),
+    )
+}
+
+/// Pure decision half of [`refuse_injection_under_test`], split out so the
+/// policy can be tested exhaustively without mutating process environment
+/// (`set_var` is `unsafe` in edition 2024 and races other threads).
+fn injection_decision(under_test: bool, explicitly_allowed: bool) -> Result<(), DispatchError> {
+    if !under_test || explicitly_allowed {
+        return Ok(());
+    }
+    Err(DispatchError::OsAutomation(format!(
+        "input injection refused: running under a test harness. enigo would \
+         type/click into the focused window on the developer's machine. If this \
+         test genuinely means to inject, set {ALLOW_TEST_INJECTION_ENV}=1 and \
+         mark it #[ignore]."
+    )))
+}
+
 impl ActionExecutor {
     /// Lazily initialize and return a mutable reference to Enigo
     ///
     /// Enigo requires accessibility permissions on macOS. By deferring
     /// initialization until first use, we allow constructing an ActionExecutor
     /// without those permissions (useful for tests that only exercise MIDI/OSC).
+    ///
+    /// Refuses outright under a test harness — see
+    /// [`refuse_injection_under_test`].
     pub(crate) fn get_enigo(&mut self) -> Result<&mut Enigo, DispatchError> {
+        refuse_injection_under_test()?;
         if self.enigo.is_none() {
             self.enigo = Some(
                 Enigo::new(&Settings::default())
@@ -218,6 +274,51 @@ mod tests {
 
     fn empty_executor() -> ActionExecutor {
         ActionExecutor::new(Arc::new(ArcSwap::from_pointee(HashMap::new())))
+    }
+
+    #[test]
+    fn injection_decision_truth_table() {
+        // Production (not under any harness) must be unaffected — the interlock
+        // must never change real behaviour for real users.
+        assert!(
+            injection_decision(false, false).is_ok(),
+            "production must inject"
+        );
+        assert!(
+            injection_decision(false, true).is_ok(),
+            "production must inject"
+        );
+        // Under a harness: refused unless explicitly opted in. This arm is what
+        // covers integration tests in tests/, which link the library without
+        // cfg(test) and so rely on CONDUCTOR_TEST_HARNESS.
+        assert!(
+            injection_decision(true, false).is_err(),
+            "a test harness must NOT be able to inject by default",
+        );
+        assert!(
+            injection_decision(true, true).is_ok(),
+            "explicit opt-in must still work for deliberate injection tests",
+        );
+    }
+
+    #[test]
+    fn injector_is_unreachable_under_test_harness() {
+        // The interlock is the only thing standing between a careless test and
+        // the developer's focused window. Assert it actually holds, so the
+        // guarantee cannot rot silently.
+        let mut e = empty_executor();
+        match e.get_enigo() {
+            Err(DispatchError::OsAutomation(msg)) => assert!(
+                msg.contains("input injection refused"),
+                "expected the interlock refusal; got {msg:?}",
+            ),
+            Ok(_) => panic!(
+                "get_enigo MUST refuse under a test harness — without this, a \
+                 test that reaches it types into whatever window has focus on \
+                 the machine running the suite",
+            ),
+            Err(other) => panic!("expected the interlock refusal, got {other:?}"),
+        }
     }
 
     #[test]

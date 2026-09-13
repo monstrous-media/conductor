@@ -28,6 +28,11 @@ dev-build:
 dev-codesign:
 	./scripts/dev-codesign.sh
 
+# Integration tests under tests/ link the library compiled WITHOUT
+# cfg(test), so the input-injection interlock cannot see it is a test
+# harness. Declare it explicitly; see refuse_injection_under_test().
+export CONDUCTOR_TEST_HARNESS := 1
+
 test:
 	cargo test --workspace
 
