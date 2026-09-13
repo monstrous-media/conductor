@@ -80,10 +80,10 @@ Have this information ready:
 cargo run -p conductor-daemon --bin conductor --release
 
 # Visualize MIDI events
-cargo run -p conductor-daemon --bin midi_diagnostic 2
+cargo run -p conductor-daemon --features diagnostics --bin midi_diagnostic 2
 
 # Test LED functionality
-cargo run -p conductor-daemon --bin led_diagnostic
+cargo run -p conductor-daemon --features diagnostics --bin led_diagnostic
 
 # Check build information
 cargo --version
@@ -145,7 +145,7 @@ open -a "Audio MIDI Setup"  # macOS
 
 ```bash
 # Verify MIDI events are being received
-cargo run -p conductor-daemon --bin midi_diagnostic 2
+cargo run -p conductor-daemon --features diagnostics --bin midi_diagnostic 2
 ```
 
 **Solutions**:

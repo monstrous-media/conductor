@@ -154,7 +154,7 @@ message).
 An interactive CLI wraps the same simulator for manual exploration:
 
 ```bash
-cargo run -p conductor-daemon --bin midi_simulator
+cargo run -p conductor-daemon --features diagnostics --bin midi_simulator
 ```
 
 It supports `note`, `velocity`, `long`, `double`, `chord`, `encoder`,

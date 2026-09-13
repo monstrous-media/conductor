@@ -37,7 +37,7 @@ conductor/                     # root package — re-export-only compat layer
   behind the `plugin-signing` feature), `conductor-skills`,
   `conductor-state`, and a set of hardware-free diagnostic tools
   (`midi_diagnostic`, `led_diagnostic`, `led_tester`, `pad_mapper`,
-  `test_midi`, `midi_simulator`).
+  `test_midi`, `midi_simulator`), behind the `diagnostics` feature.
 - **`conductor-capture`** is a separate, early-stage tool ("many features
   are stubbed out", per its own module doc) that records MIDI/gamepad input
   patterns under configurable privacy levels. It has no external consumers

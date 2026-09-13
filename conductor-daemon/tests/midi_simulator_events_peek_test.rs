@@ -8,6 +8,8 @@
 //! non-destructive until `clear`. The simulator is in-memory, so no MIDI
 //! hardware is required (CI-safe).
 
+#![cfg(feature = "diagnostics")]
+
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
