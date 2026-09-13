@@ -1,0 +1,87 @@
+# Auto-regenerate license attribution on dependabot branches.
+#
+# Every cargo bump changes the distributed dependency graph, so the
+# license-inventory drift gate (security.yml) fails every dependabot PR
+# until someone pushes a `just licenses` commit. This workflow does that
+# push automatically.
+#
+# Why a deploy key and not GITHUB_TOKEN: pushes made with GITHUB_TOKEN do
+# not trigger workflow runs, so the regen commit would sit with every
+# required check stuck on "Expected" and the PR could never merge. A
+# push over a write deploy key DOES re-trigger CI. Provisioning (one-off,
+# repo admin):
+#
+#   ssh-keygen -t ed25519 -N '' -C license-regen -f license-regen-key
+#   gh repo deploy-key add license-regen-key.pub --title license-regen --allow-write
+#   gh secret set LICENSE_REGEN_DEPLOY_KEY --app dependabot < license-regen-key
+#   rm license-regen-key license-regen-key.pub
+#
+# The secret goes in the DEPENDABOT secrets store: runs whose actor is
+# dependabot[bot] read from there, not the regular Actions store. Until
+# the secret exists the job no-ops with a notice and the manual
+# `just licenses` flow still works.
+
+name: License regen
+
+on:
+  push:
+    branches:
+      - "dependabot/**"
+
+permissions:
+  contents: read # pushes go over the deploy key, not GITHUB_TOKEN
+
+concurrency:
+  group: license-regen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regen:
+    name: regen attribution on dependabot branch
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      # secrets.* cannot appear in `if:` — surface availability as an output
+      # (same guard pattern as release.yml's Apple-secrets step).
+      - name: Detect deploy key
+        id: key
+        env:
+          HAS_KEY: ${{ secrets.LICENSE_REGEN_DEPLOY_KEY != '' }}
+        run: echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Explain skip
+        if: steps.key.outputs.has_key != 'true'
+        run: |
+          echo "::notice::LICENSE_REGEN_DEPLOY_KEY is not set (dependabot secrets store) — skipping license regen. Run 'just licenses' and push manually if the license-inventory gate fails. Provisioning steps are in .github/workflows/license-regen.yml."
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.key.outputs.has_key == 'true'
+        with:
+          ssh-key: ${{ secrets.LICENSE_REGEN_DEPLOY_KEY }}
+
+      - uses: ./.github/actions/rust-toolchain
+        if: steps.key.outputs.has_key == 'true'
+
+      # Same pinned version the drift gate installs — the regen must be
+      # byte-identical to what security.yml's license-inventory job diffs.
+      - name: Install cargo-license (pinned)
+        if: steps.key.outputs.has_key == 'true'
+        run: cargo install cargo-license --version 0.7.0 --locked
+
+      - name: Regenerate attribution files
+        if: steps.key.outputs.has_key == 'true'
+        run: ./scripts/gen-third-party-licenses.sh
+
+      - name: Commit and push if changed
+        if: steps.key.outputs.has_key == 'true'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- NOTICE THIRD_PARTY_LICENSES.md; then
+            echo "Attribution files already current — nothing to push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add NOTICE THIRD_PARTY_LICENSES.md
+          git commit -s -m "chore: regenerate license attribution for dependency bump"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
