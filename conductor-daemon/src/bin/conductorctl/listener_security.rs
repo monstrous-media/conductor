@@ -6,7 +6,6 @@
 use super::*;
 
 /// `~/.conductor/network_approvals.json` — the HMAC-signed approval registry.
-#[cfg(unix)]
 pub(crate) fn approval_registry_path() -> Result<PathBuf> {
     Ok(dirs::home_dir()
         .context("Could not determine home directory")?
@@ -15,7 +14,6 @@ pub(crate) fn approval_registry_path() -> Result<PathBuf> {
 }
 
 /// Load the daemon config used to resolve a listener's host/port/ACL by alias.
-#[cfg(unix)]
 pub(crate) fn load_listener_config(config: &Option<PathBuf>) -> Result<Config> {
     let path = match config {
         Some(p) => p.clone(),
@@ -29,14 +27,12 @@ pub(crate) fn load_listener_config(config: &Option<PathBuf>) -> Result<Config> {
 }
 
 /// Resolve the network-approval HMAC key from the OS keychain.
-#[cfg(unix)]
 pub(crate) fn approval_key() -> Result<conductor_core::security::keychain::HmacKey> {
     let kc = select_keychain().map_err(|e| anyhow!("keychain unavailable: {e}"))?;
     kc.get_or_create_hmac_key()
         .map_err(|e| anyhow!("keychain key: {e}"))
 }
 
-#[cfg(unix)]
 pub(crate) fn handle_listener_list(
     config: &Option<PathBuf>,
     json: bool,
@@ -104,7 +100,6 @@ pub(crate) fn handle_listener_list(
     Ok(())
 }
 
-#[cfg(unix)]
 pub(crate) fn handle_listener_approve(
     alias: &str,
     config: &Option<PathBuf>,
@@ -139,7 +134,6 @@ pub(crate) fn handle_listener_approve(
     Ok(())
 }
 
-#[cfg(unix)]
 pub(crate) fn handle_listener_deny(
     alias: &str,
     config: &Option<PathBuf>,
@@ -164,7 +158,6 @@ pub(crate) fn handle_listener_deny(
     Ok(())
 }
 
-#[cfg(unix)]
 pub(crate) fn handle_security_status(json: bool) -> Result<()> {
     let kc = select_keychain().map_err(|e| anyhow!("keychain unavailable: {e}"))?;
     // Report-only: never the init hard-fail; show the level even if hard-expired.
@@ -225,7 +218,6 @@ pub(crate) fn handle_security_status(json: bool) -> Result<()> {
     Ok(())
 }
 
-#[cfg(unix)]
 pub(crate) fn handle_security_rotate_hmac(json: bool) -> Result<()> {
     let kc = select_keychain().map_err(|e| anyhow!("keychain unavailable: {e}"))?;
     let path = approval_registry_path()?;
