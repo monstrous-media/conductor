@@ -77,6 +77,23 @@ removed. Express mode-dependent passthrough as a mode-scoped route.)
 - Binding setup or input-side discovery (delegate to `conductor-binding-setup`)
 - OS-level driver installation (out of scope)
 
+## Tool Availability (open-source builds)
+
+The default open-source daemon compiles **only ReadOnly inspection tools**
+into its MCP catalog (ADR-045): every inspection tool above
+(`conductor_get_routing_graph`, `conductor_get_resolved_routing_graph`,
+`conductor_get_connector_metrics`, `conductor_explain_route_match`,
+`conductor_get_dispatch_trace`) is always available, but the mutating tools
+(`conductor_create_endpoint`, `conductor_batch_changes`, plan apply) are
+present only when the daemon was built from source with the `mcp-write`
+feature, or when operating inside Conductor Studio (whose bundled daemon
+exposes the write tier over its private GUI IPC, never on the MCP socket).
+
+When the mutating tools are absent, author the same `[[endpoints]]` /
+`[[routes]]` TOML directly in the daemon's config, run
+`conductorctl validate`, then `conductorctl reload`. The full schema is in
+`docs/reference/config-schema.md`.
+
 ## Decision Framework
 
 Walk through these six questions in order. The answers map directly onto a

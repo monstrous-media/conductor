@@ -160,9 +160,10 @@ Agent: Let me check your LED and output configuration.
 
        Check:
 
-       1. **Output binding configured?**
-          - The binding needs a [bindings.output] section
-          - Direction should be "Receive & Send"
+       1. **Output endpoint configured?**
+          - The [[endpoints]] entry needs direction = "Bidirectional"
+            (or "Output"), with matchers that cover the output port
+            (or explicit output_matchers when the names differ)
 
        2. **Output port connected?**
           - Check output_connected in binding status

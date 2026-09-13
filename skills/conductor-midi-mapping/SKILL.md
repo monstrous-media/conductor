@@ -41,6 +41,25 @@ language descriptions into precise trigger/action configurations.
 3. **Never send raw SysEx without explicit user confirmation** - Can brick hardware
 4. **Never execute shell commands from user input without sanitization**
 
+## Tool Availability (open-source builds)
+
+The default open-source daemon compiles **only ReadOnly inspection tools**
+into its MCP catalog (ADR-045) — `tools/list` reflects exactly what is
+available. The mutating tools this skill references
+(`conductor_create_mapping`, `conductor_update_mapping`,
+`conductor_delete_mapping`, `conductor_batch_changes`, plan apply) are
+present only when:
+
+- the daemon was built from source with the `mcp-write` feature, or
+- you are operating inside Conductor Studio, whose bundled daemon exposes
+  the write tier over its private GUI IPC (never on the MCP socket).
+
+When the mutating tools are absent, fall back to config-file authoring:
+write the same `[[modes.mappings]]` TOML the tool call would have produced
+into the daemon's config, run `conductorctl validate`, then
+`conductorctl reload`. The full schema is in
+`docs/reference/config-schema.md`.
+
 ## Core Mental Model
 
 MIDI mappings are **routing rules** with optional **transforms**. Think of them as:
@@ -165,7 +184,7 @@ Passthrough is a **route**, not a trigger. A `[[routes]]` entry forwards every M
 - **Routes run AFTER mappings (post-mapping).** A specific mapping that matches an event consumes it; the event only reaches the route stage if no mapping claimed it. So "forward everything except note 36, which switches modes" = a `Note 36` ModeChange mapping PLUS a catch-all route — the mapping wins for note 36, the route forwards the rest. There is no pre-mapping escape hatch (ADR-036 Phase 3 removed `phase`).
 - **Routes fan out — no tiebreaker.** Every route whose `from` matches and whose `modes` scope is eligible fires; if two routes from the same source overlap, BOTH forward.
 - **Scope with `modes` when the user means "only in mode X".** Omit `modes` for an all-modes (global) passthrough.
-- **`from` / `to` are endpoint aliases** — each must match a `[[bindings]]` or `[[connectors]]` entry, or the route is rejected at load.
+- **`from` / `to` are endpoint aliases** — each must match an `[[endpoints]]` entry, or the route is rejected at load.
 
 ### Action Types
 

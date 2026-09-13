@@ -38,6 +38,17 @@ button IDs, and controller behavior.
 
 ## Source Identification
 
+## Tool Availability (open-source builds)
+
+The Learn-session tools (`conductor_start_midi_learn`,
+`conductor_stop_midi_learn`) are write-tier: the default open-source
+daemon's MCP catalog carries **only ReadOnly inspection tools** (ADR-045),
+so they are present only on a source build with the `mcp-write` feature or
+inside Conductor Studio (whose bundled daemon exposes them over its private
+GUI IPC). Without them, discover note/CC numbers with the
+`midi_diagnostic` bin (`cargo run -p conductor-daemon --features
+diagnostics --bin midi_diagnostic`) and author the mapping TOML directly.
+
 Before starting Learn mode, identify which binding to capture from:
 
 ```

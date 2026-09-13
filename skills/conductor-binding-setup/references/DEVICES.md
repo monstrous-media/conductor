@@ -24,7 +24,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - LEDs controlled via SysEx (not currently supported)
 - Supports aftertouch
 
-**Template:** `mikro-mk3-basic.toml`
 
 ---
 
@@ -39,7 +38,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - 8 knobs (CC 16-23)
 - Screen buttons (notes 60-75)
 
-**Template:** `maschine-plus.toml`
 
 ---
 
@@ -60,7 +58,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - Programmer mode provides direct note access
 - LED colors via note velocity (0=off, 1-127=colors)
 
-**Template:** `launchpad-mini.toml`
 
 ---
 
@@ -79,7 +76,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - More velocity sensitivity than Mini
 - Pressure-sensitive (polyphonic aftertouch)
 
-**Template:** `launchpad-x.toml`
 
 ---
 
@@ -98,7 +94,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - Great for mixing/fader control
 - All controls send CC (no notes from knobs)
 
-**Template:** `launch-control-xl.toml`
 
 ---
 
@@ -119,7 +114,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - Clip launch grid layout
 - LED colors via note velocity
 
-**Template:** `apc-mini-mk2.toml`
 
 ---
 
@@ -138,7 +132,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - Keys and pads are velocity-sensitive
 - Multiple banks available
 
-**Template:** `mpk-mini-mk3.toml`
 
 ---
 
@@ -160,7 +153,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - Multiple scene presets
 - Highly configurable via KORG software
 
-**Template:** `nanokontrol2.toml`
 
 ---
 
@@ -178,7 +170,6 @@ Comprehensive list of supported input devices and their configuration notes.
 - XY pad sends two CC values
 - Scene button changes pad mappings
 
-**Template:** `nanopad2.toml`
 
 ---
 
@@ -220,7 +211,6 @@ Comprehensive list of supported input devices and their configuration notes.
 | Left Trigger | 132 | 0.0 to 1.0 |
 | Right Trigger | 133 | 0.0 to 1.0 |
 
-**Template:** `xbox-controller.toml`
 
 ---
 
@@ -268,7 +258,6 @@ Same as standard Xbox controller plus:
 - Adaptive triggers: Not exposed via SDL2
 - Haptics: Not exposed via SDL2
 
-**Template:** `ps5-dualsense.toml`
 
 ---
 
@@ -280,7 +269,6 @@ Similar to DualSense, slight differences in detection name.
 - USB or Bluetooth
 - Detected as: "PS4 Controller" or "DualShock 4"
 
-**Template:** `ps4-dualshock.toml`
 
 ---
 
@@ -314,7 +302,6 @@ Similar to DualSense, slight differences in detection name.
 - Button labels are swapped compared to Xbox (A/B, X/Y)
 - No analog triggers (ZL/ZR are digital)
 
-**Template:** `switch-pro.toml`
 
 ---
 
@@ -363,4 +350,4 @@ If your device isn't listed:
    - May need to add mapping for exotic controllers
 
 4. **Submit device info** to Conductor project
-   - Help us add templates for more devices!
+   - Help us add configuration notes for more devices!
