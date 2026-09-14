@@ -9,7 +9,7 @@ from the workspace dependency graph (`cargo license --all-features
 --avoid-dev-deps`). Dev/test-only dependencies are excluded. All listed
 licenses are OSI-approved and compatible with Conductor's MIT license.
 
-Total third-party crates: 454
+Total third-party crates: 448
 
 ## License summary
 
@@ -25,7 +25,7 @@ Total third-party crates: 454
 - Apache-2.0 OR ISC OR MIT: 3
 - Apache-2.0 OR LGPL-2.1-or-later OR MIT: 2
 - Apache-2.0 OR MIT OR Zlib: 6
-- Apache-2.0 OR MIT: 269
+- Apache-2.0 OR MIT: 263
 - Apache-2.0 WITH LLVM-exception: 37
 - Apache-2.0: 3
 - BSD-3-Clause OR GPL-2.0: 2
@@ -59,7 +59,6 @@ Total third-party crates: 454
 | aws-lc-rs | 1.17.0 | (Apache-2.0 OR ISC) AND ISC |
 | aws-lc-sys | 0.41.0 | (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) AND (Apache-2.0 OR ISC) AND Apache-2.0 AND BSD-3-Clause AND ISC AND MIT |
 | base64 | 0.22.1 | Apache-2.0 OR MIT |
-| base64ct | 1.8.0 | Apache-2.0 OR MIT |
 | bitflags | 2.11.1 | Apache-2.0 OR MIT |
 | block-buffer | 0.10.4 | Apache-2.0 OR MIT |
 | block-buffer | 0.12.1 | Apache-2.0 OR MIT |
@@ -82,7 +81,6 @@ Total third-party crates: 454
 | cobs | 0.3.0 | Apache-2.0 OR MIT |
 | combine | 4.6.7 | MIT |
 | const-oid | 0.10.2 | Apache-2.0 OR MIT |
-| const-oid | 0.9.6 | Apache-2.0 OR MIT |
 | core-foundation | 0.10.1 | Apache-2.0 OR MIT |
 | core-foundation | 0.9.4 | Apache-2.0 OR MIT |
 | core-foundation-sys | 0.8.7 | Apache-2.0 OR MIT |
@@ -112,11 +110,10 @@ Total third-party crates: 454
 | crypto-common | 0.1.7 | Apache-2.0 OR MIT |
 | crypto-common | 0.2.2 | Apache-2.0 OR MIT |
 | ctutils | 0.4.2 | Apache-2.0 OR MIT |
-| curve25519-dalek | 4.1.3 | BSD-3-Clause |
+| curve25519-dalek | 5.0.0 | BSD-3-Clause |
 | curve25519-dalek-derive | 0.1.1 | Apache-2.0 OR MIT |
 | dashmap | 6.2.1 | MIT |
 | debugid | 0.8.0 | Apache-2.0 |
-| der | 0.7.10 | Apache-2.0 OR MIT |
 | deranged | 0.5.5 | Apache-2.0 OR MIT |
 | digest | 0.10.7 | Apache-2.0 OR MIT |
 | digest | 0.11.3 | Apache-2.0 OR MIT |
@@ -127,8 +124,8 @@ Total third-party crates: 454
 | dispatch2 | 0.3.0 | Apache-2.0 OR MIT OR Zlib |
 | displaydoc | 0.2.5 | Apache-2.0 OR MIT |
 | dunce | 1.0.5 | Apache-2.0 OR CC0-1.0 OR MIT-0 |
-| ed25519 | 2.2.3 | Apache-2.0 OR MIT |
-| ed25519-dalek | 2.2.0 | BSD-3-Clause |
+| ed25519 | 3.0.0 | Apache-2.0 OR MIT |
+| ed25519-dalek | 3.0.0 | BSD-3-Clause |
 | either | 1.15.0 | Apache-2.0 OR MIT |
 | embedded-io | 0.4.0 | Apache-2.0 OR MIT |
 | embedded-io | 0.6.1 | Apache-2.0 OR MIT |
@@ -136,7 +133,7 @@ Total third-party crates: 454
 | equivalent | 1.0.2 | Apache-2.0 OR MIT |
 | errno | 0.3.14 | Apache-2.0 OR MIT |
 | fastrand | 2.3.0 | Apache-2.0 OR MIT |
-| fiat-crypto | 0.2.9 | Apache-2.0 OR BSD-1-Clause OR MIT |
+| fiat-crypto | 0.3.0 | Apache-2.0 OR BSD-1-Clause OR MIT |
 | find-msvc-tools | 0.1.9 | Apache-2.0 OR MIT |
 | fixedbitset | 0.4.2 | Apache-2.0 OR MIT |
 | fnv | 1.0.7 | Apache-2.0 OR MIT |
@@ -257,7 +254,6 @@ Total third-party crates: 454
 | petgraph | 0.6.5 | Apache-2.0 OR MIT |
 | pin-project-lite | 0.2.16 | Apache-2.0 OR MIT |
 | pin-utils | 0.1.0 | Apache-2.0 OR MIT |
-| pkcs8 | 0.10.2 | Apache-2.0 OR MIT |
 | pkg-config | 0.3.32 | Apache-2.0 OR MIT |
 | postcard | 1.1.3 | Apache-2.0 OR MIT |
 | potential_utf | 0.1.4 | Unicode-3.0 |
@@ -277,7 +273,6 @@ Total third-party crates: 454
 | rand | 0.9.3 | Apache-2.0 OR MIT |
 | rand_chacha | 0.9.0 | Apache-2.0 OR MIT |
 | rand_core | 0.10.1 | Apache-2.0 OR MIT |
-| rand_core | 0.6.4 | Apache-2.0 OR MIT |
 | rand_core | 0.9.3 | Apache-2.0 OR MIT |
 | rayon | 1.11.0 | Apache-2.0 OR MIT |
 | rayon-core | 1.13.0 | Apache-2.0 OR MIT |
@@ -320,13 +315,12 @@ Total third-party crates: 454
 | sharded-slab | 0.1.7 | MIT |
 | shlex | 2.0.1 | Apache-2.0 OR MIT |
 | signal-hook-registry | 1.4.6 | Apache-2.0 OR MIT |
-| signature | 2.2.0 | Apache-2.0 OR MIT |
+| signature | 3.0.0 | Apache-2.0 OR MIT |
 | simd_cesu8 | 1.1.1 | Apache-2.0 OR MIT |
 | simdutf8 | 0.1.5 | Apache-2.0 OR MIT |
 | slab | 0.4.11 | MIT |
 | smallvec | 1.15.1 | Apache-2.0 OR MIT |
 | socket2 | 0.6.4 | Apache-2.0 OR MIT |
-| spki | 0.7.3 | Apache-2.0 OR MIT |
 | stable_deref_trait | 1.2.1 | Apache-2.0 OR MIT |
 | strum | 0.24.1 | MIT |
 | strum_macros | 0.24.3 | MIT |
