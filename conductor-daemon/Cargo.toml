@@ -172,7 +172,7 @@ rand_core = { workspace = true, optional = true }  # OsRng for ed25519-dalek key
 # unmaintained GTK3 binding tree (cargo-deny errors) out of the graph —
 # the Linux daemon is headless.
 tray-icon = "0.23"
-cocoa = "0.26"
+cocoa = "0.27"
 objc = "0.2"
 # ADR-027 D1 (3/N): peer trust classification via Security.framework
 # (SecCode / SecCodeCopySigningInformation for Apple Team ID extraction).
