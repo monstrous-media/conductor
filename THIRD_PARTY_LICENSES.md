@@ -9,7 +9,7 @@ from the workspace dependency graph (`cargo license --all-features
 --avoid-dev-deps`). Dev/test-only dependencies are excluded. All listed
 licenses are OSI-approved and compatible with Conductor's MIT license.
 
-Total third-party crates: 454
+Total third-party crates: 455
 
 ## License summary
 
@@ -25,7 +25,7 @@ Total third-party crates: 454
 - Apache-2.0 OR ISC OR MIT: 3
 - Apache-2.0 OR LGPL-2.1-or-later OR MIT: 2
 - Apache-2.0 OR MIT OR Zlib: 6
-- Apache-2.0 OR MIT: 269
+- Apache-2.0 OR MIT: 270
 - Apache-2.0 WITH LLVM-exception: 37
 - Apache-2.0: 3
 - BSD-3-Clause OR GPL-2.0: 2
@@ -59,6 +59,7 @@ Total third-party crates: 454
 | aws-lc-rs | 1.17.0 | (Apache-2.0 OR ISC) AND ISC |
 | aws-lc-sys | 0.41.0 | (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) AND (Apache-2.0 OR ISC) AND Apache-2.0 AND BSD-3-Clause AND ISC AND MIT |
 | base64 | 0.22.1 | Apache-2.0 OR MIT |
+| base64 | 0.23.1 | Apache-2.0 OR MIT |
 | base64ct | 1.8.0 | Apache-2.0 OR MIT |
 | bitflags | 2.11.1 | Apache-2.0 OR MIT |
 | block-buffer | 0.10.4 | Apache-2.0 OR MIT |
@@ -105,7 +106,7 @@ Total third-party crates: 454
 | cranelift-native | 0.135.1 | Apache-2.0 WITH LLVM-exception |
 | cranelift-srcgen | 0.135.1 | Apache-2.0 WITH LLVM-exception |
 | crc32fast | 1.5.0 | Apache-2.0 OR MIT |
-| crossbeam-channel | 0.5.16 | Apache-2.0 OR MIT |
+| crossbeam-channel | 0.5.17 | Apache-2.0 OR MIT |
 | crossbeam-deque | 0.8.6 | Apache-2.0 OR MIT |
 | crossbeam-epoch | 0.9.20 | Apache-2.0 OR MIT |
 | crossbeam-utils | 0.8.21 | Apache-2.0 OR MIT |
@@ -189,13 +190,13 @@ Total third-party crates: 454
 | id-arena | 2.3.0 | Apache-2.0 OR MIT |
 | idna | 1.1.0 | Apache-2.0 OR MIT |
 | idna_adapter | 1.2.1 | Apache-2.0 OR MIT |
-| indexmap | 2.14.1 | Apache-2.0 OR MIT |
+| indexmap | 2.14.2 | Apache-2.0 OR MIT |
 | inotify | 0.11.1 | ISC |
 | inotify-sys | 0.1.5 | ISC |
 | io-extras | 0.19.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | io-lifetimes | 2.0.4 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | io-lifetimes | 3.0.1 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
-| ipnet | 2.12.1 | Apache-2.0 OR MIT |
+| ipnet | 2.12.2 | Apache-2.0 OR MIT |
 | itertools | 0.14.0 | Apache-2.0 OR MIT |
 | itoa | 1.0.15 | Apache-2.0 OR MIT |
 | ittapi | 0.4.0 | BSD-3-Clause OR GPL-2.0 |
@@ -288,7 +289,7 @@ Total third-party crates: 454
 | regex | 1.13.1 | Apache-2.0 OR MIT |
 | regex-automata | 0.4.18 | Apache-2.0 OR MIT |
 | regex-syntax | 0.8.11 | Apache-2.0 OR MIT |
-| reqwest | 0.13.4 | Apache-2.0 OR MIT |
+| reqwest | 0.13.5 | Apache-2.0 OR MIT |
 | ring | 0.17.14 | Apache-2.0 AND ISC |
 | rosc | 0.11.4 | Apache-2.0 OR MIT |
 | rustc-demangle | 0.1.26 | Apache-2.0 OR MIT |
@@ -381,7 +382,7 @@ Total third-party crates: 454
 | untrusted | 0.9.0 | ISC |
 | url | 2.5.7 | Apache-2.0 OR MIT |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT |
-| uuid | 1.26.0 | Apache-2.0 OR MIT |
+| uuid | 1.26.1 | Apache-2.0 OR MIT |
 | valuable | 0.1.1 | MIT |
 | vec_map | 0.8.2 | Apache-2.0 OR MIT |
 | version_check | 0.9.5 | Apache-2.0 OR MIT |
