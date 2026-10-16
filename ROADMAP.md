@@ -77,7 +77,7 @@ side.
 ## Release cadence
 
 - Minor releases every 4–6 weeks; patches as needed
-- Every release: checksummed artifacts, CHANGELOG entry, release notes
+- Every release: signed artifacts, CHANGELOG entry, release notes
 
 ---
 
