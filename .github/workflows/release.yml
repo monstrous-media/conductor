@@ -61,7 +61,11 @@ jobs:
             sudo mv conductor /usr/local/bin/
             ```
 
-            macOS builds are Developer ID signed and notarized.
+            macOS binaries in these archives are unsigned. Gatekeeper will
+            quarantine the download — clear it with
+            `xattr -d com.apple.quarantine conductor` after extracting, or
+            build from source (`cargo install conductor-daemon`). Verify the
+            download against the `.sha256` file published alongside it.
 
             See [README.md](https://github.com/monstrous-media/conductor#installation).
           draft: false
