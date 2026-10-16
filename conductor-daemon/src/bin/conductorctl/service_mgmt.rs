@@ -257,8 +257,7 @@ pub(crate) fn generate_plist(binary_path: &Path) -> Result<String> {
         // Crate-relative (3 ups = crate root), NOT workspace-relative: a path
         // through the workspace root resolves in a checkout but not inside the
         // packaged crate tarball, where `cargo publish` verifies the build.
-        include_str!("../../../launchd/media.monstrous.conductor.plist")
-            .to_string()
+        include_str!("../../../launchd/media.monstrous.conductor.plist").to_string()
     };
 
     // Replace placeholders
