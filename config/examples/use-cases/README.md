@@ -6,6 +6,7 @@ Ready-to-use Conductor profiles behind the demos on <https://getconductor.app/us
 |---|---|---|
 | `producer.maschine-mikro.toml` | Maschine Mikro MK3 | DAW transport, record-arm on a hard hit, output volume on the encoder, Edit/Mixdown modes |
 | `streamer.apc-mini.toml` | Akai APC mini mk2 | OBS scene hotkeys, `afplay` soundboard, desktop volume on fader 9, long-press "stop streaming" |
+| `performer.launchpad-pro.toml` | Launchpad Pro [MK3] | Live set: Intro/Verse/Chorus modes on the side buttons, pads forwarded into the DAW per section with velocity intact, long-press filter open (CC 74) |
 | `developer.launchpad-mini.toml` | Launchpad Mini [MK3] | git/test commands typed into the terminal, command palette, sandboxed deploy gated to Mon–Thu behind a 3 s hold |
 | `gamer.gamepad.toml` | Any SDL gamepad | Launch apps, app switcher chord, keyboard-free focus navigation, mute toggle |
 | `claude-code.launchpad-mini.toml` | Launchpad Mini [MK3] | Claude Code: approve/deny (terminal-focus guarded), permission-mode cycling, slash commands, `/clear` behind a long-press |

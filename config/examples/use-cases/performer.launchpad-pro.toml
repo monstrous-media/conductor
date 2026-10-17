@@ -1,0 +1,392 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Conductor template: Live performance on a Novation Launchpad Pro [MK3]
+# https://getconductor.app/use-cases  ·  MIT — copy, fork, share
+#
+# A second controller for a live set. Three modes, one per song section
+# (Intro / Verse / Chorus), picked with the right-hand side buttons. In each
+# mode the bottom row of pads is forwarded into your DAW on that section's
+# MIDI channel with your playing velocity intact, so each section can drive a
+# different instrument or drum rack. A long-press on the top-right pad opens
+# the filter (CC 74 → 127).
+#
+# Setup
+#   1. macOS: Audio MIDI Setup → IAC Driver → "Device is online" (bus 1).
+#   2. In your DAW, enable "IAC Driver Bus 1" as a MIDI input and set three
+#      tracks to listen on channels 1, 2 and 3.
+#   3. Launchpad Pro in Programmer mode: pads send notes 11–88 (bottom row
+#      11–18), right-hand side buttons send CC 19, 29, 39 … 89.
+#   4. Save as ~/.config/conductor/profiles/live.toml, then
+#      conductorctl profile validate … && conductorctl profile switch live
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[endpoints]]
+alias = "lppro"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Launchpad Pro" }]
+
+[[endpoints]]
+alias = "iac"
+direction = "Output"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "IAC Driver Bus 1" }]
+
+[led]
+scheme = "reactive"
+
+# ========== Intro (MIDI channel 1) ==========
+[[modes]]
+name = "Intro"
+color = "blue"
+
+[[modes.mappings]]
+description = "Pad 1 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 11
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Pad 2 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 12
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Pad 3 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 13
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Pad 4 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 14
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Pad 5 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 15
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Pad 6 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 16
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Pad 7 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 17
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Pad 8 · forward to the DAW on channel 1, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 18
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 0 }
+
+[[modes.mappings]]
+description = "Side button · switch to Verse"
+[modes.mappings.trigger]
+type = "CC"
+cc = 29
+value_min = 1
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Verse"
+
+[[modes.mappings]]
+description = "Side button · switch to Chorus"
+[modes.mappings.trigger]
+type = "CC"
+cc = 39
+value_min = 1
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Chorus"
+
+[[modes.mappings]]
+description = "Top-right pad (long-press 600ms) · open the filter: CC 74 → 127"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 88
+duration_ms = 600
+[modes.mappings.action]
+type = "SendMidi"
+port = "IAC Driver Bus 1"
+message_type = "CC"
+channel = 0
+controller = 74
+value = 127
+
+# ========== Verse (MIDI channel 2) ==========
+[[modes]]
+name = "Verse"
+color = "green"
+
+[[modes.mappings]]
+description = "Pad 1 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 11
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Pad 2 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 12
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Pad 3 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 13
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Pad 4 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 14
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Pad 5 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 15
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Pad 6 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 16
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Pad 7 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 17
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Pad 8 · forward to the DAW on channel 2, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 18
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 1 }
+
+[[modes.mappings]]
+description = "Side button · switch to Intro"
+[modes.mappings.trigger]
+type = "CC"
+cc = 19
+value_min = 1
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Intro"
+
+[[modes.mappings]]
+description = "Side button · switch to Chorus"
+[modes.mappings.trigger]
+type = "CC"
+cc = 39
+value_min = 1
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Chorus"
+
+[[modes.mappings]]
+description = "Top-right pad (long-press 600ms) · open the filter: CC 74 → 127"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 88
+duration_ms = 600
+[modes.mappings.action]
+type = "SendMidi"
+port = "IAC Driver Bus 1"
+message_type = "CC"
+channel = 1
+controller = 74
+value = 127
+
+# ========== Chorus (MIDI channel 3) ==========
+[[modes]]
+name = "Chorus"
+color = "red"
+
+[[modes.mappings]]
+description = "Pad 1 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 11
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Pad 2 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 12
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Pad 3 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 13
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Pad 4 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 14
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Pad 5 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 15
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Pad 6 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 16
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Pad 7 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 17
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Pad 8 · forward to the DAW on channel 3, velocity intact"
+[modes.mappings.trigger]
+type = "Note"
+note = 18
+[modes.mappings.action]
+type = "MidiForward"
+target = "iac"
+transform = { channel = 2 }
+
+[[modes.mappings]]
+description = "Side button · switch to Intro"
+[modes.mappings.trigger]
+type = "CC"
+cc = 19
+value_min = 1
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Intro"
+
+[[modes.mappings]]
+description = "Side button · switch to Verse"
+[modes.mappings.trigger]
+type = "CC"
+cc = 29
+value_min = 1
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Verse"
+
+[[modes.mappings]]
+description = "Top-right pad (long-press 600ms) · open the filter: CC 74 → 127"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 88
+duration_ms = 600
+[modes.mappings.action]
+type = "SendMidi"
+port = "IAC Driver Bus 1"
+message_type = "CC"
+channel = 2
+controller = 74
+value = 127
