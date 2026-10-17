@@ -1,0 +1,197 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Conductor template: Codex CLI on an Akai LPD8 mk2
+# https://getconductor.app/use-cases  ·  MIT — copy, fork, share
+#
+# The Codex Micro idea (a dedicated agent pad with a reasoning dial) on a pad
+# controller you may already own: approve / approve-for-session / decline,
+# interrupt, reasoning effort on a knob, voice on a pad, and /new behind a
+# long-press. Keys follow the Codex TUI defaults (codex-rs/tui keymap.rs):
+#   y approve · a approve for session · p approve prefix · d deny · Esc decline
+#   Esc interrupt · Shift+Up / Shift+Down reasoning effort · F8 voice
+# If you've remapped Codex's [tui.keymap], change the keys below to match.
+#
+# Not replicated: agent-status lights, and hold-to-talk (Conductor sends
+# keystrokes; F8 toggles voice on/off instead).
+#
+# Setup
+#   1. LPD8 mk2 factory program 1: pads send notes 36–43 (pad 1 = 36,
+#      bottom-left), knobs send CC 70–77. Different program? Run
+#      `conductorctl events` and press each pad to read its note.
+#   2. Save as ~/.config/conductor/profiles/codex.toml
+#   3. conductorctl profile validate ~/.config/conductor/profiles/codex.toml
+#   4. conductorctl profile switch codex
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[endpoints]]
+alias = "lpd8"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "LPD8" }]
+
+[[modes]]
+name = "Codex"
+color = "green"
+
+# ── Bottom row: approvals ───────────────────────────────────────────────────
+
+[[modes.mappings]]
+description = "Pad 1 · Approve once (y)"
+[modes.mappings.trigger]
+type = "Note"
+note = 36
+[modes.mappings.action]
+type = "Conditional"
+[modes.mappings.action.condition]
+type = "Or"
+conditions = [
+  { type = "AppFrontmost", app_name = "Terminal" },
+  { type = "AppFrontmost", app_name = "iTerm2" },
+  { type = "AppFrontmost", app_name = "Ghostty" },
+  { type = "AppFrontmost", app_name = "wezterm-gui" },
+  { type = "AppFrontmost", app_name = "Warp" },
+  { type = "AppFrontmost", app_name = "Code" },
+]
+[modes.mappings.action.then_action]
+type = "Keystroke"
+keys = "y"
+
+[[modes.mappings]]
+description = "Pad 2 · Approve for this session (a)"
+[modes.mappings.trigger]
+type = "Note"
+note = 37
+[modes.mappings.action]
+type = "Conditional"
+[modes.mappings.action.condition]
+type = "Or"
+conditions = [
+  { type = "AppFrontmost", app_name = "Terminal" },
+  { type = "AppFrontmost", app_name = "iTerm2" },
+  { type = "AppFrontmost", app_name = "Ghostty" },
+  { type = "AppFrontmost", app_name = "wezterm-gui" },
+  { type = "AppFrontmost", app_name = "Warp" },
+  { type = "AppFrontmost", app_name = "Code" },
+]
+[modes.mappings.action.then_action]
+type = "Keystroke"
+keys = "a"
+
+[[modes.mappings]]
+description = "Pad 3 · Decline and redirect / interrupt the turn (Esc)"
+[modes.mappings.trigger]
+type = "Note"
+note = 38
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Escape"
+
+[[modes.mappings]]
+description = "Pad 4 · Toggle voice input (F8)"
+[modes.mappings.trigger]
+type = "Note"
+note = 39
+[modes.mappings.action]
+type = "Keystroke"
+keys = "F8"
+
+# ── Top row: session ────────────────────────────────────────────────────────
+
+[[modes.mappings]]
+description = "Pad 5 · /plan"
+[modes.mappings.trigger]
+type = "Note"
+note = 40
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/plan" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 6 · /model picker"
+[modes.mappings.trigger]
+type = "Note"
+note = 41
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/model" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 7 · /status"
+[modes.mappings.trigger]
+type = "Note"
+note = 42
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/status" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 8 · /new — long-press 1.5s (starts a fresh conversation)"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 43
+duration_ms = 1500
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/new" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+# ── Knobs ───────────────────────────────────────────────────────────────────
+# The LPD8's knobs are absolute: every CC step fires once, so a big turn sends
+# several presses. Codex clamps reasoning effort at its min/max, so overshoot
+# is harmless — turn gently for one step.
+
+[[modes.mappings]]
+description = "Knob 1 right · More reasoning effort (Shift+Up)"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 70
+direction = "Clockwise"
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Up"
+modifiers = ["shift"]
+
+[[modes.mappings]]
+description = "Knob 1 left · Less reasoning effort (Shift+Down)"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 70
+direction = "CounterClockwise"
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Down"
+modifiers = ["shift"]
+
+[[modes.mappings]]
+description = "Knob 2 · Scroll the transcript (Page Up / Page Down)"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 71
+direction = "Clockwise"
+[modes.mappings.action]
+type = "Keystroke"
+keys = "PageDown"
+
+[[modes.mappings]]
+description = "Knob 2 left · Page Up"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 71
+direction = "CounterClockwise"
+[modes.mappings.action]
+type = "Keystroke"
+keys = "PageUp"
