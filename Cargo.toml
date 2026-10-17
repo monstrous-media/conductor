@@ -150,7 +150,7 @@ clap = { version = "4.6", features = ["derive", "cargo"] }
 
 # Testing
 proptest = "1.11"
-rstest = "0.26"
+rstest = "0.27"
 
 # Dev/test build memory: the default `debug = 2` (full debuginfo) makes the
 # macOS linker hold several GB in ONE process when linking a wasmtime-heavy test
