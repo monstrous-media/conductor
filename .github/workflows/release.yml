@@ -61,7 +61,9 @@ jobs:
             sudo mv conductor /usr/local/bin/
             ```
 
-            macOS builds are Developer ID signed and notarized.
+            macOS builds are Developer ID signed and notarized. Verify any
+            download against the `.sha256` file published alongside it, or
+            build from source (`cargo install conductor-daemon`).
 
             See [README.md](https://github.com/monstrous-media/conductor#installation).
           draft: false
@@ -286,6 +288,10 @@ jobs:
           mkdir -p staging
           cp target/${{ matrix.target }}/release/conductor staging/
           cp target/${{ matrix.target }}/release/conductorctl staging/ 2>/dev/null || true
+          # MIT requires the license text to travel with the binaries; NOTICE
+          # and the third-party inventory carry the dependency attribution
+          # (#80). The Homebrew formula installs these into share/doc.
+          cp LICENSE NOTICE THIRD_PARTY_LICENSES.md staging/
           cd staging
           tar czf ../conductor-daemon-${{ matrix.target }}.tar.gz *
           cd ..

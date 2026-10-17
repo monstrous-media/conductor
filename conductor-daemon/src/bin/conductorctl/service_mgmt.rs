@@ -254,8 +254,10 @@ pub(crate) fn generate_plist(binary_path: &Path) -> Result<String> {
         std::fs::read_to_string(&template_path).context("Failed to read plist template")?
     } else {
         // Embedded template
-        include_str!("../../../../conductor-daemon/launchd/media.monstrous.conductor.plist")
-            .to_string()
+        // Crate-relative (3 ups = crate root), NOT workspace-relative: a path
+        // through the workspace root resolves in a checkout but not inside the
+        // packaged crate tarball, where `cargo publish` verifies the build.
+        include_str!("../../../launchd/media.monstrous.conductor.plist").to_string()
     };
 
     // Replace placeholders
