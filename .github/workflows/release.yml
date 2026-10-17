@@ -288,6 +288,10 @@ jobs:
           mkdir -p staging
           cp target/${{ matrix.target }}/release/conductor staging/
           cp target/${{ matrix.target }}/release/conductorctl staging/ 2>/dev/null || true
+          # MIT requires the license text to travel with the binaries; NOTICE
+          # and the third-party inventory carry the dependency attribution
+          # (#80). The Homebrew formula installs these into share/doc.
+          cp LICENSE NOTICE THIRD_PARTY_LICENSES.md staging/
           cd staging
           tar czf ../conductor-daemon-${{ matrix.target }}.tar.gz *
           cd ..
