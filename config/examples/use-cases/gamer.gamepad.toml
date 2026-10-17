@@ -1,0 +1,95 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Conductor template: Desktop + accessibility on a gamepad
+# https://getconductor.app/use-cases  ·  MIT — copy, fork, share
+#
+# Any SDL-compatible pad (Xbox, PlayStation, Switch Pro, 8BitDo…). Launch
+# apps, switch windows, move focus and press buttons without a keyboard or
+# mouse, and mute your mic on the right trigger.
+#
+# Button IDs: 128 A/Cross · 129 B/Circle · 130 X/Square · 131 Y/Triangle
+#             132–135 D-pad up/down/left/right · 136 LB · 137 RB
+#             143 LT (digital) · 144 RT (digital)
+#
+# Setup: save as ~/.config/conductor/profiles/gamepad.toml, then
+#   conductorctl profile validate … && conductorctl profile switch gamepad
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[endpoints]]
+alias = "gamepad"
+direction = "Input"
+protocol = "Hid"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Controller" }]
+
+[advanced_settings]
+chord_timeout_ms = 80
+
+[[modes]]
+name = "Desk"
+color = "yellow"
+
+[[modes.mappings]]
+description = "A · Launch VS Code"
+[modes.mappings.trigger]
+type = "GamepadButton"
+button = 128
+[modes.mappings.action]
+type = "Launch"
+app = "Visual Studio Code"
+
+[[modes.mappings]]
+description = "LB + RB · App switcher (⌘Tab)"
+[modes.mappings.trigger]
+type = "GamepadButtonChord"
+buttons = [136, 137]
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Tab"
+modifiers = ["cmd"]
+
+[[modes.mappings]]
+description = "D-pad down · Next control (Tab)"
+[modes.mappings.trigger]
+type = "GamepadButton"
+button = 133
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Tab"
+
+[[modes.mappings]]
+description = "D-pad up · Previous control (Shift+Tab)"
+[modes.mappings.trigger]
+type = "GamepadButton"
+button = 132
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Tab"
+modifiers = ["shift"]
+
+[[modes.mappings]]
+description = "B · Press the focused control (Return)"
+[modes.mappings.trigger]
+type = "GamepadButton"
+button = 129
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Return"
+
+[[modes.mappings]]
+description = "Y · Close / cancel (Esc)"
+[modes.mappings.trigger]
+type = "GamepadButton"
+button = 131
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Escape"
+
+[[modes.mappings]]
+description = "RT · Toggle mic mute (⌘⇧M — Discord's default; change for Zoom/Meet/Teams)"
+[modes.mappings.trigger]
+type = "GamepadButton"
+button = 144
+[modes.mappings.action]
+type = "Keystroke"
+keys = "m"
+modifiers = ["cmd", "shift"]

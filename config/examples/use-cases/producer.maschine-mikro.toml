@@ -1,0 +1,154 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Conductor template: DAW transport on a Maschine Mikro MK3
+# https://getconductor.app/use-cases  ·  MIT — copy, fork, share
+#
+# Two modes. "Edit": transport, record-arm on a hard hit, output volume on the
+# encoder. Pads 1+2 together flip to "Mixdown" and back.
+# Shortcuts below are Logic Pro defaults; swap them for your DAW's.
+#
+# Setup
+#   1. Mikro MK3 in MIDI mode (Shift + Project): pads send notes 36–51,
+#      pad 1 = 36 (bottom-left), the encoder sends CC 1. Check yours with
+#      `conductorctl events`.
+#   2. Save as ~/.config/conductor/profiles/producer.toml
+#   3. conductorctl profile validate ~/.config/conductor/profiles/producer.toml
+#   4. conductorctl profile switch producer
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[endpoints]]
+alias = "mikro"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Mikro" }]
+
+[advanced_settings]
+chord_timeout_ms = 60
+
+[led]
+scheme = "reactive"
+
+# ========== Edit ==========
+[[modes]]
+name = "Edit"
+color = "blue"
+
+[[modes.mappings]]
+description = "Pad 1 · Play / stop (Space)"
+[modes.mappings.trigger]
+type = "Note"
+note = 36
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Space"
+
+[[modes.mappings]]
+description = "Pad 4 · Go to start (Return)"
+[modes.mappings.trigger]
+type = "Note"
+note = 39
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Return"
+
+[[modes.mappings]]
+description = "Pad 13 · Record arm — only on a hard hit (velocity > 100)"
+[modes.mappings.trigger]
+type = "Note"
+note = 48
+velocity_min = 101
+[modes.mappings.action]
+type = "Keystroke"
+keys = "r"
+modifiers = ["cmd"]
+
+[[modes.mappings]]
+description = "Encoder right · Output volume up"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 1
+direction = "Clockwise"
+[modes.mappings.action]
+type = "VolumeControl"
+operation = "Up"
+
+[[modes.mappings]]
+description = "Encoder left · Output volume down"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 1
+direction = "CounterClockwise"
+[modes.mappings.action]
+type = "VolumeControl"
+operation = "Down"
+
+[[modes.mappings]]
+description = "Pads 1+2 together · Switch to Mixdown"
+[modes.mappings.trigger]
+type = "NoteChord"
+notes = [36, 37]
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Mixdown"
+
+# ========== Mixdown ==========
+[[modes]]
+name = "Mixdown"
+color = "orange"
+
+[[modes.mappings]]
+description = "Pad 1 · Play / stop (Space)"
+[modes.mappings.trigger]
+type = "Note"
+note = 36
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Space"
+
+[[modes.mappings]]
+description = "Pad 5 · Show / hide the mixer (X)"
+[modes.mappings.trigger]
+type = "Note"
+note = 40
+[modes.mappings.action]
+type = "Keystroke"
+keys = "x"
+
+[[modes.mappings]]
+description = "Pad 6 · Bounce project — long-press 2s"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 41
+duration_ms = 2000
+[modes.mappings.action]
+type = "Keystroke"
+keys = "b"
+modifiers = ["cmd"]
+
+[[modes.mappings]]
+description = "Encoder right · Output volume up"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 1
+direction = "Clockwise"
+[modes.mappings.action]
+type = "VolumeControl"
+operation = "Up"
+
+[[modes.mappings]]
+description = "Encoder left · Output volume down"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 1
+direction = "CounterClockwise"
+[modes.mappings.action]
+type = "VolumeControl"
+operation = "Down"
+
+[[modes.mappings]]
+description = "Pads 1+2 together · Back to Edit"
+[modes.mappings.trigger]
+type = "NoteChord"
+notes = [36, 37]
+[modes.mappings.action]
+type = "ModeChange"
+mode = "Edit"
