@@ -1,3 +1,6 @@
+// Copyright 2025-2026 Monstrous Media
+// SPDX-License-Identifier: MIT
+
 //! Guard that every example config shipped in the repo loads cleanly.
 //!
 //! Restores the #2066 guard for `config/test-plugins.toml`, which was lost
