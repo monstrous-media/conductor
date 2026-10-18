@@ -12,6 +12,8 @@ private predecessor repository and is intentionally not replayed here.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-16
+
 ### Added
 
 - Initial open-source release of the Conductor engine:
