@@ -129,7 +129,10 @@ impl EngineManager {
             IpcCommand::SetMode => self.handle_set_mode(&request, id).await,
             IpcCommand::UnlockMode => self.handle_unlock_mode(&request, id).await,
             IpcCommand::ModeStatus => self.handle_mode_status(&request, id).await,
-            IpcCommand::SimulateMapping => self.handle_simulate_mapping(&request, id).await,
+            IpcCommand::SimulateMapping => {
+                self.handle_simulate_mapping(&request, id, &caller_ctx)
+                    .await
+            }
             IpcCommand::GetConfigSnapshot => self.handle_get_config_snapshot(id),
             IpcCommand::GetConfigBody => self.handle_get_config_body(id),
             IpcCommand::Init => self.handle_init(&request, id).await,

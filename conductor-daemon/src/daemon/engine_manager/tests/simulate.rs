@@ -110,6 +110,131 @@ async fn test_simulate_mapping_execute_keystroke() {
     );
 }
 
+// =========================================================================
+// SimulateMapping IPC trust gate (ADR-027 §D1 Layer 2)
+//
+// `execute: true` dispatches the mapped action for real, so the IPC
+// handler requires a verified peer (GuiTrusted / CliTrusted). The
+// dry-run form stays open to every local caller. These tests drive
+// `handle_ipc_request` (the only external entry to
+// `simulate_mapping`) rather than the inner method, because the gate
+// lives in the handler.
+// =========================================================================
+
+fn simulate_ipc_request(id: &str, execute: bool) -> crate::daemon::types::IpcRequest {
+    crate::daemon::types::IpcRequest {
+        id: id.to_string(),
+        command: IpcCommand::SimulateMapping,
+        args: serde_json::json!({
+            "mode_name": "Mix",
+            "mapping_index": 0,
+            "execute": execute,
+        }),
+    }
+}
+
+/// An unpinned peer (`None` ctx — pinning failed at accept) must be
+/// denied `execute: true` with PermissionDenied. Unlike break-glass
+/// RollbackConfigForce, an unverified peer gets no benefit of the
+/// doubt here: without an identity there is no basis to grant
+/// execution.
+#[tokio::test]
+#[cfg_attr(target_os = "linux", ignore)]
+async fn test_simulate_execute_denied_for_unpinned_peer() {
+    let mut manager = create_simulate_manager(create_simulate_test_config()).await;
+    let response = manager
+        .handle_ipc_request(simulate_ipc_request("sim-gate-1", true), None)
+        .await;
+    assert!(matches!(response.status, ResponseStatus::Error));
+    let err = response.error.expect("error details");
+    assert_eq!(
+        err.code,
+        crate::daemon::error::IpcErrorCode::PermissionDenied.as_u16()
+    );
+    assert!(
+        err.message.contains("execute"),
+        "denial should name the gated flag; got: {}",
+        err.message
+    );
+}
+
+/// An Untrusted pinned peer must be denied the same way.
+#[tokio::test]
+#[cfg_attr(target_os = "linux", ignore)]
+async fn test_simulate_execute_denied_for_untrusted_peer() {
+    let mut manager = create_simulate_manager(create_simulate_test_config()).await;
+    let ctx = crate::security::CallerContext::new(crate::security::TrustLevel::Untrusted);
+    let response = manager
+        .handle_ipc_request(simulate_ipc_request("sim-gate-2", true), Some(ctx))
+        .await;
+    assert!(matches!(response.status, ResponseStatus::Error));
+    let err = response.error.expect("error details");
+    assert_eq!(
+        err.code,
+        crate::daemon::error::IpcErrorCode::PermissionDenied.as_u16()
+    );
+}
+
+/// A CliTrusted peer proceeds: the action is dispatched exactly as
+/// before the gate landed.
+#[tokio::test]
+#[cfg_attr(target_os = "linux", ignore)]
+async fn test_simulate_execute_allowed_for_cli_peer() {
+    let mut manager = create_simulate_manager(create_simulate_test_config()).await;
+    let ctx = crate::security::CallerContext::new(crate::security::TrustLevel::CliTrusted);
+    let response = manager
+        .handle_ipc_request(simulate_ipc_request("sim-gate-3", true), Some(ctx))
+        .await;
+    assert!(
+        matches!(response.status, ResponseStatus::Success),
+        "CliTrusted execute should succeed; got error: {:?}",
+        response.error
+    );
+    let data = response.data.expect("data");
+    assert!(
+        data["outcome"]
+            .as_str()
+            .is_some_and(|o| o.starts_with("dispatched:")),
+        "Expected dispatched outcome, got {:?}",
+        data["outcome"]
+    );
+}
+
+/// A GuiTrusted peer proceeds too — the trusted client is the
+/// confirmation surface for its own explicit simulate action.
+#[tokio::test]
+#[cfg_attr(target_os = "linux", ignore)]
+async fn test_simulate_execute_allowed_for_gui_peer() {
+    let mut manager = create_simulate_manager(create_simulate_test_config()).await;
+    let ctx = crate::security::CallerContext::new(crate::security::TrustLevel::GuiTrusted);
+    let response = manager
+        .handle_ipc_request(simulate_ipc_request("sim-gate-4", true), Some(ctx))
+        .await;
+    assert!(
+        matches!(response.status, ResponseStatus::Success),
+        "GuiTrusted execute should succeed; got error: {:?}",
+        response.error
+    );
+}
+
+/// Dry-run simulation is a read-only trace and stays open to every
+/// local caller, pinned or not.
+#[tokio::test]
+#[cfg_attr(target_os = "linux", ignore)]
+async fn test_simulate_dry_run_open_to_unpinned_peer() {
+    let mut manager = create_simulate_manager(create_simulate_test_config()).await;
+    let response = manager
+        .handle_ipc_request(simulate_ipc_request("sim-gate-5", false), None)
+        .await;
+    assert!(
+        matches!(response.status, ResponseStatus::Success),
+        "dry-run from an unpinned peer should succeed; got error: {:?}",
+        response.error
+    );
+    let data = response.data.expect("data");
+    assert_eq!(data["executed"], false);
+}
+
 #[tokio::test]
 #[cfg_attr(target_os = "linux", ignore)]
 async fn test_simulate_mapping_mode_change() {
