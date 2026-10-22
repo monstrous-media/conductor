@@ -147,6 +147,15 @@ pub enum IpcErrorCode {
     /// generation, so a daemon self-write that bumps the generation without
     /// changing content does **not** trip it.
     StaleBaseContent = 5007,
+
+    /// ADR-027 §D1: the caller's pinned trust band is insufficient for
+    /// the requested operation. Returned by handlers that require a
+    /// verified Conductor GUI or CLI peer — today `SimulateMapping`
+    /// with `execute: true`; the dry-run form (`execute: false`) stays
+    /// available to every local caller. Official release binaries are
+    /// code-signed and classify as trusted; an unsigned source build
+    /// on macOS classifies as Untrusted and is denied here.
+    PermissionDenied = 5008,
 }
 
 impl IpcErrorCode {
@@ -190,6 +199,10 @@ impl IpcErrorCode {
                 "base_revision is stale — the config changed since you loaded it; \
                  re-fetch via GetConfigBody and re-apply your change"
             }
+            Self::PermissionDenied => {
+                "Caller trust band is insufficient for this operation — \
+                 a verified Conductor GUI or CLI peer is required"
+            }
             Self::Timeout => "Operation timed out",
         }
     }
@@ -213,6 +226,7 @@ mod tests {
         assert_eq!(IpcErrorCode::DaemonAwaitingConfig as u16, 5005);
         assert_eq!(IpcErrorCode::PathValidationFailed as u16, 5006);
         assert_eq!(IpcErrorCode::StaleBaseContent as u16, 5007);
+        assert_eq!(IpcErrorCode::PermissionDenied as u16, 5008);
     }
 
     /// The 5xxx range is reserved for ADR-027 security errors;

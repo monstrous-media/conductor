@@ -100,10 +100,14 @@ impl EngineManager {
         create_success_response(&id, Some(json!({ "events": result })))
     }
 
+    /// Handle `SimulateMapping`. This is the only external entry to
+    /// [`EngineManager::simulate_mapping`], so the ADR-027 §D1 trust
+    /// gate below covers every path that can flip `execute: true`.
     pub(crate) async fn handle_simulate_mapping(
         &mut self,
         request: &crate::daemon::types::IpcRequest,
         id: String,
+        caller_ctx: &Option<crate::security::CallerContext>,
     ) -> IpcResponse {
         use conductor_core::dispatch::SimulateOptions;
 
@@ -135,6 +139,46 @@ impl EngineManager {
             .get("execute")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
+
+        // ADR-027 §D1 Layer 2 — `execute: true` dispatches the mapped
+        // action for real (Shell, Keystroke, Launch, …), so it requires
+        // a verified peer: GuiTrusted / CliTrusted proceed (the trusted
+        // client's own explicit request is the confirmation surface,
+        // matching the gate's HardwareIO row), everyone else is denied.
+        // The positive match means an unpinned peer (`None` ctx) falls
+        // into deny — deliberate, unlike break-glass RollbackConfigForce:
+        // without a verified identity there is no basis to grant
+        // execution. Dry-run simulation (`execute: false`) is a
+        // read-only trace and stays open to every local caller.
+        if execute {
+            let trusted = matches!(
+                caller_ctx.as_ref().map(|c| c.trust_level),
+                Some(crate::security::TrustLevel::GuiTrusted)
+                    | Some(crate::security::TrustLevel::CliTrusted)
+            );
+            if !trusted {
+                warn!(
+                    "SimulateMapping execute denied: caller trust {:?}",
+                    caller_ctx.as_ref().map(|c| c.trust_level)
+                );
+                return IpcResponse {
+                    id,
+                    status: ResponseStatus::Error,
+                    data: None,
+                    error: Some(ErrorDetails {
+                        code: IpcErrorCode::PermissionDenied.as_u16(),
+                        message: "SimulateMapping with execute:true requires a \
+                                  verified Conductor GUI or CLI peer (official \
+                                  release binaries are code-signed and qualify); \
+                                  dry-run simulation (execute: false) is available \
+                                  to all local callers"
+                            .to_string(),
+                        details: None,
+                    }),
+                };
+            }
+        }
+
         let value = match request.args.get("value").and_then(|v| v.as_u64()) {
             Some(v) if v <= 127 => Some(v as u8),
             Some(v) => {
