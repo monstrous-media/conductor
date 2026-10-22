@@ -89,19 +89,19 @@ Total third-party crates: 447
 | cpp_demangle | 0.5.1 | Apache-2.0 OR MIT |
 | cpufeatures | 0.2.17 | Apache-2.0 OR MIT |
 | cpufeatures | 0.3.0 | Apache-2.0 OR MIT |
-| cranelift-assembler-x64 | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-assembler-x64-meta | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-bforest | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-bitset | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-codegen | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-codegen-meta | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-codegen-shared | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-control | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-entity | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-frontend | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-isle | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-native | 0.135.6 | Apache-2.0 WITH LLVM-exception |
-| cranelift-srcgen | 0.135.6 | Apache-2.0 WITH LLVM-exception |
+| cranelift-assembler-x64 | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-assembler-x64-meta | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-bforest | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-bitset | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-codegen | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-codegen-meta | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-codegen-shared | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-control | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-entity | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-frontend | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-isle | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-native | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-srcgen | 0.135.7 | Apache-2.0 WITH LLVM-exception |
 | crc32fast | 1.5.0 | Apache-2.0 OR MIT |
 | crossbeam-channel | 0.5.16 | Apache-2.0 OR MIT |
 | crossbeam-deque | 0.8.6 | Apache-2.0 OR MIT |
@@ -261,8 +261,8 @@ Total third-party crates: 447
 | potential_utf | 0.1.4 | Unicode-3.0 |
 | powerfmt | 0.2.0 | Apache-2.0 OR MIT |
 | proc-macro2 | 1.0.106 | Apache-2.0 OR MIT |
-| pulley-interpreter | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| pulley-macros | 48.0.6 | Apache-2.0 WITH LLVM-exception |
+| pulley-interpreter | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| pulley-macros | 48.0.7 | Apache-2.0 WITH LLVM-exception |
 | quick-xml | 0.42.0 | MIT |
 | quinn | 0.11.9 | Apache-2.0 OR MIT |
 | quinn-proto | 0.11.19 | Apache-2.0 OR MIT |
@@ -296,7 +296,7 @@ Total third-party crates: 447
 | rustls-pki-types | 1.13.0 | Apache-2.0 OR MIT |
 | rustls-platform-verifier | 0.7.0 | Apache-2.0 OR MIT |
 | rustls-platform-verifier-android | 0.1.1 | Apache-2.0 OR MIT |
-| rustls-webpki | 0.103.15 | ISC |
+| rustls-webpki | 0.103.16 | ISC |
 | rustversion | 1.0.22 | Apache-2.0 OR MIT |
 | same-file | 1.0.6 | MIT OR Unlicense |
 | schannel | 0.1.28 | MIT |
@@ -396,30 +396,30 @@ Total third-party crates: 447
 | wasmparser | 0.254.2 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | wasmparser | 0.258.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | wasmprinter | 0.254.2 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
-| wasmtime | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-environ | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-cache | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-component-macro | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-component-util | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-core | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-cranelift | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-fiber | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-jit-debug | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-jit-icache-coherence | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-unwinder | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-versioned-export-macros | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-wit-bindgen | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-wasi | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-wasi-io | 48.0.6 | Apache-2.0 WITH LLVM-exception |
+| wasmtime | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-environ | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-cache | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-component-macro | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-component-util | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-core | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-cranelift | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-fiber | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-jit-debug | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-jit-icache-coherence | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-unwinder | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-versioned-export-macros | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-wit-bindgen | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-wasi | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-wasi-io | 48.0.7 | Apache-2.0 WITH LLVM-exception |
 | wast | 258.0.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | wast | 35.0.2 | Apache-2.0 WITH LLVM-exception |
 | wat | 1.258.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | web-sys | 0.3.99 | Apache-2.0 OR MIT |
 | web-time | 1.1.0 | Apache-2.0 OR MIT |
-| webpki-root-certs | 1.0.6 | CDLA-Permissive-2.0 |
-| wiggle | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wiggle-generate | 48.0.6 | Apache-2.0 WITH LLVM-exception |
-| wiggle-macro | 48.0.6 | Apache-2.0 WITH LLVM-exception |
+| webpki-root-certs | 1.0.10 | CDLA-Permissive-2.0 |
+| wiggle | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wiggle-generate | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wiggle-macro | 48.0.7 | Apache-2.0 WITH LLVM-exception |
 | winapi | 0.3.9 | Apache-2.0 OR MIT |
 | winapi-i686-pc-windows-gnu | 0.4.0 | Apache-2.0 OR MIT |
 | winapi-util | 0.1.11 | MIT OR Unlicense |
