@@ -285,6 +285,30 @@ pub enum IpcCommand {
     /// ConfigChange commands). Returns `{ "recovered": bool, "rotated_path"? }`.
     /// Backs `conductorctl audit resume`.
     ResumeAudit,
+
+    // ADR-027 §D6 — LLM budget session lifecycle (daemon backstop)
+    /// Mark the start of an LLM session. The daemon compiles the
+    /// file-only `[security.llm]` budget from the operator-editable
+    /// USER config file (never the daemon's `live.toml` authority,
+    /// which does not round-trip the `[security]` table) and attaches
+    /// a FRESH per-session budget state to the tool executor. Until
+    /// the first `LlmSessionBegin` the budget is inactive — nothing is
+    /// charged — so non-agentic callers are unaffected. Requires a
+    /// verified Conductor GUI peer (`GuiTrusted`): the trusted Tauri
+    /// Rust backend is the session-boundary signaller, and any
+    /// less-trusted caller able to "begin a session" could reset the
+    /// per-session caps at will (a budgeted LLM with shell access
+    /// could even invoke the signed CLI, which is why `CliTrusted` is
+    /// NOT accepted). No args. Returns `{ "active": true }`.
+    LlmSessionBegin,
+    /// Mark the start of a user turn within the LLM session: resets
+    /// the per-turn budget dimensions (per-session counters are
+    /// untouched). Same verified-GUI-peer requirement as
+    /// `LlmSessionBegin` — a turn reset launders the per-turn caps.
+    /// No args. Returns `{ "active": <bool> }`; `false` means no
+    /// session has begun (nothing to reset — not an error, so the GUI
+    /// can fire it unconditionally).
+    LlmTurnBegin,
 }
 
 impl IpcCommand {

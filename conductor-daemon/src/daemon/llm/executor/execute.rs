@@ -303,7 +303,7 @@ impl ToolExecutor {
         // iteration / wall-clock dimensions live in the GUI agentic loop.
         // On exhaustion we halt with an `LlmBudgetExceeded` audit event —
         // satisfying "the daemon halts the loop with a clear audit event".
-        if let Some(ref budget) = self.budget {
+        if let Some(budget) = self.budget.load_full() {
             let mut state = budget.lock().await;
             let charge = state.charge_tool_call().and_then(|()| match risk_tier {
                 ToolRiskTier::ConfigChange => state.charge_config_change(),

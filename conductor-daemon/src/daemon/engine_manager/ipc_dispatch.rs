@@ -96,7 +96,9 @@ impl EngineManager {
             IpcCommand::ApplyPlan
             | IpcCommand::RejectPlan
             | IpcCommand::ListPendingPlans
-            | IpcCommand::ExecuteMcpTool => crate::daemon::engine_manager::helpers::ipc_err(
+            | IpcCommand::ExecuteMcpTool
+            | IpcCommand::LlmSessionBegin
+            | IpcCommand::LlmTurnBegin => crate::daemon::engine_manager::helpers::ipc_err(
                 id,
                 IpcErrorCode::InternalError,
                 "LLM tool execution is not available in this build (ships with \
@@ -108,6 +110,10 @@ impl EngineManager {
                 self.handle_execute_mcp_tool(&request, id, &caller_ctx)
                     .await
             }
+            #[cfg(feature = "llm-executor")]
+            IpcCommand::LlmSessionBegin => self.handle_llm_session_begin(id, &caller_ctx).await,
+            #[cfg(feature = "llm-executor")]
+            IpcCommand::LlmTurnBegin => self.handle_llm_turn_begin(id, &caller_ctx).await,
             IpcCommand::SwitchProfile => self.handle_switch_profile(&request, id).await,
             IpcCommand::GetActiveProfile => self.handle_get_active_profile(id),
             IpcCommand::RefreshAppMappings => self.handle_refresh_app_mappings(id).await,

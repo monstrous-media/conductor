@@ -92,7 +92,7 @@ async fn admit_rate_limits_after_the_hardware_io_window_is_spent() {
 /// dimension, exactly as `execute()` does).
 #[tokio::test]
 async fn admit_charges_an_attached_budget_and_refuses_exhaustion() {
-    let mut executor = ToolExecutor::new(live_config_arc(create_test_config()));
+    let executor = ToolExecutor::new(live_config_arc(create_test_config()));
     executor.set_budget_state(budget_state(conductor_core::security::LlmBudgetConfig {
         max_midi_out_per_session: 1,
         ..Default::default()

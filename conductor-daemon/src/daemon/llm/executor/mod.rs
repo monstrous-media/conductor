@@ -175,15 +175,37 @@ pub struct ToolExecutor {
     /// matches when it wakes — a stale wake-up is a no-op.
     midi_learn_session_gen: Arc<AtomicU64>,
 
-    /// ADR-027 D6 — multi-dimensional LLM budget for this session. `None`
-    /// disables budget enforcement (the historical behaviour; every existing
-    /// constructor leaves it unset). When present, every `execute()` charges
-    /// the capability dimensions this MCP surface can observe — total tool
-    /// calls, ConfigChange-tier calls, and HardwareIO/MIDI output — and halts
-    /// the loop with an `LlmBudgetExceeded` audit event when a quota is
-    /// exhausted. Token / iteration / wall-clock dimensions are driven by the
-    /// GUI agentic loop, where those quantities exist.
-    budget: Option<Arc<Mutex<conductor_core::security::LlmBudgetState>>>,
+    /// ADR-027 D6 — multi-dimensional LLM budget for the CURRENT session.
+    /// Empty disables budget enforcement (the historical behaviour; every
+    /// constructor starts empty, and the slot stays empty until the trusted
+    /// GUI backend signals `LlmSessionBegin` over IPC). When set, every
+    /// admission (`admit`, shared by `execute()` and the engine-manager
+    /// direct-dispatch arms) charges the capability dimensions this MCP
+    /// surface can observe — total tool calls, ConfigChange-tier calls, and
+    /// HardwareIO/MIDI output — and halts the loop with an
+    /// `LlmBudgetExceeded` audit event when a quota is exhausted. Token /
+    /// iteration / wall-clock dimensions are driven by the GUI agentic
+    /// loop, where those quantities exist.
+    ///
+    /// `ArcSwapOption` (not `Option`) so the session lifecycle IPC can
+    /// attach/replace a state through the shared `Arc<ToolExecutor>` —
+    /// each `LlmSessionBegin` stores a fresh state, `LlmTurnBegin` locks
+    /// the current one to reset its per-turn counters.
+    budget: arc_swap::ArcSwapOption<Mutex<conductor_core::security::LlmBudgetState>>,
+}
+
+/// Monotonic milliseconds since this process first asked — the clock the
+/// daemon feeds the pure [`LlmBudgetState`] engine (which deliberately
+/// owns no clock). Only time-WINDOWED dimensions consume it, and all of
+/// those are charged within one process lifetime, so a process-local
+/// epoch is exactly right (wall-clock time would go backwards over NTP
+/// steps).
+///
+/// [`LlmBudgetState`]: conductor_core::security::LlmBudgetState
+pub(crate) fn llm_budget_now_ms() -> u64 {
+    use std::sync::OnceLock;
+    static EPOCH: OnceLock<Instant> = OnceLock::new();
+    EPOCH.get_or_init(Instant::now).elapsed().as_millis() as u64
 }
 
 mod execute;
