@@ -13,6 +13,7 @@ mod bind_gate_e2e;
 mod e2e;
 mod ipc;
 mod lifecycle;
+mod mcp_admission;
 mod mode_autoswitch;
 mod mode_lock;
 mod monitor;

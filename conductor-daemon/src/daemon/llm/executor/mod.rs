@@ -78,6 +78,18 @@ pub enum ExecutionResult {
     Error { message: String },
 }
 
+/// Routing outcome of a passed admission check (ADR-027 D5/D1): which
+/// gate-selected handler (if any) the admitted call should take.
+/// `FallThrough` covers `Allow` / `AllowWithAudit` — both want per-tier
+/// dispatch. Produced by [`ToolExecutor::admit`] /
+/// [`ToolExecutor::admit_with_policy`] (see `execute.rs`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AdmitRoute {
+    FallThrough,
+    ToConfigChange,
+    ToHardwareIo,
+}
+
 /// Log entry for stateful tool execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {

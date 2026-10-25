@@ -190,6 +190,7 @@ impl AuditSink for RecordingSink {
     }
 }
 
+mod admission;
 mod audit;
 mod batch;
 mod construct;
