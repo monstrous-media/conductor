@@ -109,7 +109,7 @@ Total third-party crates: 447
 | crossbeam-utils | 0.8.21 | Apache-2.0 OR MIT |
 | crypto-common | 0.1.7 | Apache-2.0 OR MIT |
 | crypto-common | 0.2.2 | Apache-2.0 OR MIT |
-| ctutils | 0.4.2 | Apache-2.0 OR MIT |
+| ctutils | 0.4.4 | Apache-2.0 OR MIT |
 | curve25519-dalek | 4.1.3 | BSD-3-Clause |
 | curve25519-dalek-derive | 0.1.1 | Apache-2.0 OR MIT |
 | dashmap | 6.2.1 | MIT |
@@ -348,7 +348,7 @@ Total third-party crates: 447
 | tinystr | 0.8.2 | Unicode-3.0 |
 | tinyvec | 1.11.0 | Apache-2.0 OR MIT OR Zlib |
 | tinyvec_macros | 0.1.1 | Apache-2.0 OR MIT OR Zlib |
-| tokio | 1.53.1 | MIT |
+| tokio | 1.53.3 | MIT |
 | tokio-macros | 2.7.0 | MIT |
 | tokio-rustls | 0.26.4 | Apache-2.0 OR MIT |
 | tokio-util | 0.7.18 | MIT |
