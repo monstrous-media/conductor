@@ -18,7 +18,7 @@ async fn test_budget_charges_midi_out_dimension() {
         max_midi_out_per_session: 1,
         ..Default::default()
     };
-    let mut executor = ToolExecutor::new(live_config_arc(create_test_config()));
+    let executor = ToolExecutor::new(live_config_arc(create_test_config()));
     executor.set_budget_state(budget_state(cfg));
 
     // First HardwareIO-tier call charges midi_out 0 → 1 (whatever the

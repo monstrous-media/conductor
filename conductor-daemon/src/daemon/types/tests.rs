@@ -146,6 +146,27 @@ fn d4c1_save_config_command_serialises_to_save_config_screaming() {
     assert!(json.contains("base_generation"));
 }
 
+/// ADR-027 §D6 — pin the LLM budget lifecycle commands' wire tokens so
+/// the GUI backend (Studio) can emit them without protocol drift.
+#[test]
+fn d6_llm_session_lifecycle_commands_serialise_screaming() {
+    for (command, token) in [
+        (
+            IpcCommand::LlmSessionBegin,
+            "\"command\":\"LLM_SESSION_BEGIN\"",
+        ),
+        (IpcCommand::LlmTurnBegin, "\"command\":\"LLM_TURN_BEGIN\""),
+    ] {
+        let request = IpcRequest {
+            id: "llm-1".to_string(),
+            command,
+            args: serde_json::json!({}),
+        };
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains(token), "expected {token}, got: {json}");
+    }
+}
+
 #[test]
 fn d4c1_reload_from_disk_command_serialises_screaming() {
     let request = IpcRequest {

@@ -157,6 +157,130 @@ impl EngineManager {
         )
     }
 
+    /// ADR-027 §D6 — session-boundary trust check shared by the two
+    /// lifecycle handlers. GuiTrusted ONLY, as a direct trust-band match
+    /// (the RollbackConfigForce / Chain A precedent, not `enforce()` —
+    /// these are not risk-tiered tools, and shadow mode must not soften
+    /// them). `internal_trusted()` also qualifies (it pins GuiTrusted).
+    ///
+    /// Why not `CliTrusted`: whoever can signal a session/turn boundary
+    /// can RESET the corresponding budget counters, and a budgeted LLM
+    /// holding a shell-exec capability could invoke the signed
+    /// `conductorctl` binary — which classifies CliTrusted — to launder
+    /// its own caps. The GUI's Rust backend is the one trusted boundary
+    /// signaller in the D6 threat model (the compromised party is the
+    /// provider/webview, which cannot reach this surface directly).
+    fn llm_lifecycle_denial(
+        &self,
+        id: &str,
+        command: &str,
+        caller_ctx: &Option<crate::security::CallerContext>,
+    ) -> Option<IpcResponse> {
+        let trusted = matches!(
+            caller_ctx.as_ref().map(|c| c.trust_level),
+            Some(crate::security::TrustLevel::GuiTrusted)
+        );
+        if trusted {
+            return None;
+        }
+        warn!(
+            "{command} denied: caller trust {:?} (verified Conductor GUI peer required)",
+            caller_ctx.as_ref().map(|c| c.trust_level)
+        );
+        Some(IpcResponse {
+            id: id.to_string(),
+            status: ResponseStatus::Error,
+            data: None,
+            error: Some(ErrorDetails {
+                code: IpcErrorCode::PermissionDenied.as_u16(),
+                message: format!(
+                    "{command} requires a verified Conductor GUI peer — session/turn \
+                     boundaries reset budget counters, so only the trusted GUI backend \
+                     may signal them"
+                ),
+                details: None,
+            }),
+        })
+    }
+
+    /// ADR-027 §D6 — `LlmSessionBegin`: compile the file-only
+    /// `[security.llm]` budget from the operator-editable USER config
+    /// file and attach a fresh per-session state to the tool executor.
+    /// The user file — not `config_path` — is the correct source: the
+    /// daemon's `live.toml` authority is serialised from the
+    /// round-trippable `Config`, which deliberately does not carry the
+    /// file-only `[security]` table (ADR-027 D3), so reading it would
+    /// silently discard the operator's limits. A missing user file means
+    /// the ADR §D6 defaults (same semantics as `conductorctl llm budgets
+    /// show`); a malformed `[security.llm]` is a hard error and leaves
+    /// the budget unattached — the operator tried to configure limits,
+    /// so silently running defaults would betray that intent.
+    pub(crate) async fn handle_llm_session_begin(
+        &mut self,
+        id: String,
+        caller_ctx: &Option<crate::security::CallerContext>,
+    ) -> IpcResponse {
+        if let Some(denial) = self.llm_lifecycle_denial(&id, "LlmSessionBegin", caller_ctx) {
+            return denial;
+        }
+
+        let budget_config = match std::fs::read_to_string(&self.user_file_path) {
+            Ok(text) => match conductor_core::security::SecurityConfig::from_toml_str(&text) {
+                Ok(sec) => sec.llm,
+                Err(e) => {
+                    warn!(
+                        "LlmSessionBegin: [security.llm] in {} failed to parse: {e}",
+                        self.user_file_path.display()
+                    );
+                    return IpcResponse {
+                        id,
+                        status: ResponseStatus::Error,
+                        data: None,
+                        error: Some(ErrorDetails {
+                            code: IpcErrorCode::ConfigParseFailed.as_u16(),
+                            message: format!(
+                                "[security.llm] in the user config file failed to parse \
+                                     (budget NOT activated): {e}"
+                            ),
+                            details: None,
+                        }),
+                    };
+                }
+            },
+            // No user file: the ADR-027 §D6 defaults apply (every
+            // dimension enforced at its default limit).
+            Err(_) => conductor_core::security::LlmBudgetConfig::default(),
+        };
+
+        let now_ms = crate::daemon::llm::executor::llm_budget_now_ms();
+        self.tool_executor
+            .set_budget_state(std::sync::Arc::new(tokio::sync::Mutex::new(
+                conductor_core::security::LlmBudgetState::new(budget_config, now_ms),
+            )));
+        info!(
+            "LLM session budget attached (source: {})",
+            self.user_file_path.display()
+        );
+        create_success_response(&id, Some(json!({ "active": true })))
+    }
+
+    /// ADR-027 §D6 — `LlmTurnBegin`: reset the per-turn budget
+    /// dimensions on the attached session state. `active: false` when no
+    /// session has begun — a no-op, not an error, so the GUI can fire it
+    /// unconditionally at the top of every agentic-loop entry.
+    pub(crate) async fn handle_llm_turn_begin(
+        &mut self,
+        id: String,
+        caller_ctx: &Option<crate::security::CallerContext>,
+    ) -> IpcResponse {
+        if let Some(denial) = self.llm_lifecycle_denial(&id, "LlmTurnBegin", caller_ctx) {
+            return denial;
+        }
+        let now_ms = crate::daemon::llm::executor::llm_budget_now_ms();
+        let active = self.tool_executor.begin_llm_turn(now_ms).await;
+        create_success_response(&id, Some(json!({ "active": active })))
+    }
+
     pub(crate) async fn handle_execute_mcp_tool(
         &mut self,
         request: &crate::daemon::types::IpcRequest,

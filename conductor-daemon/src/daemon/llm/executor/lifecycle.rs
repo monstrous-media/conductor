@@ -23,7 +23,7 @@ impl ToolExecutor {
             daemon_state_refs: None,
             midi_learn_timer: Arc::new(Mutex::new(None)),
             midi_learn_session_gen: Arc::new(AtomicU64::new(0)),
-            budget: None,
+            budget: arc_swap::ArcSwapOption::empty(),
         }
     }
 
@@ -47,7 +47,7 @@ impl ToolExecutor {
             daemon_state_refs: None,
             midi_learn_timer: Arc::new(Mutex::new(None)),
             midi_learn_session_gen: Arc::new(AtomicU64::new(0)),
-            budget: None,
+            budget: arc_swap::ArcSwapOption::empty(),
         }
     }
 
@@ -71,7 +71,7 @@ impl ToolExecutor {
             daemon_state_refs: None,
             midi_learn_timer: Arc::new(Mutex::new(None)),
             midi_learn_session_gen: Arc::new(AtomicU64::new(0)),
-            budget: None,
+            budget: arc_swap::ArcSwapOption::empty(),
         }
     }
 
@@ -107,7 +107,7 @@ impl ToolExecutor {
             daemon_state_refs: None,
             midi_learn_timer: Arc::new(Mutex::new(None)),
             midi_learn_session_gen: Arc::new(AtomicU64::new(0)),
-            budget: None,
+            budget: arc_swap::ArcSwapOption::empty(),
         }
     }
 
@@ -136,7 +136,7 @@ impl ToolExecutor {
             daemon_state_refs: Some(daemon_state_refs),
             midi_learn_timer: Arc::new(Mutex::new(None)),
             midi_learn_session_gen: Arc::new(AtomicU64::new(0)),
-            budget: None,
+            budget: arc_swap::ArcSwapOption::empty(),
         }
     }
 
@@ -157,14 +157,34 @@ impl ToolExecutor {
 
     /// Attach an ADR-027 D6 LLM budget to this session (enables enforcement).
     /// The daemon compiles the budget from the file-only `[security.llm]`
-    /// block and shares one [`LlmBudgetState`] per LLM session.
+    /// block and shares one [`LlmBudgetState`] per LLM session. `&self` —
+    /// the slot is an `ArcSwapOption` so the `LlmSessionBegin` IPC handler
+    /// can attach/replace a state through the shared `Arc<ToolExecutor>`;
+    /// replacing it mid-flight is safe (in-flight admissions charge the
+    /// state they loaded, the next admission sees the fresh one).
     ///
     /// [`LlmBudgetState`]: conductor_core::security::LlmBudgetState
-    pub fn set_budget_state(
-        &mut self,
-        budget: Arc<Mutex<conductor_core::security::LlmBudgetState>>,
-    ) {
-        self.budget = Some(budget);
+    pub fn set_budget_state(&self, budget: Arc<Mutex<conductor_core::security::LlmBudgetState>>) {
+        self.budget.store(Some(budget));
+    }
+
+    /// ADR-027 §D6 — begin a new user turn on the attached budget: resets
+    /// the per-turn dimensions, leaves per-session counters untouched.
+    /// Returns `false` (no-op) when no session budget is attached, so the
+    /// GUI can signal turns unconditionally.
+    pub async fn begin_llm_turn(&self, now_ms: u64) -> bool {
+        match self.budget.load_full() {
+            Some(budget) => {
+                budget.lock().await.begin_turn(now_ms);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Whether a session budget is currently attached (enforcement active).
+    pub fn llm_budget_active(&self) -> bool {
+        self.budget.load().is_some()
     }
 
     /// Set MIDI Learn state references (shared with engine_manager)

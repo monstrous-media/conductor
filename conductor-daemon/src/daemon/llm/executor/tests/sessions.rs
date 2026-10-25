@@ -87,7 +87,7 @@ async fn test_budget_halts_after_tool_call_quota() {
         max_tool_calls_per_session: 1,
         ..Default::default()
     };
-    let mut executor = ToolExecutor::new(live_config_arc(create_test_config()));
+    let executor = ToolExecutor::new(live_config_arc(create_test_config()));
     executor.set_budget_state(budget_state(cfg));
 
     // First ReadOnly call is admitted.
@@ -120,7 +120,7 @@ async fn test_budget_charges_config_change_dimension() {
         max_config_changes_per_session: 1,
         ..Default::default()
     };
-    let mut executor = ToolExecutor::new(live_config_arc(create_test_config()));
+    let executor = ToolExecutor::new(live_config_arc(create_test_config()));
     executor.set_budget_state(budget_state(cfg));
 
     let mapping = json!({
