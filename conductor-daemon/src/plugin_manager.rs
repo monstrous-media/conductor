@@ -415,21 +415,7 @@ impl PluginManager {
                 // construction-time validation
                 // accepts it. Capabilities are the GRANTED
                 // subset, not the manifest set.
-                #[allow(unused_mut)] // mut needed only with plugin-signing feature
-                let mut config = WasmConfig::new(plugin_name)
-                    .map_err(|e| {
-                        PluginManagerError::LoadError(PluginLoaderError::LoadError(e.to_string()))
-                    })?
-                    .with_max_memory_bytes(128 * 1024 * 1024)
-                    .with_max_execution_time(std::time::Duration::from_secs(5))
-                    .with_max_fuel(100_000_000)
-                    .with_capabilities(granted_capabilities.clone());
-                #[cfg(feature = "plugin-signing")]
-                {
-                    config = config
-                        .with_require_signature(false) // backward compatible
-                        .with_allow_self_signed(true);
-                }
+                let config = wasm_plugin_config(plugin_name, granted_capabilities.clone())?;
 
                 let mut wasm_plugin = tokio::runtime::Runtime::new()
                     .map_err(|e| {
@@ -801,9 +787,60 @@ impl Default for PluginManager {
     }
 }
 
+/// Build the [`WasmConfig`] the daemon loads WASM plugins with:
+/// resource limits, the GRANTED capability subset, and — in
+/// `plugin-signing` builds — the signing posture, extracted here so a
+/// test can pin it.
+#[cfg(feature = "plugin-wasm")]
+fn wasm_plugin_config(
+    plugin_name: &str,
+    granted_capabilities: Vec<Capability>,
+) -> Result<WasmConfig, PluginManagerError> {
+    // Signing posture (`plugin-signing` builds): deliberately NO
+    // overrides — the library defaults apply. `allow_self_signed`
+    // stays `false`, so a plugin that ships a `.wasm.sig` sidecar must
+    // verify against the operator's trust store / rotation chain, never
+    // against a key the sidecar itself supplies (the previous
+    // `.with_allow_self_signed(true)` override let a self-signed
+    // sidecar pass "verification", defeating tamper-evidence).
+    // `require_signature` stays `false`, so unsigned local plugins
+    // remain loadable — tightening that is a separate product decision.
+    WasmConfig::new(plugin_name)
+        .map_err(|e| PluginManagerError::LoadError(PluginLoaderError::LoadError(e.to_string())))
+        .map(|c| {
+            c.with_max_memory_bytes(128 * 1024 * 1024)
+                .with_max_execution_time(std::time::Duration::from_secs(5))
+                .with_max_fuel(100_000_000)
+                .with_capabilities(granted_capabilities)
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ADR-027 hardening posture for `plugin-signing` builds: the daemon
+    /// must apply NO signing overrides, running at the library defaults —
+    /// `allow_self_signed = false`, so a plugin that ships a signature
+    /// sidecar verifies against the operator's trust store / rotation
+    /// chain, never against a key the sidecar itself supplies (a
+    /// self-signed sidecar passing "verification" would defeat
+    /// tamper-evidence); and `require_signature = false`, so unsigned
+    /// local plugins stay loadable (flipping that is a separate product
+    /// decision, not taken here).
+    #[cfg(all(feature = "plugin-wasm", feature = "plugin-signing"))]
+    #[test]
+    fn wasm_config_applies_no_signing_overrides() {
+        let config = wasm_plugin_config("posture-check", vec![]).expect("safe id");
+        assert!(
+            !config.allow_self_signed,
+            "daemon must not trust self-signed signature sidecars"
+        );
+        assert!(
+            !config.require_signature,
+            "unsigned plugins stay loadable (library default)"
+        );
+    }
 
     #[test]
     fn test_plugin_manager_creation() {

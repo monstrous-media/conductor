@@ -130,6 +130,58 @@ async fn test_load_signed_plugin_with_self_signed_mode() {
     );
 }
 
+/// ADR-027 Chain E1 pin: under the DEFAULT config
+/// (`allow_self_signed = false`), a plugin signed by a key the operator
+/// never trusted must be refused — the sidecar's own key is not a trust
+/// anchor. An empty trust store fails closed (`verify_plugin_signature`
+/// rejects any signer not in the list). This is the posture the daemon's
+/// `plugin_manager` now runs at, having dropped its
+/// `.with_allow_self_signed(true)` override.
+#[tokio::test]
+async fn test_reject_self_signed_plugin_by_default() {
+    let plugin_path = get_test_plugin_path();
+
+    if !plugin_path.exists() {
+        eprintln!("Skipping test: Spotify plugin not built");
+        return;
+    }
+
+    let signing_key = SigningKey::generate(&mut OsRng);
+    let private_key = signing_key.to_bytes();
+
+    let temp_dir = create_temp_dir();
+    let test_plugin_path = temp_dir.path().join("test_plugin.wasm");
+    std::fs::copy(&plugin_path, &test_plugin_path).expect("Failed to copy plugin");
+
+    sign_plugin(
+        &test_plugin_path,
+        &private_key,
+        "Untrusted Developer",
+        "untrusted@example.com",
+    )
+    .expect("Failed to sign plugin");
+
+    // Default config: allow_self_signed stays false. Point the trust
+    // store and CRL at paths inside the temp dir (both absent → empty)
+    // so the test never reads the developer machine's real
+    // ~/.config/conductor files.
+    let mut config = WasmConfig::new("test-plugin").expect("safe id");
+    config.trusted_keys_path = Some(temp_dir.path().join("trusted_keys.toml"));
+    config.revoked_keys_path = Some(temp_dir.path().join("revoked_keys.toml"));
+
+    let result = WasmPlugin::load(&test_plugin_path, config).await;
+    match result {
+        Err(e) => {
+            let msg = e.to_string();
+            assert!(
+                msg.contains("untrusted key"),
+                "refusal must name the untrusted signer; got: {msg}"
+            );
+        }
+        Ok(_) => panic!("a signature by an untrusted key must not load under the default config"),
+    }
+}
+
 #[tokio::test]
 async fn test_reject_unsigned_plugin_when_required() {
     let plugin_path = get_test_plugin_path();
