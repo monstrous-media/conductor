@@ -14,7 +14,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Workspace dependencies
-conductor-core = { version = "0.1.0", path = "../conductor-core" }
+conductor-core = { version = "0.2.0", path = "../conductor-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 clap = { workspace = true }
