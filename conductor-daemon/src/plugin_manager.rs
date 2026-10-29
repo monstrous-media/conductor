@@ -842,6 +842,75 @@ mod tests {
         );
     }
 
+    /// Hermetic fixture: a plugins dir holding one discovered NATIVE
+    /// plugin (manifest + a file at the binary path that must never be
+    /// dlopen'd). Returns the TempDir so it outlives the test body.
+    fn native_plugin_fixture() -> (PluginManager, tempfile::TempDir) {
+        let tmp = tempfile::tempdir().expect("create temp dir");
+        let plugin_dir = tmp.path().join("native_fixture");
+        fs::create_dir_all(&plugin_dir).expect("plugin dir");
+        fs::write(
+            plugin_dir.join("plugin.toml"),
+            r#"
+[plugin]
+name = "native_fixture"
+version = "1.0.0"
+description = "native-load posture fixture"
+author = "Test"
+license = "MIT"
+type = "action"
+binary = "native_fixture.so"
+"#,
+        )
+        .expect("write manifest");
+        fs::write(plugin_dir.join("native_fixture.so"), b"not a real library")
+            .expect("write fake binary");
+
+        let mut manager = PluginManager::new(tmp.path().to_path_buf());
+        manager.discover_plugins().expect("discovery succeeds");
+        (manager, tmp)
+    }
+
+    /// ADR-027 hardening posture (decision d-14, option 2): native
+    /// (non-.wasm) plugin loading is compiled OUT unless the
+    /// `plugin-native` cargo feature is enabled — no official artifact
+    /// carries it. A discovered native plugin must be refused at load
+    /// with an error naming the feature; the binary is never dlopen'd.
+    #[cfg(not(feature = "plugin-native"))]
+    #[test]
+    fn native_plugin_load_refused_without_plugin_native_feature() {
+        let (mut manager, _tmp) = native_plugin_fixture();
+        let err = manager
+            .load_plugin("native_fixture")
+            .expect_err("native load must be refused in this composition");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("plugin-native"),
+            "refusal must name the missing cargo feature; got: {msg}"
+        );
+        assert!(
+            manager.list_loaded().expect("list_loaded").is_empty(),
+            "a refused load must leave nothing loaded"
+        );
+    }
+
+    /// Companion pin for opt-in builds: with `plugin-native` enabled the
+    /// load attempt reaches the real loader (our garbage fixture fails at
+    /// dlopen, NOT with the feature-refusal message).
+    #[cfg(feature = "plugin-native")]
+    #[test]
+    fn native_plugin_load_reaches_loader_with_plugin_native_feature() {
+        let (mut manager, _tmp) = native_plugin_fixture();
+        let err = manager
+            .load_plugin("native_fixture")
+            .expect_err("garbage binary must fail to load");
+        let msg = err.to_string();
+        assert!(
+            !msg.contains("plugin-native"),
+            "opt-in build must attempt the real load, not refuse on the feature; got: {msg}"
+        );
+    }
+
     #[test]
     fn test_plugin_manager_creation() {
         let plugins_dir = PathBuf::from("/tmp/plugins");
