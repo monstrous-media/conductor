@@ -1,0 +1,111 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Conductor template: Git macro pad on a Novation Launchpad Mini [MK3]
+# https://getconductor.app/use-cases  ·  MIT — copy, fork, share
+#
+# Everyday git/test commands typed into your terminal, the editor command
+# palette, and a deploy pad with two safety catches: a 3-second long-press,
+# and a schedule check that refuses to deploy on a Friday.
+#
+# Setup
+#   1. Launchpad in Programmer mode (hold Session, press the bottom-right
+#      orange pad): bottom row = notes 11–18, next row up = 21–28.
+#   2. Edit DEPLOY_SCRIPT below to the absolute path of your deploy script.
+#   3. Save as ~/.config/conductor/profiles/dev.toml, then
+#      conductorctl profile validate … && conductorctl profile switch dev
+#
+# Shell actions run sandboxed: no network and no file writes unless the
+# action's `sandbox` table allows it. The deploy action allows network and
+# writes to the project directory only.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[endpoints]]
+alias = "launchpad"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Launchpad Mini" }]
+
+[led]
+scheme = "reactive"
+
+[[modes]]
+name = "Dev"
+color = "green"
+
+[[modes.mappings]]
+description = "Pad 1 · git pull --rebase && cargo test (typed into the frontmost terminal)"
+[modes.mappings.trigger]
+type = "Note"
+note = 11
+[modes.mappings.action]
+type = "Conditional"
+[modes.mappings.action.condition]
+type = "Or"
+conditions = [
+  { type = "AppFrontmost", app_name = "Terminal" },
+  { type = "AppFrontmost", app_name = "iTerm2" },
+  { type = "AppFrontmost", app_name = "Ghostty" },
+  { type = "AppFrontmost", app_name = "wezterm-gui" },
+  { type = "AppFrontmost", app_name = "Warp" },
+]
+[modes.mappings.action.then_action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "git pull --rebase && cargo test" },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 2 · git status"
+[modes.mappings.trigger]
+type = "Note"
+note = 12
+[modes.mappings.action]
+type = "Conditional"
+[modes.mappings.action.condition]
+type = "Or"
+conditions = [
+  { type = "AppFrontmost", app_name = "Terminal" },
+  { type = "AppFrontmost", app_name = "iTerm2" },
+  { type = "AppFrontmost", app_name = "Ghostty" },
+  { type = "AppFrontmost", app_name = "wezterm-gui" },
+  { type = "AppFrontmost", app_name = "Warp" },
+]
+[modes.mappings.action.then_action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "git status" },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 9 · Command palette (⌘⇧P)"
+[modes.mappings.trigger]
+type = "Note"
+note = 21
+[modes.mappings.action]
+type = "Keystroke"
+keys = "p"
+modifiers = ["cmd", "shift"]
+
+[[modes.mappings]]
+description = "Pad 16 · Deploy to prod — long-press 3s, Mon–Thu only"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 28
+duration_ms = 3000
+[modes.mappings.action]
+type = "Conditional"
+[modes.mappings.action.condition]
+type = "DayOfWeek"
+days = [1, 2, 3, 4]   # Mon–Thu. For "Fri mornings too", wrap in Or/And with a TimeRange.
+[modes.mappings.action.then_action]
+type = "Shell"
+command = "/Users/Shared/DEPLOY_SCRIPT/deploy.sh"   # ← DEPLOY_SCRIPT: your script's absolute path
+args = ["prod"]
+timeout_ms = 300000
+sandbox = { network = true, fs_write = ["/Users/Shared/DEPLOY_SCRIPT"] }
+[modes.mappings.action.else_action]
+type = "Shell"
+command = "osascript"
+args = ["-e", "display notification \"Deploy blocked: no prod deploys on a Friday\" with title \"Conductor\""]
+timeout_ms = 5000

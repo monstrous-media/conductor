@@ -1,0 +1,206 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Conductor template: Claude Code on a Novation Launchpad Mini [MK3]
+# https://getconductor.app/use-cases  ·  MIT — copy, fork, share
+#
+# Turns the bottom two rows of a Launchpad Mini into a control surface for
+# Claude Code running in your terminal: approve / deny, interrupt, cycle
+# permission modes, background a task, and common slash commands. /clear sits
+# behind a 2-second long-press so you can't wipe your context by accident.
+#
+# Setup
+#   1. Put the Launchpad in Programmer mode (hold Session, press the
+#      bottom-right orange pad). Pads then send notes 11–88: row × 10 + column,
+#      counting from the bottom-left (bottom row = 11–18, next row = 21–28).
+#   2. Save as ~/.config/conductor/profiles/claude-code.toml
+#   3. conductorctl profile validate ~/.config/conductor/profiles/claude-code.toml
+#   4. conductorctl profile switch claude-code
+#
+# Approve / deny / interrupt only fire while a terminal is the frontmost app,
+# so a stray tap can't press Return in some other window. Edit the
+# TERMINALS list (the `Or` blocks) to match your terminal's process name.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[endpoints]]
+alias = "launchpad"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "Launchpad Mini" }]
+
+[advanced_settings]
+hold_threshold_ms = 2000
+
+[[modes]]
+name = "Claude Code"
+color = "orange"
+
+# ── Bottom row (11–18): the agent loop ──────────────────────────────────────
+
+[[modes.mappings]]
+description = "Pad 11 · Approve (Return on the focused 'Yes' in a permission prompt)"
+[modes.mappings.trigger]
+type = "Note"
+note = 11
+[modes.mappings.action]
+type = "Conditional"
+[modes.mappings.action.condition]
+type = "Or"
+conditions = [
+  { type = "AppFrontmost", app_name = "Terminal" },
+  { type = "AppFrontmost", app_name = "iTerm2" },
+  { type = "AppFrontmost", app_name = "Ghostty" },
+  { type = "AppFrontmost", app_name = "wezterm-gui" },
+  { type = "AppFrontmost", app_name = "Warp" },
+  { type = "AppFrontmost", app_name = "Code" },
+]
+[modes.mappings.action.then_action]
+type = "Keystroke"
+keys = "Return"
+
+[[modes.mappings]]
+description = "Pad 12 · Deny / interrupt (Esc). Tap twice on an empty prompt = rewind menu"
+[modes.mappings.trigger]
+type = "Note"
+note = 12
+[modes.mappings.action]
+type = "Conditional"
+[modes.mappings.action.condition]
+type = "Or"
+conditions = [
+  { type = "AppFrontmost", app_name = "Terminal" },
+  { type = "AppFrontmost", app_name = "iTerm2" },
+  { type = "AppFrontmost", app_name = "Ghostty" },
+  { type = "AppFrontmost", app_name = "wezterm-gui" },
+  { type = "AppFrontmost", app_name = "Warp" },
+  { type = "AppFrontmost", app_name = "Code" },
+]
+[modes.mappings.action.then_action]
+type = "Keystroke"
+keys = "Escape"
+
+[[modes.mappings]]
+description = "Pad 13 · Cycle permission mode: Manual → accept edits → plan (Shift+Tab)"
+[modes.mappings.trigger]
+type = "Note"
+note = 13
+[modes.mappings.action]
+type = "Keystroke"
+keys = "Tab"
+modifiers = ["shift"]
+
+[[modes.mappings]]
+description = "Pad 14 · Background the running command or agent (Ctrl+B)"
+[modes.mappings.trigger]
+type = "Note"
+note = 14
+[modes.mappings.action]
+type = "Keystroke"
+keys = "b"
+modifiers = ["ctrl"]
+
+[[modes.mappings]]
+description = "Pad 15 · Toggle Claude's task checklist (Ctrl+T)"
+[modes.mappings.trigger]
+type = "Note"
+note = 15
+[modes.mappings.action]
+type = "Keystroke"
+keys = "t"
+modifiers = ["ctrl"]
+
+[[modes.mappings]]
+description = "Pad 16 · Transcript viewer (Ctrl+O)"
+[modes.mappings.trigger]
+type = "Note"
+note = 16
+[modes.mappings.action]
+type = "Keystroke"
+keys = "o"
+modifiers = ["ctrl"]
+
+[[modes.mappings]]
+description = "Pad 17 · Edit the prompt in $EDITOR (Ctrl+G)"
+[modes.mappings.trigger]
+type = "Note"
+note = 17
+[modes.mappings.action]
+type = "Keystroke"
+keys = "g"
+modifiers = ["ctrl"]
+
+[[modes.mappings]]
+description = "Pad 18 · Stash / restore the prompt draft (Ctrl+S)"
+[modes.mappings.trigger]
+type = "Note"
+note = 18
+[modes.mappings.action]
+type = "Keystroke"
+keys = "s"
+modifiers = ["ctrl"]
+
+# ── Second row (21–28): slash commands ──────────────────────────────────────
+
+[[modes.mappings]]
+description = "Pad 21 · /compact"
+[modes.mappings.trigger]
+type = "Note"
+note = 21
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/compact" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 22 · /model picker"
+[modes.mappings.trigger]
+type = "Note"
+note = 22
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/model" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 23 · /resume a previous session"
+[modes.mappings.trigger]
+type = "Note"
+note = 23
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/resume" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 24 · /status"
+[modes.mappings.trigger]
+type = "Note"
+note = 24
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/status" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]
+
+[[modes.mappings]]
+description = "Pad 28 · /clear — long-press 2s (wipes the conversation context)"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 28
+duration_ms = 2000
+[modes.mappings.action]
+type = "Sequence"
+actions = [
+  { type = "Text", text = "/clear" },
+  { type = "Delay", ms = 60 },
+  { type = "Keystroke", keys = "Return" },
+]

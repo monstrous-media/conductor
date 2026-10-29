@@ -1,0 +1,131 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Conductor template: OBS + soundboard on an Akai APC mini mk2
+# https://getconductor.app/use-cases  ·  MIT — copy, fork, share
+#
+# Scene pads, a soundboard, desktop volume on a fader, and "End stream"
+# behind a 2-second long-press so a fat-finger can't end your stream.
+#
+# Setup
+#   1. In OBS → Settings → Hotkeys, bind:
+#        Scene "Gameplay"  ⌃⌥⌘1      Scene "Webcam"  ⌃⌥⌘2
+#        Scene "BRB"       ⌃⌥⌘3      Stop Streaming  ⌃⌥⌘0
+#      (any combo works — just match the keys below)
+#   2. Put your sound effects in /Users/Shared/Sounds (hype.wav, airhorn.wav, fail.wav).
+#      They play through your default output, so OBS's desktop-audio source
+#      picks them up.
+#   3. APC mini mk2: pads send notes 0–63 (0 = bottom-left), faders send
+#      CC 48–56 (fader 9 = CC 56). Check with `conductorctl events`.
+#   4. Save as ~/.config/conductor/profiles/streamer.toml, then
+#      conductorctl profile validate … && conductorctl profile switch streamer
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[endpoints]]
+alias = "apc"
+direction = "Input"
+type = "Matcher"
+matchers = [{ type = "NameContains", value = "APC mini" }]
+
+[led]
+scheme = "reactive"
+
+[[modes]]
+name = "Stream"
+color = "purple"
+
+# ── Scenes ──────────────────────────────────────────────────────────────────
+[[modes.mappings]]
+description = "Pad 1 · OBS scene: Gameplay"
+[modes.mappings.trigger]
+type = "Note"
+note = 0
+[modes.mappings.action]
+type = "Keystroke"
+keys = "1"
+modifiers = ["ctrl", "alt", "cmd"]
+
+[[modes.mappings]]
+description = "Pad 2 · OBS scene: Webcam"
+[modes.mappings.trigger]
+type = "Note"
+note = 1
+[modes.mappings.action]
+type = "Keystroke"
+keys = "2"
+modifiers = ["ctrl", "alt", "cmd"]
+
+[[modes.mappings]]
+description = "Pad 3 · OBS scene: BRB"
+[modes.mappings.trigger]
+type = "Note"
+note = 2
+[modes.mappings.action]
+type = "Keystroke"
+keys = "3"
+modifiers = ["ctrl", "alt", "cmd"]
+
+# ── Soundboard ──────────────────────────────────────────────────────────────
+[[modes.mappings]]
+description = "Pad 5 · Airhorn"
+[modes.mappings.trigger]
+type = "Note"
+note = 4
+[modes.mappings.action]
+type = "Shell"
+command = "afplay"
+args = ["/Users/Shared/Sounds/airhorn.wav"]
+timeout_ms = 10000
+
+[[modes.mappings]]
+description = "Pad 6 · Hype"
+[modes.mappings.trigger]
+type = "Note"
+note = 5
+[modes.mappings.action]
+type = "Shell"
+command = "afplay"
+args = ["/Users/Shared/Sounds/hype.wav"]
+timeout_ms = 10000
+
+[[modes.mappings]]
+description = "Pad 7 · Fail"
+[modes.mappings.trigger]
+type = "Note"
+note = 6
+[modes.mappings.action]
+type = "Shell"
+command = "afplay"
+args = ["/Users/Shared/Sounds/fail.wav"]
+timeout_ms = 10000
+
+# ── Guarded: end stream ─────────────────────────────────────────────────────
+[[modes.mappings]]
+description = "Pad 8 · End stream — long-press 2s only (taps are ignored)"
+[modes.mappings.trigger]
+type = "LongPress"
+note = 7
+duration_ms = 2000
+[modes.mappings.action]
+type = "Keystroke"
+keys = "0"
+modifiers = ["ctrl", "alt", "cmd"]
+
+# ── Fader 9: desktop volume ─────────────────────────────────────────────────
+[[modes.mappings]]
+description = "Fader 9 up · Desktop volume up"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 56
+direction = "Clockwise"
+[modes.mappings.action]
+type = "VolumeControl"
+operation = "Up"
+
+[[modes.mappings]]
+description = "Fader 9 down · Desktop volume down"
+[modes.mappings.trigger]
+type = "EncoderTurn"
+cc = 56
+direction = "CounterClockwise"
+[modes.mappings.action]
+type = "VolumeControl"
+operation = "Down"
