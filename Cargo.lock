@@ -603,7 +603,7 @@ dependencies = [
 
 [[package]]
 name = "conductor"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "conductor-core",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "conductor-capture"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "clap",
@@ -638,7 +638,7 @@ dependencies = [
 
 [[package]]
 name = "conductor-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "alsa",
  "anyhow",
@@ -688,7 +688,7 @@ dependencies = [
 
 [[package]]
 name = "conductor-daemon"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",

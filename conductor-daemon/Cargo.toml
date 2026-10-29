@@ -93,7 +93,7 @@ harness = false
 
 [dependencies]
 # Core engine (with optional WASM plugin support)
-conductor-core = { version = "0.1.0", path = "../conductor-core", features = ["osc"] }
+conductor-core = { version = "0.2.0", path = "../conductor-core", features = ["osc"] }
 
 # CLI dependencies
 colored.workspace = true

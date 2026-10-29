@@ -6,7 +6,8 @@ We release security updates for the following versions of Conductor:
 
 | Version  | Supported          |
 | -------- | ------------------ |
-| 0.1.x    | :white_check_mark: |
+| 0.2.x    | :white_check_mark: |
+| 0.1.x    | :x:                |
 
 The supported line tracks the current published release stream. This table is
 verified against the workspace version by an automated test
