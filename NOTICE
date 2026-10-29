@@ -2,7 +2,7 @@ Conductor
 Copyright 2025-2026 Monstrous Media
 
 This product includes software developed by the Rust community. It
-distributes 447 third-party Rust crates; see THIRD_PARTY_LICENSES.md
+distributes 437 third-party Rust crates; see THIRD_PARTY_LICENSES.md
 for the complete per-crate list and licenses.
 
 License summary:
@@ -18,15 +18,15 @@ License summary:
 - Apache-2.0 OR ISC OR MIT: 3
 - Apache-2.0 OR LGPL-2.1-or-later OR MIT: 2
 - Apache-2.0 OR MIT OR Zlib: 6
-- Apache-2.0 OR MIT: 266
-- Apache-2.0 WITH LLVM-exception: 37
+- Apache-2.0 OR MIT: 260
+- Apache-2.0 WITH LLVM-exception: 36
 - Apache-2.0: 3
 - BSD-3-Clause OR GPL-2.0: 2
 - BSD-3-Clause: 3
 - CDLA-Permissive-2.0: 1
 - ISC: 6
 - MIT OR Unlicense: 7
-- MIT: 60
+- MIT: 57
 - MPL-2.0: 1
 - Unicode-3.0: 18
 - Zlib: 1
