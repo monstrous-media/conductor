@@ -91,7 +91,20 @@ for pat in "${TELEMETRY_PATTERNS[@]}"; do
   fi
 done
 
-# --- 4. test-helpers seams ---------------------------------------------------
+# --- 4. native plugin loader (ADR-027 Chain E3) -------------------------------
+# In-process native (.dylib/.so/.dll) plugin loading is opt-in behind the
+# `plugin-native` cargo feature and must be absent from every official
+# artifact. The dlopen path resolves the exported `_create_plugin` symbol by
+# its literal name, and that byte string exists ONLY inside the feature-gated
+# loader, so its presence means the native loader was compiled in.
+if grep -q -- '_create_plugin' "$STRINGS_FILE"; then
+  echo "FAIL: native plugin loader marker '_create_plugin' present — the plugin-native feature leaked into the artifact (ADR-027 Chain E3)"
+  fail=1
+else
+  echo "OK: native plugin loader marker absent"
+fi
+
+# --- 5. test-helpers seams ---------------------------------------------------
 # The daemon's `test-helpers` feature exposes CAS-bypass seams for the test
 # suite. conductor-daemon/src/lib.rs plants a `#[used]` marker string whenever
 # the feature is compiled in; a release artifact must not contain it.
@@ -103,6 +116,6 @@ else
 fi
 
 if [[ "$fail" -eq 0 ]]; then
-  echo "PASS: $BIN is a clean OSS artifact (no SQLite, no gated tools, no telemetry, no test seams)"
+  echo "PASS: $BIN is a clean OSS artifact (no SQLite, no gated tools, no telemetry, no native plugin loader, no test seams)"
 fi
 exit "$fail"

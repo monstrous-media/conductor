@@ -8,6 +8,7 @@
 //! with proper error handling and validation.
 
 use std::path::{Path, PathBuf};
+#[cfg(feature = "plugin-native")]
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -54,7 +55,12 @@ pub struct LoadedPlugin {
     /// Plugin metadata
     pub metadata: PluginMetadata,
 
-    /// Library handle (kept alive to prevent unloading)
+    /// Library handle (kept alive to prevent unloading). Only exists in
+    /// `plugin-native` builds — without the feature no constructor can
+    /// produce a `LoadedPlugin` (`load_plugin` refuses before loading),
+    /// so the type stays compiled for downstream signatures while the
+    /// dynamic-loading machinery itself is absent from the binary.
+    #[cfg(feature = "plugin-native")]
     _library: Arc<libloading::Library>,
 
     /// Path to the plugin binary
@@ -125,6 +131,29 @@ impl PluginLoader {
     /// - Plugin version incompatible with core
     /// - Plugin validation fails
     pub fn load_plugin(&self, path: &Path) -> PluginLoaderResult<LoadedPlugin> {
+        // ADR-027 Chain E3 (decision d-14, option 2): native in-process
+        // loading is OPT-IN. Without the `plugin-native` cargo feature —
+        // i.e. in every official artifact — the dlopen machinery below is
+        // not compiled at all and any native load request is refused
+        // here, before the filesystem is touched. WASM plugins
+        // (`plugin-wasm`) are the supported, sandboxed extension surface.
+        #[cfg(not(feature = "plugin-native"))]
+        {
+            return Err(PluginLoaderError::LoadError(format!(
+                "native plugin loading is not compiled into this build \
+                 (refusing {}): enable the `plugin-native` cargo feature to \
+                 opt in; WASM plugins are the supported extension surface",
+                path.display()
+            )));
+        }
+
+        #[cfg(feature = "plugin-native")]
+        self.load_plugin_native(path)
+    }
+
+    /// The real dynamic loader — `plugin-native` builds only.
+    #[cfg(feature = "plugin-native")]
+    fn load_plugin_native(&self, path: &Path) -> PluginLoaderResult<LoadedPlugin> {
         // Verify file exists
         if !path.exists() {
             return Err(PluginLoaderError::IoError(std::io::Error::new(
@@ -226,6 +255,7 @@ mod tests {
         assert!(!loader.core_version.is_empty());
     }
 
+    #[cfg(feature = "plugin-native")]
     #[test]
     fn test_load_nonexistent_plugin() {
         let loader = PluginLoader::new();
@@ -236,6 +266,24 @@ mod tests {
             assert_eq!(e.kind(), std::io::ErrorKind::NotFound);
         } else {
             panic!("Expected IoError::NotFound");
+        }
+    }
+
+    /// ADR-027 Chain E3: without `plugin-native`, every native load is
+    /// refused up front with an error naming the feature — even for a
+    /// path that exists; the filesystem is never consulted.
+    #[cfg(not(feature = "plugin-native"))]
+    #[test]
+    fn test_load_refused_without_plugin_native_feature() {
+        let loader = PluginLoader::new();
+        let result = loader.load_plugin(Path::new("/nonexistent/plugin.so"));
+        match result {
+            Err(PluginLoaderError::LoadError(msg)) => assert!(
+                msg.contains("plugin-native"),
+                "refusal must name the missing feature; got: {msg}"
+            ),
+            Err(other) => panic!("expected feature refusal, got {other:?}"),
+            Ok(_) => panic!("expected feature refusal, got a loaded plugin"),
         }
     }
 
