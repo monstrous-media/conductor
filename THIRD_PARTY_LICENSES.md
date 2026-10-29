@@ -9,7 +9,7 @@ from the workspace dependency graph (`cargo license --all-features
 --avoid-dev-deps`). Dev/test-only dependencies are excluded. All listed
 licenses are OSI-approved and compatible with Conductor's MIT license.
 
-Total third-party crates: 447
+Total third-party crates: 437
 
 ## License summary
 
@@ -25,15 +25,15 @@ Total third-party crates: 447
 - Apache-2.0 OR ISC OR MIT: 3
 - Apache-2.0 OR LGPL-2.1-or-later OR MIT: 2
 - Apache-2.0 OR MIT OR Zlib: 6
-- Apache-2.0 OR MIT: 266
-- Apache-2.0 WITH LLVM-exception: 37
+- Apache-2.0 OR MIT: 260
+- Apache-2.0 WITH LLVM-exception: 36
 - Apache-2.0: 3
 - BSD-3-Clause OR GPL-2.0: 2
 - BSD-3-Clause: 3
 - CDLA-Permissive-2.0: 1
 - ISC: 6
 - MIT OR Unlicense: 7
-- MIT: 60
+- MIT: 57
 - MPL-2.0: 1
 - Unicode-3.0: 18
 - Zlib: 1
@@ -89,19 +89,19 @@ Total third-party crates: 447
 | cpp_demangle | 0.5.1 | Apache-2.0 OR MIT |
 | cpufeatures | 0.2.17 | Apache-2.0 OR MIT |
 | cpufeatures | 0.3.0 | Apache-2.0 OR MIT |
-| cranelift-assembler-x64 | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-assembler-x64-meta | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-bforest | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-bitset | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-codegen | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-codegen-meta | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-codegen-shared | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-control | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-entity | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-frontend | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-isle | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-native | 0.135.7 | Apache-2.0 WITH LLVM-exception |
-| cranelift-srcgen | 0.135.7 | Apache-2.0 WITH LLVM-exception |
+| cranelift-assembler-x64 | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-assembler-x64-meta | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-bforest | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-bitset | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-codegen | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-codegen-meta | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-codegen-shared | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-control | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-entity | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-frontend | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-isle | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-native | 0.135.8 | Apache-2.0 WITH LLVM-exception |
+| cranelift-srcgen | 0.135.8 | Apache-2.0 WITH LLVM-exception |
 | crc32fast | 1.5.0 | Apache-2.0 OR MIT |
 | crossbeam-channel | 0.5.16 | Apache-2.0 OR MIT |
 | crossbeam-deque | 0.8.6 | Apache-2.0 OR MIT |
@@ -118,10 +118,8 @@ Total third-party crates: 447
 | deranged | 0.5.5 | Apache-2.0 OR MIT |
 | digest | 0.10.7 | Apache-2.0 OR MIT |
 | digest | 0.11.3 | Apache-2.0 OR MIT |
-| directories-next | 2.0.0 | Apache-2.0 OR MIT |
 | dirs | 6.0.0 | Apache-2.0 OR MIT |
 | dirs-sys | 0.5.0 | Apache-2.0 OR MIT |
-| dirs-sys-next | 0.1.2 | Apache-2.0 OR MIT |
 | dispatch2 | 0.3.0 | Apache-2.0 OR MIT OR Zlib |
 | displaydoc | 0.2.5 | Apache-2.0 OR MIT |
 | dunce | 1.0.5 | Apache-2.0 OR CC0-1.0 OR MIT-0 |
@@ -261,8 +259,8 @@ Total third-party crates: 447
 | potential_utf | 0.1.4 | Unicode-3.0 |
 | powerfmt | 0.2.0 | Apache-2.0 OR MIT |
 | proc-macro2 | 1.0.106 | Apache-2.0 OR MIT |
-| pulley-interpreter | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| pulley-macros | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| pulley-interpreter | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| pulley-macros | 48.0.8 | Apache-2.0 WITH LLVM-exception |
 | quick-xml | 0.42.0 | MIT |
 | quinn | 0.11.9 | Apache-2.0 OR MIT |
 | quinn-proto | 0.11.19 | Apache-2.0 OR MIT |
@@ -277,7 +275,6 @@ Total third-party crates: 447
 | rayon | 1.11.0 | Apache-2.0 OR MIT |
 | rayon-core | 1.13.0 | Apache-2.0 OR MIT |
 | redox_syscall | 0.5.18 | MIT |
-| redox_users | 0.4.6 | MIT |
 | redox_users | 0.5.2 | MIT |
 | regalloc2 | 0.15.2 | Apache-2.0 WITH LLVM-exception |
 | regex | 1.13.1 | Apache-2.0 OR MIT |
@@ -352,9 +349,7 @@ Total third-party crates: 447
 | tokio-macros | 2.7.0 | MIT |
 | tokio-rustls | 0.26.4 | Apache-2.0 OR MIT |
 | tokio-util | 0.7.18 | MIT |
-| toml | 0.9.8 | Apache-2.0 OR MIT |
 | toml | 1.1.3+spec-1.1.0 | Apache-2.0 OR MIT |
-| toml_datetime | 0.7.3 | Apache-2.0 OR MIT |
 | toml_datetime | 1.1.1+spec-1.1.0 | Apache-2.0 OR MIT |
 | toml_parser | 1.1.2+spec-1.1.0 | Apache-2.0 OR MIT |
 | toml_writer | 1.1.2+spec-1.1.0 | Apache-2.0 OR MIT |
@@ -396,30 +391,29 @@ Total third-party crates: 447
 | wasmparser | 0.254.2 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | wasmparser | 0.258.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | wasmprinter | 0.254.2 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
-| wasmtime | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-environ | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-cache | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-component-macro | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-component-util | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-core | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-cranelift | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-fiber | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-jit-debug | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-jit-icache-coherence | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-unwinder | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-versioned-export-macros | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-internal-wit-bindgen | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-wasi | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wasmtime-wasi-io | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wasmtime | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-environ | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-component-macro | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-component-util | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-core | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-cranelift | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-fiber | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-jit-debug | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-jit-icache-coherence | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-unwinder | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-versioned-export-macros | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-internal-wit-bindgen | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-wasi | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wasmtime-wasi-io | 48.0.8 | Apache-2.0 WITH LLVM-exception |
 | wast | 258.0.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | wast | 35.0.2 | Apache-2.0 WITH LLVM-exception |
 | wat | 1.258.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 | web-sys | 0.3.99 | Apache-2.0 OR MIT |
 | web-time | 1.1.0 | Apache-2.0 OR MIT |
 | webpki-root-certs | 1.0.10 | CDLA-Permissive-2.0 |
-| wiggle | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wiggle-generate | 48.0.7 | Apache-2.0 WITH LLVM-exception |
-| wiggle-macro | 48.0.7 | Apache-2.0 WITH LLVM-exception |
+| wiggle | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wiggle-generate | 48.0.8 | Apache-2.0 WITH LLVM-exception |
+| wiggle-macro | 48.0.8 | Apache-2.0 WITH LLVM-exception |
 | winapi | 0.3.9 | Apache-2.0 OR MIT |
 | winapi-i686-pc-windows-gnu | 0.4.0 | Apache-2.0 OR MIT |
 | winapi-util | 0.1.11 | MIT OR Unlicense |
@@ -469,7 +463,6 @@ Total third-party crates: 447
 | windows_x86_64_msvc | 0.42.2 | Apache-2.0 OR MIT |
 | windows_x86_64_msvc | 0.52.6 | Apache-2.0 OR MIT |
 | windows_x86_64_msvc | 0.53.1 | Apache-2.0 OR MIT |
-| winnow | 0.7.13 | MIT |
 | winnow | 1.0.3 | MIT |
 | winx | 0.36.4 | Apache-2.0 WITH LLVM-exception |
 | wit-bindgen | 0.46.0 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
@@ -486,9 +479,6 @@ Total third-party crates: 447
 | zerovec | 0.11.5 | Unicode-3.0 |
 | zerovec-derive | 0.11.2 | Unicode-3.0 |
 | zmij | 1.0.21 | MIT |
-| zstd | 0.13.3 | MIT |
-| zstd-safe | 7.2.4 | Apache-2.0 OR MIT |
-| zstd-sys | 2.0.16+zstd.1.5.7 | Apache-2.0 OR MIT |
 
 ## Full license texts
 
