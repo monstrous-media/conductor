@@ -55,7 +55,7 @@ jobs:
         id: check
         run: |
           [ -f Cargo.toml ] && echo "has_code=true" >> "$GITHUB_OUTPUT" || echo "has_code=false" >> "$GITHUB_OUTPUT"
-      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+      - uses: EmbarkStudios/cargo-deny-action@17aeb3c839e42274e2b8adf721c8c65edfdc74dd # v2.1.3
         if: steps.check.outputs.has_code == 'true'
         with:
           command: check licenses bans advisories sources
